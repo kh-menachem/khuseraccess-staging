@@ -37,7 +37,7 @@ const translations = {
     forgotPassword: "שכחת סיסמה",
     firstTimeAfterLink: "כדי להגדיר סיסמה.",
     firstTimeLine3: "אנא בדוק את תיקיית הספאם שלך עבור האימייל.",
-    },
+  },
   en: {
     welcome: "Welcome",
     emailAddress: "Email Address",
