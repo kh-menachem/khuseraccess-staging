@@ -32,8 +32,9 @@ const translations = {
     hidePassword: "הסתר סיסמה",
     accountNotSetup: "צור קשר עם מנהל המערכת כדי לסיים את הגדרת החשבון שלך",
     accountNotFound: "החשבון לא נמצא במערכת",
-    firstTimeSignIn: "אם זו הפעם הראשונה שאתה נכנס לחשבון שלך, לחץ על 'שכחת סיסמה' כדי להגדיר סיסמה.",
-    checkSpam: "אנא בדוק את תיקיית הספאם שלך עבור האימייל.",
+    firstTimeLine1: "אם זו הפעם הראשונה שאתה נכנס לחשבון שלך,",
+    firstTimeLine2: "לחץ על 'שכחת סיסמה' כדי להגדיר סיסמה.",
+    firstTimeLine3: "אנא בדוק את תיקיית הספאם שלך עבור האימייל.",
   },
   en: {
     welcome: "Welcome",
@@ -52,8 +53,9 @@ const translations = {
     hidePassword: "Hide password",
     accountNotSetup: "Contact the system administrator to finish setting up your account",
     accountNotFound: "Account not found in system",
-    firstTimeSignIn: "If this is your first time signing in to your account, click on 'Forgot Password' to set your password.",
-    checkSpam: "Please check your spam folder for the email.",
+     firstTimeLine1: "If this is your first time signing in to your account,",
+    firstTimeLine2: "click on 'Forgot Password' to set your password.",
+    firstTimeLine3: "Please check your spam folder for the email.",
   },
 }
 
