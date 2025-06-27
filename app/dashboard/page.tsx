@@ -4,16 +4,11 @@ import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DollarSign, LogOut, Search, Download, Languages, AlertTriangle, Calendar, ChevronDown } from "lucide-react"
+import { DollarSign, LogOut, Languages, AlertTriangle, ChevronDown } from "lucide-react"
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 
@@ -94,8 +89,10 @@ const translations = {
     fromDate: "From Date",
     toDate: "To Date",
     applyDateRange: "Apply",
-    clearDateRange: "Nuke",
+    clearDateRange: "Clear",
     switchAccount: "Switch Account",
+    loading: "Loading...",
+    error: "Error loading data",
     types: {
       check: "Check",
       "credit card": "Credit Card",
@@ -167,6 +164,8 @@ const translations = {
     applyDateRange: "החל",
     clearDateRange: "נקה",
     switchAccount: "החלף חשבון",
+    loading: "טוען...",
+    error: "שגיאה בטעינת נתונים",
     types: {
       check: "צ'ק",
       "credit card": "כרטיס אשראי",
@@ -233,277 +232,6 @@ const translateNotes = (description: string, language: "en" | "he") => {
     donation: "תרומה",
     charity: "צדקה",
     gift: "מתנה",
-
-    // Business and service related
-    subscription: "מנוי",
-    membership: "חברות",
-    service: "שירות",
-    maintenance: "תחזוקה",
-    repair: "תיקון",
-    rental: "השכרה",
-    lease: "חכירה",
-    insurance: "ביטוח",
-    tax: "מס",
-    interest: "ריבית",
-    commission: "עמלה",
-    bonus: "בונוס",
-    dividend: "דיבידנד",
-
-    // Monthly/recurring payments
-    monthly: "חודשי",
-    annual: "שנתי",
-    yearly: "שנתי",
-    weekly: "שבועי",
-    daily: "יומי",
-    recurring: "חוזר",
-    automatic: "אוטומטי",
-
-    // Utilities and bills
-    electricity: "חשמל",
-    water: "מים",
-    gas: "גז",
-    phone: "טלפון",
-    internet: "אינטרנט",
-    cable: "כבלים",
-    utilities: "שירותים",
-    bill: "חשבון",
-    bills: "חשבונות",
-
-    // Food and shopping
-    groceries: "מכולת",
-    food: "אוכל",
-    restaurant: "מסעדה",
-    shopping: "קניות",
-    store: "חנות",
-    market: "שוק",
-    supermarket: "סופרמרקט",
-
-    // Transportation
-    fuel: "דלק",
-    "gas station": "תחנת דלק",
-    parking: "חניה",
-    toll: "אגרה",
-    taxi: "מונית",
-    bus: "אוטובוס",
-    train: "רכבת",
-    flight: "טיסה",
-    travel: "נסיעה",
-    hotel: "מלון",
-    "car rental": "השכרת רכב",
-
-    // Medical and health
-    medical: "רפואי",
-    doctor: "רופא",
-    hospital: "בית חולים",
-    pharmacy: "בית מרקחת",
-    medicine: "תרופה",
-    health: "בריאות",
-    dental: "שיניים",
-    clinic: "מרפאה",
-
-    // Education
-    education: "חינוך",
-    school: "בית ספר",
-    tuition: "שכר לימוד",
-    books: "ספרים",
-    supplies: "ציוד",
-    course: "קורס",
-    training: "הכשרה",
-    university: "אוניברסיטה",
-    college: "מכללה",
-
-    // Entertainment and leisure
-    entertainment: "בידור",
-    movie: "סרט",
-    cinema: "קולנוע",
-    theater: "תיאטרון",
-    concert: "קונצרט",
-    show: "הופעה",
-    sports: "ספורט",
-    gym: "חדר כושר",
-    fitness: "כושר",
-    game: "משחק",
-    hobby: "תחביב",
-
-    // Personal care
-    haircut: "תספורת",
-    beauty: "יופי",
-    salon: "מספרה",
-    spa: "ספא",
-    massage: "עיסוי",
-    cosmetics: "קוסמטיקה",
-    clothing: "ביגוד",
-    shoes: "נעליים",
-    fashion: "אופנה",
-
-    // Technology
-    software: "תוכנה",
-    hardware: "חומרה",
-    computer: "מחשב",
-    laptop: "מחשב נייד",
-    phone: "טלפון",
-    mobile: "נייד",
-    app: "אפליקציה",
-    website: "אתר",
-    online: "מקוון",
-    digital: "דיגיטלי",
-
-    // Banking and finance
-    bank: "בנק",
-    atm: "כספומט",
-    loan: "הלוואה",
-    mortgage: "משכנתא",
-    investment: "השקעה",
-    savings: "חיסכון",
-    account: "חשבון",
-    balance: "יתרה",
-    overdraft: "משיכת יתר",
-    foreign: "חוץ",
-    currency: "מטבע",
-    exchange: "המרה",
-
-    // Government and legal
-    government: "ממשלה",
-    tax: "מס",
-    fine: "קנס",
-    penalty: "עונש כספי",
-    court: "בית משפט",
-    legal: "משפטי",
-    lawyer: "עורך דין",
-    notary: "נוטריון",
-    license: "רישיון",
-    registration: "רישום",
-    renewal: "חידוש",
-
-    // Family and personal
-    family: "משפחה",
-    child: "ילד",
-    children: "ילדים",
-    support: "תמיכה",
-    alimony: "מזונות",
-    wedding: "חתונה",
-    birthday: "יום הולדת",
-    anniversary: "יום נישואין",
-    vacation: "חופשה",
-    holiday: "חג",
-
-    // Business terms
-    business: "עסק",
-    company: "חברה",
-    office: "משרד",
-    meeting: "פגישה",
-    conference: "כנס",
-    consultation: "ייעוץ",
-    contract: "חוזה",
-    agreement: "הסכם",
-    invoice: "חשבונית",
-    receipt: "קבלה",
-
-    // Time-related terms
-    today: "היום",
-    yesterday: "אתמול",
-    tomorrow: "מחר",
-    morning: "בוקר",
-    afternoon: "אחר הצהריים",
-    evening: "ערב",
-    night: "לילה",
-    weekend: "סוף שבוע",
-
-    // Status and actions
-    pending: "ממתין",
-    completed: "הושלם",
-    cancelled: "בוטל",
-    approved: "אושר",
-    rejected: "נדחה",
-    processing: "מעובד",
-    failed: "נכשל",
-    successful: "הצליח",
-    confirmed: "אושר",
-    declined: "נדחה",
-
-    // Amounts and quantities
-    total: "סך הכל",
-    subtotal: "סכום ביניים",
-    discount: "הנחה",
-    promotion: "מבצע",
-    sale: "מכירה",
-    offer: "הצעה",
-    deal: "עסקה",
-    price: "מחיר",
-    cost: "עלות",
-    value: "ערך",
-
-    // Common phrases
-    "thank you": "תודה",
-    please: "בבקשה",
-    welcome: "ברוך הבא",
-    "good morning": "בוקר טוב",
-    "good evening": "ערב טוב",
-    "have a nice day": "יום טוב",
-    "see you": "נתראה",
-    goodbye: "להתראות",
-
-    // Specific business names and terms (add more as needed)
-    amazon: "אמזון",
-    google: "גוגל",
-    microsoft: "מיקרוסופט",
-    apple: "אפל",
-    facebook: "פייסבוק",
-    paypal: "פייפאל",
-    visa: "ויזה",
-    mastercard: "מאסטרקארד",
-
-    // Machine and equipment related
-    machine: "מכונה",
-    equipment: "ציוד",
-    device: "מכשיר",
-    tool: "כלי",
-    installation: "התקנה",
-    setup: "הגדרה",
-    configuration: "תצורה",
-    upgrade: "שדרוג",
-    downgrade: "הורדת דרגה",
-
-    // Donation specific terms
-    donor: "תורם",
-    fundraiser: "גיוס כספים",
-    campaign: "קמפיין",
-    event: "אירוע",
-    gala: "גאלה",
-    auction: "מכירה פומבית",
-    raffle: "הגרלה",
-    sponsor: "נותן חסות",
-    volunteer: "מתנדב",
-    nonprofit: "ללא מטרות רווח",
-    foundation: "קרן",
-    organization: "ארגון",
-    community: "קהילה",
-    support: "תמיכה",
-    help: "עזרה",
-    assistance: "סיוע",
-    aid: "סיוע",
-    relief: "הקלה",
-    emergency: "חירום",
-    disaster: "אסון",
-    crisis: "משבר",
-
-    // Common first names (English and Hebrew variations)
-    john: "ג'ון",
-    jane: "ג'יין",
-    david: "דוד",
-    sarah: "שרה",
-    michael: "מיכאל",
-    emily: "אמילי",
-    daniel: "דניאל",
-    rebecca: "רבקה",
-    joseph: "יוסף",
-    rachel: "רחל",
-    moshe: "משה",
-    rivka: "רבקה",
-    yitzchak: "יצחק",
-    leah: "לאה",
-    yaakov: "יעקב",
-    shira: "שירה",
   }
 
   // Create a translated version by replacing words
@@ -551,6 +279,7 @@ export default function Dashboard() {
   } | null>(null)
   const [customerData, setCustomerData] = useState<CustomerData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [dateFilter, setDateFilter] = useState("30") // Default to last 30 days
   const [typeFilter, setTypeFilter] = useState("all") // Default to all transaction types
@@ -599,6 +328,7 @@ export default function Dashboard() {
       const loadData = async () => {
         try {
           setIsLoading(true)
+          setError(null)
           setUser(parsedUser)
 
           // Set language from stored user preference
@@ -606,11 +336,15 @@ export default function Dashboard() {
             setLanguage(parsedUser.language)
           }
 
+          console.log("Loading data for user:", parsedUser)
+
           // Pass both email and userId to fetchCustomerData
           const data = await fetchCustomerData(parsedUser.email, parsedUser.id)
+          console.log("Customer data loaded:", data)
           setCustomerData(data)
         } catch (error) {
           console.error("Error loading customer data:", error)
+          setError(error instanceof Error ? error.message : "Failed to load customer data")
         } finally {
           setIsLoading(false)
         }
@@ -655,6 +389,7 @@ export default function Dashboard() {
       setCustomerData(data)
     } catch (error) {
       console.error("Error switching account:", error)
+      setError("Failed to switch account")
     } finally {
       setIsLoading(false)
     }
@@ -854,8 +589,23 @@ export default function Dashboard() {
       >
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="mt-4 text-white font-medium">Loading your dashboard...</p>
+          <p className="mt-4 text-white font-medium">{t.loading}</p>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#f8fafc" }}>
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -1055,260 +805,4 @@ export default function Dashboard() {
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-700">{t.notClearedTotal}</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${notClearedTotal < 0 ? "text-red-600" : "text-orange-600"}`}>
-                  ${formatNumber(notClearedTotal)}
-                </div>
-                <p className="text-xs text-gray-500">{t.clickToViewNotCleared}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Transactions View */}
-          <Card className="shadow-lg border-0">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-gray-800">{t.allTransactions}</CardTitle>
-                <CardDescription className="text-gray-600">
-                  {notClearedFilter ? t.showingNotClearedOnly : t.viewAllTransactions}
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                {notClearedFilter && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setNotClearedFilter(false)}
-                    className="border-gray-300 hover:bg-gray-50"
-                  >
-                    {t.clearNotClearedFilter}
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportAllTransactions}
-                  className="text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 border-0 bg-transparent"
-                  style={{
-                    background: "linear-gradient(135deg, #20B2AA 0%, #48D1CC 100%)",
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {t.exportCSV}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Filters */}
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="search"
-                    placeholder={t.searchTransactions}
-                    className="pl-8 border-gray-300 focus:border-teal-500 focus:ring-teal-500"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <div className="w-40">
-                    <Select value={dateFilter} onValueChange={handleDateFilterChange}>
-                      <SelectTrigger className="border-gray-300 focus:border-teal-500 focus:ring-teal-500">
-                        <SelectValue placeholder={t.dateRange} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">{t.last30Days}</SelectItem>
-                        <SelectItem value="90">{t.last90Days}</SelectItem>
-                        <SelectItem value="180">{t.last6Months}</SelectItem>
-                        <SelectItem value="thisYear">{t.thisYear}</SelectItem>
-                        <SelectItem value="custom">{t.customRange}</SelectItem>
-                        <SelectItem value="all">{t.allTime}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {dateFilter === "custom" && (
-                    <Popover open={showCustomDatePicker} onOpenChange={setShowCustomDatePicker}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-gray-300 bg-transparent">
-                          <Calendar className="h-4 w-4 mr-2" />
-                          {customDateFrom && customDateTo ? `${customDateFrom} - ${customDateTo}` : t.customRange}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80">
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">{t.fromDate}</label>
-                            <Input
-                              type="date"
-                              value={customDateFrom}
-                              onChange={(e) => setCustomDateFrom(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">{t.toDate}</label>
-                            <Input type="date" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={applyCustomDateRange}
-                              disabled={!customDateFrom || !customDateTo}
-                            >
-                              {t.applyDateRange}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={clearCustomDateRange}>
-                              {t.clearDateRange}
-                            </Button>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                  <div className="w-40">
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
-                      <SelectTrigger className="border-gray-300 focus:border-teal-500 focus:ring-teal-500">
-                        <SelectValue placeholder={t.type} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t.allTypes}</SelectItem>
-                        {transactionTypes.map((type) => (
-                          <SelectItem key={type} value={type.toLowerCase()}>
-                            {t.types[type.toLowerCase()] || type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Active filters display */}
-              <div className="flex flex-wrap gap-2">
-                {notClearedFilter && (
-                  <Badge variant="destructive" className="cursor-pointer" onClick={() => setNotClearedFilter(false)}>
-                    Not Cleared ✕
-                  </Badge>
-                )}
-                {dateFilter !== "all" && (
-                  <Badge variant="secondary">
-                    {dateFilter === "30"
-                      ? t.last30Days
-                      : dateFilter === "90"
-                        ? t.last90Days
-                        : dateFilter === "180"
-                          ? t.last6Months
-                          : dateFilter === "thisYear"
-                            ? t.thisYear
-                            : dateFilter === "custom" && customDateFrom && customDateTo
-                              ? `${customDateFrom} - ${customDateTo}`
-                              : t.customRange}
-                  </Badge>
-                )}
-                {typeFilter !== "all" && (
-                  <Badge variant="secondary">
-                    {t.type}: {t.types[typeFilter] || typeFilter}
-                  </Badge>
-                )}
-                {searchTerm && (
-                  <Badge variant="secondary">
-                    {t.search}: {searchTerm}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Transactions Table */}
-              <div className="rounded-md border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="cursor-pointer" onClick={() => handleSortChange("date")}>
-                        {t.dateTime} {sortColumn === "date" && (sortDirection === "asc" ? "↑" : "↓")}
-                      </TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSortChange("type")}>
-                        {t.type} {sortColumn === "type" && (sortDirection === "asc" ? "↑" : "↓")}
-                      </TableHead>
-                      <TableHead>{t.notes}</TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSortChange("amount")}>
-                        {t.amount} {sortColumn === "amount" && (sortDirection === "asc" ? "↑" : "↓")}
-                      </TableHead>
-                      <TableHead className="cursor-pointer" onClick={() => handleSortChange("net")}>
-                        {t.net} {sortColumn === "net" && (sortDirection === "asc" ? "↑" : "↓")}
-                      </TableHead>
-                      <TableHead>{t.status}</TableHead>
-                      <TableHead>{t.cardknox}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTransactions.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
-                          {t.noTransactionsFound}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredTransactions.map((tx) => (
-                        <TableRow key={`${tx.source}-${tx.id}`}>
-                          <TableCell>{shouldHideDonationInfo(tx.donorName || "", "date") ? "***" : tx.date}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={`${tx.net >= 0 ? "bg-blue-50 text-blue-800 border-blue-200" : "bg-red-50 text-red-800 border-red-200"}`}
-                            >
-                              {translateType(tx.type, t)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{translateNotes(tx.description, language)}</TableCell>
-                          <TableCell className="font-medium text-black">
-                            {shouldHideDonationInfo(tx.donorName || "", "amount")
-                              ? "***"
-                              : `$${formatNumber(tx.amount)}`}
-                          </TableCell>
-                          <TableCell className={`font-medium ${tx.net < 0 ? "text-red-600" : "text-green-600"}`}>
-                            {shouldHideDonationInfo(tx.donorName || "", "amount") ? "***" : `$${formatNumber(tx.net)}`}
-                          </TableCell>
-                          <TableCell>
-                            {tx.notCleared && (
-                              <Badge
-                                variant={
-                                  tx.notCleared.toLowerCase().trim() === "true" ||
-                                  tx.notCleared.toLowerCase().trim() === "yes" ||
-                                  tx.notCleared.toLowerCase().trim() === "1"
-                                    ? "destructive"
-                                    : "secondary"
-                                }
-                              >
-                                {t.notClearedStatuses[tx.notCleared.toLowerCase().trim()] || tx.notCleared}
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>{tx.cardknox}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="text-sm text-gray-500">
-                {t.showingRecords} {filteredTransactions.length} {t.ofRecords} {allMoneyTransactions.length} {t.records}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-
-      <footer
-        className="py-6"
-        style={{
-          background: "linear-gradient(135deg, #20B2AA 0%, #48D1CC 100%)",
-        }}
-      >
-        <div className="container mx-auto px-4 text-center text-sm text-white">
-          &copy; {new Date().getFullYear()} Keren Hatzedakah. All rights reserved.
-        </div>
-      </footer>
-    </div>
-  )
-}
+                <AlertTriangle className="h-4 w-4 text-orange-500" />\
