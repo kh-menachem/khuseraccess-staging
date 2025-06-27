@@ -2,8 +2,6 @@ import type { CustomerData } from "./types"
 
 export async function fetchCustomerData(userEmail: string, userId: string): Promise<CustomerData> {
   try {
-    console.log("Fetching customer data for:", { userEmail, userId })
-
     const response = await fetch("/api/customer-data", {
       method: "POST",
       headers: {
@@ -12,18 +10,11 @@ export async function fetchCustomerData(userEmail: string, userId: string): Prom
       body: JSON.stringify({ userEmail, userId }),
     })
 
-    console.log("Response status:", response.status)
-
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error("API Error:", errorText)
-      throw new Error(`Failed to fetch customer data: ${response.status} ${errorText}`)
+      throw new Error("Failed to fetch customer data")
     }
 
-    const data = await response.json()
-    console.log("Received data:", data)
-
-    return data
+    return await response.json()
   } catch (error) {
     console.error("Error fetching customer data:", error)
     throw error
