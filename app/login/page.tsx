@@ -77,16 +77,21 @@ export default function LoginPage() {
   const t = translations[language]
   const isRTL = language === "he"
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setIsLoading(true)
+  setError(null)
 
-    try {
-      // Sign in with Firebase first
-      await signIn(email, password)
+  try {
+    // Determine if user is logging in from /admin/login
+    const path = typeof window !== "undefined" ? window.location.pathname : ""
+    const isAdminLogin = path.includes("/admin")
 
-      // Check if user is admin first - ONLY check Admin sheet
+    // Sign in with Firebase first
+    await signIn(email, password)
+
+    if (isAdminLogin) {
+      // Admin login flow – ONLY check Admin sheet
       const adminCheckResponse = await fetch("/api/admin/verify", {
         method: "POST",
         headers: {
@@ -104,85 +109,95 @@ export default function LoginPage() {
           description: "Redirecting to admin panel...",
         })
         router.push("/admin")
-        return
-      }
-
-      // Regular user login - fetch user data from People sheet ONLY
-      const response = await fetch("/api/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      })
-
-      const result = await response.json()
-
-      if (result.success && result.user && result.user.accounts && result.user.accounts.length > 0) {
-        const accounts = result.user.accounts
-
-        if (accounts.length === 1) {
-          // Single account - proceed directly to dashboard
-          const account = accounts[0]
-          localStorage.setItem(
-            "user",
-            JSON.stringify({
-              id: account.userId,
-              name: account.name,
-              firstName: account.firstName,
-              lastName: account.lastName,
-              accountNumber: account.accountNumber,
-              email: email,
-              language: language,
-            }),
-          )
-
-          toast({
-            title: "Login successful",
-            description: "Redirecting to your dashboard...",
-          })
-
-          router.push("/dashboard")
-        } else {
-          // Multiple accounts - store all accounts and show selection
-          localStorage.setItem(
-            "user",
-            JSON.stringify({
-              email: email,
-              accounts: accounts,
-              language: language,
-              needsAccountSelection: true,
-            }),
-          )
-
-          toast({
-            title: "Multiple accounts found",
-            description: "Please select an account to continue...",
-          })
-
-          router.push("/select-account")
-        }
       } else {
-        // Show large prominent message for account not found
-        setError("ACCOUNT_NOT_SETUP")
+        // Not an admin – show error
         toast({
           variant: "destructive",
-          title: language === "he" ? "החשבון לא נמצא" : "Account Not Found",
-          description: language === "he" ? t.accountNotSetup : t.accountNotSetup,
+          title: "Access Denied",
+          description: "This email is not authorized for admin access.",
         })
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      setError(`Login failed: ${errorMessage}`)
+
+      return
+    }
+
+    // Regular user login flow – ONLY check People sheet
+    const response = await fetch("/api/auth", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    })
+
+    const result = await response.json()
+
+    if (result.success && result.user && result.user.accounts && result.user.accounts.length > 0) {
+      const accounts = result.user.accounts
+
+      if (accounts.length === 1) {
+        // Single account – proceed directly to dashboard
+        const account = accounts[0]
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: account.userId,
+            name: account.name,
+            firstName: account.firstName,
+            lastName: account.lastName,
+            accountNumber: account.accountNumber,
+            email: email,
+            language: language,
+          }),
+        )
+
+        toast({
+          title: "Login successful",
+          description: "Redirecting to your dashboard...",
+        })
+
+        router.push("/dashboard")
+      } else {
+        // Multiple accounts – store and show selection
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            email: email,
+            accounts: accounts,
+            language: language,
+            needsAccountSelection: true,
+          }),
+        )
+
+        toast({
+          title: "Multiple accounts found",
+          description: "Please select an account to continue...",
+        })
+
+        router.push("/select-account")
+      }
+    } else {
+      // Account not found in People sheet
+      setError("ACCOUNT_NOT_SETUP")
       toast({
         variant: "destructive",
-        title: "Login failed",
-        description: "Invalid email or password.",
+        title: language === "he" ? "החשבון לא נמצא" : "Account Not Found",
+        description: language === "he" ? t.accountNotSetup : t.accountNotSetup,
       })
-    } finally {
-      setIsLoading(false)
     }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    setError(`Login failed: ${errorMessage}`)
+    toast({
+      variant: "destructive",
+      title: "Login failed",
+      description: "Invalid email or password.",
+    })
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   return (
     <div className={`min-h-screen flex ${isRTL ? "rtl" : "ltr"}`} style={{ backgroundColor: "#f8fafc" }}>
