@@ -33,9 +33,10 @@ const translations = {
     accountNotSetup: "צור קשר עם מנהל המערכת כדי לסיים את הגדרת החשבון שלך",
     accountNotFound: "החשבון לא נמצא במערכת",
     firstTimeLine1: "אם זו הפעם הראשונה שאתה נכנס לחשבון שלך,",
-    firstTimeLine2: "לחץ על 'שכחת סיסמה' כדי להגדיר סיסמה.",
+    firstTimeBeforeLink: "לחץ על",
+    forgotPassword: "שכחת סיסמה",
+    firstTimeAfterLink: "כדי להגדיר סיסמה.",
     firstTimeLine3: "אנא בדוק את תיקיית הספאם שלך עבור האימייל.",
-  },
   en: {
     welcome: "Welcome",
     emailAddress: "Email Address",
@@ -53,8 +54,10 @@ const translations = {
     hidePassword: "Hide password",
     accountNotSetup: "Contact the system administrator to finish setting up your account",
     accountNotFound: "Account not found in system",
-     firstTimeLine1: "If this is your first time signing in to your account,",
-    firstTimeLine2: "click on 'Forgot Password' to set your password.",
+    firstTimeLine1: "If this is your first time signing in to your account,",
+    firstTimeBeforeLink: "Click on",
+    forgotPassword: "Forgot password",
+    firstTimeAfterLink: "to set your password.",
     firstTimeLine3: "Please check your spam folder for the email.",
   },
 }
@@ -211,15 +214,16 @@ export default function LoginPage() {
           </div>
 
           {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
-            <p className="text-sm text-gray-600">
-              If this is your first time signing in to your account, click on <strong>Forgot Password</strong> to set your password.
-            </p>
-            <p className="text-sm text-gray-600">
-              Please check your spam folder for the email.
-            </p>
-          </div>
+          <p className="text-sm text-gray-600">{t.firstTimeLine1}</p>
+          <p className="text-sm text-gray-600">
+            {t.firstTimeBeforeLink}{" "}
+            <Link href="/forgot-password">
+              <strong className="text-teal-700 hover:underline">{t.forgotPassword}</strong>
+            </Link>{" "}
+            {t.firstTimeAfterLink}
+          </p>
+          <p className="text-sm text-gray-600">{t.firstTimeLine3}</p>
+
 
 
 
