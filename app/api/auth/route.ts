@@ -275,8 +275,11 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        accounts: accounts,
-        multipleAccounts: accounts.length > 1,
+        user: {
+          email: email,
+          accounts: accounts,
+          hasMultipleAccounts: accounts.length > 1,
+        },
       })
     } catch (error) {
       console.error("Spreadsheet access error:", error)

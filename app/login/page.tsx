@@ -73,10 +73,10 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      // Sign in with Firebase
+      // Sign in with Firebase first
       await signIn(email, password)
 
-      // Check if user is admin first
+      // Check if user is admin first - ONLY check Admin sheet
       const adminCheckResponse = await fetch("/api/admin/verify", {
         method: "POST",
         headers: {
@@ -97,7 +97,7 @@ export default function LoginPage() {
         return
       }
 
-      // Regular user login - fetch user data from your API
+      // Regular user login - fetch user data from People sheet ONLY
       const response = await fetch("/api/auth", {
         method: "POST",
         headers: {
@@ -108,28 +108,50 @@ export default function LoginPage() {
 
       const result = await response.json()
 
-      if (result.success && result.accounts) {
-        // Store user info and language preference in localStorage
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            id: result.accounts[0].userId,
-            name: result.accounts[0].name,
-            firstName: result.accounts[0].firstName,
-            lastName: result.accounts[0].lastName,
-            accountNumber: result.accounts[0].accountNumber,
-            email: email,
-            accounts: result.accounts.length > 1 ? result.accounts : undefined,
-            language: language, // Store language preference
-          }),
-        )
+      if (result.success && result.user && result.user.accounts && result.user.accounts.length > 0) {
+        const accounts = result.user.accounts
 
-        toast({
-          title: "Login successful",
-          description: "Redirecting to your dashboard...",
-        })
+        if (accounts.length === 1) {
+          // Single account - proceed directly to dashboard
+          const account = accounts[0]
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              id: account.userId,
+              name: account.name,
+              firstName: account.firstName,
+              lastName: account.lastName,
+              accountNumber: account.accountNumber,
+              email: email,
+              language: language,
+            }),
+          )
 
-        router.push("/dashboard")
+          toast({
+            title: "Login successful",
+            description: "Redirecting to your dashboard...",
+          })
+
+          router.push("/dashboard")
+        } else {
+          // Multiple accounts - store all accounts and show selection
+          localStorage.setItem(
+            "user",
+            JSON.stringify({
+              email: email,
+              accounts: accounts,
+              language: language,
+              needsAccountSelection: true,
+            }),
+          )
+
+          toast({
+            title: "Multiple accounts found",
+            description: "Please select an account to continue...",
+          })
+
+          router.push("/select-account")
+        }
       } else {
         // Show large prominent message for account not found
         setError("ACCOUNT_NOT_SETUP")

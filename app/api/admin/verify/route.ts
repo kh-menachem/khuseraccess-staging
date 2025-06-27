@@ -12,6 +12,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Email is required" }, { status: 400 })
     }
 
+    // ADMIN VERIFICATION - ONLY checks Admin sheet, NOT People sheet
+    console.log("Checking admin access for:", email)
+
     // Get the credentials from the environment variable
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
     if (!credentials) {

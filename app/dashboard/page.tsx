@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DollarSign, LogOut, Search, Download, Languages, AlertTriangle, Calendar, ChevronDown } from "lucide-react"
+import { DollarSign, LogOut, Search, Download, Languages, AlertTriangle, Calendar, ChevronDown } from 'lucide-react'
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -556,7 +556,7 @@ export default function Dashboard() {
   const [typeFilter, setTypeFilter] = useState("all") // Default to all transaction types
   const [notClearedFilter, setNotClearedFilter] = useState(false) // New filter for not cleared
   const [sortColumn, setSortColumn] = useState("date") // Default sort by date
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc") // Default newest first
+  const [sortDirection, setSortDirection<"asc" | "desc">]("desc") // Default newest first
   const [language, setLanguage] = useState<"en" | "he">("en") // Default to English
   const [customDateFrom, setCustomDateFrom] = useState("")
   const [customDateTo, setCustomDateTo] = useState("")
@@ -580,29 +580,47 @@ export default function Dashboard() {
       return
     }
 
-    // Fetch customer data
-    const loadData = async () => {
-      try {
-        setIsLoading(true)
-        const parsedUser = JSON.parse(storedUser)
-        setUser(parsedUser)
-
-        // Set language from stored user preference
-        if (parsedUser.language) {
-          setLanguage(parsedUser.language)
-        }
-
-        // Pass both email and userId to fetchCustomerData
-        const data = await fetchCustomerData(parsedUser.email, parsedUser.id)
-        setCustomerData(data)
-      } catch (error) {
-        console.error("Error loading customer data:", error)
-      } finally {
-        setIsLoading(false)
+    try {
+      const parsedUser = JSON.parse(storedUser)
+      
+      // Check if user needs to select an account first
+      if (parsedUser.needsAccountSelection) {
+        router.push("/select-account")
+        return
       }
-    }
 
-    loadData()
+      // Check if user has a selected account
+      if (!parsedUser.id) {
+        router.push("/select-account")
+        return
+      }
+
+      // Fetch customer data
+      const loadData = async () => {
+        try {
+          setIsLoading(true)
+          setUser(parsedUser)
+
+          // Set language from stored user preference
+          if (parsedUser.language) {
+            setLanguage(parsedUser.language)
+          }
+
+          // Pass both email and userId to fetchCustomerData
+          const data = await fetchCustomerData(parsedUser.email, parsedUser.id)
+          setCustomerData(data)
+        } catch (error) {
+          console.error("Error loading customer data:", error)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+
+      loadData()
+    } catch (error) {
+      console.error("Error parsing stored user:", error)
+      router.push("/login")
+    }
   }, [router, firebaseUser])
 
   const handleLogout = async () => {
