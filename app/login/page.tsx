@@ -205,9 +205,13 @@ export default function LoginPage() {
           </div>
 
           {/* Header */}
-          <div className={`mb-8 text-center`}>
+          <div className="mb-8 text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
+            <p className="text-sm text-gray-600">
+              If this is your first time signing in to your account, click on <strong>Forgot Password</strong> to set your password.
+            </p>
           </div>
+
 
           {/* Login Form */}
           <Card className="border-0 shadow-lg bg-white">
