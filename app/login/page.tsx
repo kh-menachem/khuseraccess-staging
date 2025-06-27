@@ -215,6 +215,8 @@ export default function LoginPage() {
           </div>
 
           {/* Header */}
+          <div className="mb-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
           <p className="text-sm text-gray-600">{t.firstTimeLine1}</p>
           <p className="text-sm text-gray-600">
             {t.firstTimeBeforeLink}{" "}
@@ -224,6 +226,7 @@ export default function LoginPage() {
             {t.firstTimeAfterLink}
           </p>
           <p className="text-sm text-gray-600">{t.firstTimeLine3}</p>
+        </div>
 
 
 
