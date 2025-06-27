@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     if (password.length < 6) {
-      return NextResponse.json({ success: false, error: "Password must be at least 6 characters" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Password must be at least 8 characters" }, { status: 400 })
     }
 
     const auth = getAuth()
