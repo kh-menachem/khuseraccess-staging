@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Invalid email format" }, { status: 400 })
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json({ success: false, error: "Password must be at least 8 characters and include at least 1 number" }, { status: 400 })
     }
 
