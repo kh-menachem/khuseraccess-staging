@@ -1,31 +1,56 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
 import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  console.log("Admin verify API route called")
+
   try {
     const { email } = await request.json()
+    console.log("Email received for admin verification:", email)
 
     if (!email) {
+      console.log("No email provided")
       return NextResponse.json({ success: false, error: "Email is required" }, { status: 400 })
     }
 
-    // ADMIN VERIFICATION - ONLY checks Admin sheet, NOT People sheet
-    console.log("Checking admin access for:", email)
-
     // Get the credentials from the environment variable
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    console.log("Credentials available:", !!credentials)
+
     if (!credentials) {
-      return NextResponse.json({ success: false, error: "Google credentials not found" }, { status: 500 })
+      console.log("No credentials found in environment variables")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Google credentials not found",
+        },
+        { status: 500 },
+      )
     }
 
     // Create a temporary file with the credentials
     const tempFilePath = join(os.tmpdir(), "google-credentials-admin.json")
-    writeFileSync(tempFilePath, credentials)
+    console.log("Writing credentials to temp file:", tempFilePath)
+
+    try {
+      writeFileSync(tempFilePath, credentials)
+      console.log("Credentials written successfully")
+    } catch (writeError) {
+      console.error("Error writing credentials file:", writeError)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to write credentials file",
+        },
+        { status: 500 },
+      )
+    }
 
     // Initialize the Sheets API client
+    console.log("Initializing Google Auth for admin verification")
     const auth = new google.auth.GoogleAuth({
       keyFile: tempFilePath,
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -33,118 +58,121 @@ export async function POST(request: Request) {
 
     const sheets = google.sheets({ version: "v4", auth })
     const spreadsheetId = process.env.SPREADSHEET_ID
+    console.log("Spreadsheet ID:", spreadsheetId)
 
-    // Check if there's an Admin sheet
-    let isAdmin = false
-    let adminUser = null
+    if (!spreadsheetId) {
+      console.log("No spreadsheet ID found in environment variables")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Spreadsheet ID not found",
+        },
+        { status: 500 },
+      )
+    }
 
     try {
-      // First, verify the Admin sheet exists
+      // First, verify the spreadsheet exists and get available sheets
+      console.log("Verifying spreadsheet access for admin check")
       const spreadsheet = await sheets.spreadsheets.get({
         spreadsheetId,
       })
 
       const sheetNames = spreadsheet.data.sheets?.map((sheet) => sheet.properties?.title) || []
+      console.log("Available sheets:", sheetNames)
 
+      // Check if Admin sheet exists
       if (!sheetNames.includes("Admin")) {
-        console.log("Admin sheet not found in spreadsheet")
-        return NextResponse.json({
-          success: false,
-          error: "Admin sheet not found in spreadsheet",
-          availableSheets: sheetNames,
-        })
+        console.log("Admin sheet not found")
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Admin sheet not found in spreadsheet",
+            availableSheets: sheetNames,
+          },
+          { status: 404 },
+        )
       }
 
-      // Get Admin sheet data
-      const adminResponse = await sheets.spreadsheets.values.get({
+      // Fetch the Admin sheet - only need email column
+      console.log("Fetching Admin sheet")
+      const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Admin!A:Z",
+        range: "Admin!A:Z", // Get all columns to be safe
       })
 
-      const adminData = adminResponse.data.values || []
-      console.log("Admin sheet data:", adminData)
+      const rows = response.data.values || []
+      console.log("Admin rows fetched:", rows.length)
 
-      if (adminData.length <= 1) {
-        console.log("No admin users found in Admin sheet")
-        return NextResponse.json({
-          success: false,
-          error: "No admin users found in Admin sheet",
-        })
+      if (rows.length === 0) {
+        console.log("No data found in Admin sheet")
+        return NextResponse.json({ success: false, error: "No data found in Admin sheet" }, { status: 404 })
       }
 
-      const headerRow = adminData[0]
-      console.log("Admin sheet headers:", headerRow)
+      const headerRow = rows[0]
+      console.log("Admin header row:", headerRow)
 
-      // Find the email and name columns
+      // Find the email column in Admin sheet
       const emailIndex = headerRow.findIndex(
         (header: string) =>
           header?.toLowerCase().trim() === "email" ||
-          header?.toLowerCase().trim() === "user email" ||
-          header?.toLowerCase().trim() === "admin email",
+          header?.toLowerCase().trim() === "admin email" ||
+          header?.toLowerCase().trim() === "user email",
       )
-
-      const nameIndex = headerRow.findIndex(
-        (header: string) =>
-          header?.toLowerCase().trim() === "name" ||
-          header?.toLowerCase().trim() === "full name" ||
-          header?.toLowerCase().trim() === "admin name",
-      )
-
-      console.log("Email column index:", emailIndex)
-      console.log("Name column index:", nameIndex)
+      console.log("Email column index in Admin sheet:", emailIndex)
 
       if (emailIndex === -1) {
-        return NextResponse.json({
-          success: false,
-          error: "Email column not found in Admin sheet",
-          availableColumns: headerRow,
-        })
+        console.log("Email column not found in Admin sheet")
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Email column not found in Admin sheet",
+            availableColumns: headerRow,
+          },
+          { status: 500 },
+        )
       }
 
-      // Check if user email exists in admin sheet
-      const adminRow = adminData.slice(1).find((row: string[]) => {
-        const adminEmail = row[emailIndex]?.toLowerCase().trim()
-        const userEmail = email.toLowerCase().trim()
-        console.log(`Comparing: "${adminEmail}" === "${userEmail}"`)
-        return adminEmail === userEmail
+      // Check if the email exists in Admin sheet
+      console.log("Looking for admin with email:", email)
+      const adminRow = rows.find((row: string[]) => {
+        if (!row[emailIndex]) return false
+        const adminEmail = row[emailIndex].toLowerCase().trim()
+        return adminEmail === email.toLowerCase().trim()
       })
 
       if (adminRow) {
-        isAdmin = true
-        adminUser = {
-          email: adminRow[emailIndex],
-          name: nameIndex !== -1 ? adminRow[nameIndex] : email.split("@")[0],
-        }
-        console.log("Admin user found:", adminUser)
+        console.log("Admin found:", email)
+        return NextResponse.json({
+          success: true,
+          isAdmin: true,
+          email: email,
+        })
       } else {
-        console.log("User not found in admin sheet")
-        // Show sample emails for debugging
-        const sampleEmails = adminData
-          .slice(1, 6)
-          .map((row) => row[emailIndex])
-          .filter(Boolean)
-        console.log("Sample admin emails:", sampleEmails)
+        console.log("Admin not found:", email)
+        return NextResponse.json({
+          success: true,
+          isAdmin: false,
+          email: email,
+        })
       }
     } catch (error) {
-      console.error("Error accessing Admin sheet:", error)
-      return NextResponse.json({
-        success: false,
-        error: "Error accessing Admin sheet",
-        details: error instanceof Error ? error.message : String(error),
-      })
+      console.error("Spreadsheet access error:", error)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to access spreadsheet",
+          details: error instanceof Error ? error.message : String(error),
+        },
+        { status: 500 },
+      )
     }
-
-    return NextResponse.json({
-      success: true,
-      isAdmin,
-      adminUser,
-    })
   } catch (error) {
-    console.error("Error verifying admin access:", error)
+    console.error("Admin verification error:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to verify admin access",
+        error: "An error occurred during admin verification",
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
