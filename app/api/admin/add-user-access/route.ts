@@ -72,17 +72,18 @@ export async function POST(request: Request) {
 
     for (let i = 1; i < allData.length; i++) {
       const row = allData[i]
-      const uniqueNumberValue = row[0]?.toString().trim()
+      const uniqueNumberValue = row?.[0]?.toString().trim()
+
       if (
         uniqueNumberValue === accountNumber ||
-        (uniqueNumberValue && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
+        (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
       ) {
-
         targetRowIndex = i + 1
-        existingEmail = row[39] // Column AN = index 39
+        existingEmail = row?.[39] // Column AN = index 39
         break
       }
     }
+
 
     if (targetRowIndex === -1) {
       return NextResponse.json({ success: false, error: `Account number ${accountNumber} not found` }, { status: 404 })
