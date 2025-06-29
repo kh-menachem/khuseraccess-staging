@@ -30,6 +30,7 @@ export default function AdminPage() {
   // Add User Access form state
   const [accountNumber, setAccountNumber] = useState("")
   const [userEmail, setUserEmail] = useState("")
+  const [userPassword, setUserPassword] = useState("")
   const [isAddingAccess, setIsAddingAccess] = useState(false)
   const [addAccessError, setAddAccessError] = useState<string | null>(null)
 
