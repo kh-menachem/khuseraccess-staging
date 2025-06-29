@@ -286,16 +286,6 @@ export default function AdminPage() {
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="confirm">Confirm Password</Label>
-              <Input
-                id="confirm"
-                type="text"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-            </div>
             <Button type="submit" disabled={isCreatingUser}>
               {isCreatingUser ? "Creating..." : "Create User"}
             </Button>
@@ -303,6 +293,7 @@ export default function AdminPage() {
             {createUserSuccess && <p className="text-green-600">{createUserSuccess}</p>}
           </form>
         </TabsContent>
+
       </Tabs>
     </div>
   );
