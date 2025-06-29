@@ -64,7 +64,6 @@ export default function AdminPage() {
 
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
   const [createUserSuccess, setCreateUserSuccess] = useState<string | null>(null);
@@ -80,22 +79,37 @@ export default function AdminPage() {
   const router = useRouter();
 
   const generateRandomPassword = (length = 10) => {
-    const chars =
-      "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
-    let password = "";
-    for (let i = 0; i < length; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    const numbers = "23456789";
+    const symbols = "!@#$%&*";
+
+    // Ensure at least one number
+    const requiredChars = [
+      numbers[Math.floor(Math.random() * numbers.length)],
+    ];
+
+    // Fill the rest of the password
+    const allChars = letters + numbers + symbols;
+    for (let i = requiredChars.length; i < length; i++) {
+      requiredChars.push(allChars[Math.floor(Math.random() * allChars.length)]);
     }
-    return password;
+
+    // Shuffle to randomize the position of the number
+    for (let i = requiredChars.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
+    }
+
+    return requiredChars.join("");
   };
+
 
   useEffect(() => {
     if (!newUserPassword) {
-      const random = generateRandomPassword();
-      setNewUserPassword(random);
-      setConfirmPassword(random);
+      setNewUserPassword(generateRandomPassword());
     }
   }, []);
+
 
 
   const loadAccounts = async () => {
@@ -188,11 +202,7 @@ export default function AdminPage() {
     setCreateUserError(null);
     setCreateUserSuccess(null);
 
-    if (newUserPassword !== confirmPassword) {
-      setCreateUserError("Passwords do not match");
-      setIsCreatingUser(false);
-      return;
-    }
+    
     if (newUserPassword.length < 8 || !/\d/.test(newUserPassword)) {
       setCreateUserError("Password must be at least 8 characters and include a number");
       setIsCreatingUser(false);
