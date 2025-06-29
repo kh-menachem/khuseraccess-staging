@@ -252,13 +252,15 @@ const handleSubmit = async (e: React.FormEvent) => {
               {language === "he" ? "שים לב!" : "Notice!"}
             </div>
 
+            <p className="text-sm text-gray-700">{t.firstTimeLine1}</p>
             <p className="text-sm text-gray-700">
-            {t.firstTimeBeforeLink}{" "}
-            <Link href={{ pathname: "/forgot-password", query: { lang: language } }}>
-              <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
-            </Link>{" "}
-            {t.firstTimeAfterLink}
+              {t.firstTimeBeforeLink}{" "}
+              <Link href={{ pathname: "/forgot-password", query: { lang: language } }}>
+                <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
+              </Link>{" "}
+              {t.firstTimeAfterLink}
             </p>
+            <p className="text-sm text-gray-700">{t.firstTimeLine3}</p>
           </div>
         </div> {/* closes .mb-8.text-center */}
 
