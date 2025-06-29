@@ -178,7 +178,7 @@ function processPercentages(rows: string[][]): Map<string, number> {
         const valueStr = row[valueIndex].toString().trim().replace("%", "")
         let multiplier = Number.parseFloat(valueStr)
 
-        if (!isNaN(multiplier)) {
+        if (!Number.isNaN(multiplier)) {
           // If it's a percentage (e.g., 96.5), convert to multiplier (0.965)
           if (multiplier > 1) {
             multiplier = multiplier / 100
@@ -275,7 +275,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       originalAmount = Number.parseFloat(cleanedAmount)
       netAmount = originalAmount // Start with original amount
 
-      if (isNaN(originalAmount)) {
+      if (Number.isNaN(originalAmount)) {
         console.log(`Invalid amount value: ${amountStr}, defaulting to 0`)
         originalAmount = 0
         netAmount = 0
@@ -394,7 +394,7 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
       const cleanedAmount = amountStr.replace(/[$,]/g, "")
       amount = Number.parseFloat(cleanedAmount)
 
-      if (isNaN(amount)) {
+      if (Number.isNaN(amount)) {
         console.log(`Invalid donation amount value: ${amountStr}, defaulting to 0`)
         amount = 0
       }
@@ -497,7 +497,7 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
       const cleanedFee = feeStr.replace(/[$,]/g, "")
       fee = Number.parseFloat(cleanedFee)
 
-      if (isNaN(fee)) {
+      if (Number.isNaN(fee)) {
         fee = 0
       }
     } catch (error) {
