@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     const auth = getAuth()
-    const userRecord = await auth.createUser({ email, password, emailVerified: false })
+    const userRecord = await auth.createUser({ email, password, emailVerified: true })
 
     return NextResponse.json({
       success: true,
