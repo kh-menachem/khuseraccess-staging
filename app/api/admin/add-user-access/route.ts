@@ -23,19 +23,15 @@ export async function POST(request: Request) {
   let tempFilePath: string | null = null
 
   try {
-    const { accountNumber, userEmail, password } = await request.json()
+    const { accountNumber, userEmail } = await request.json()
 
-    if (!accountNumber || !userEmail || !password) {
-      return NextResponse.json({ success: false, error: "Account number, email, and password are required" }, { status: 400 })
+    if (!accountNumber || !userEmail) {
+      return NextResponse.json({ success: false, error: "Account number and email are required" }, { status: 400 })
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(userEmail)) {
       return NextResponse.json({ success: false, error: "Invalid email format" }, { status: 400 })
-    }
-
-    if (password.length < 8 || !/[0-9]/.test(password)) {
-      return NextResponse.json({ success: false, error: "Password must be at least 8 characters and include a number" }, { status: 400 })
     }
 
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
@@ -84,7 +80,6 @@ export async function POST(request: Request) {
       }
     }
 
-
     if (targetRowIndex === -1) {
       return NextResponse.json({ success: false, error: `Account number ${accountNumber} not found` }, { status: 404 })
     }
@@ -102,14 +97,22 @@ export async function POST(request: Request) {
       requestBody: { values: [[userEmail]] },
     })
 
+    // Generate a temp password
+    const tempPassword = Math.random().toString(36).slice(-8) + "A1!"
+
     // Create Firebase user
     const firebaseAuth = getAuth()
-    const userRecord = await firebaseAuth.createUser({ email: userEmail, password, emailVerified: false })
+    const userRecord = await firebaseAuth.createUser({ email: userEmail, password: tempPassword, emailVerified: false })
+
+    // Generate password reset link
+    const resetLink = await firebaseAuth.generatePasswordResetLink(userEmail)
 
     return NextResponse.json({
       success: true,
       message: `User created and access granted for account ${accountNumber}`,
       userId: userRecord.uid,
+      tempPassword,
+      resetLink,
       row: targetRowIndex,
     })
   } catch (err: any) {
