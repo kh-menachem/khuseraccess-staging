@@ -97,12 +97,13 @@ export async function POST(request: Request) {
       requestBody: { values: [[userEmail]] },
     })
 
-    // Generate a temp password
-    const tempPassword = Math.random().toString(36).slice(-8) + "A1!"
-
-    // Create Firebase user
+    // Create Firebase user with a dummy password (required), but immediately send reset link
     const firebaseAuth = getAuth()
-    const userRecord = await firebaseAuth.createUser({ email: userEmail, password: tempPassword, emailVerified: false })
+    const userRecord = await firebaseAuth.createUser({
+      email: userEmail,
+      password: "Temp1234!", // Firebase requires password on creation
+      emailVerified: false,
+    })
 
     // Generate password reset link
     const resetLink = await firebaseAuth.generatePasswordResetLink(userEmail)
@@ -111,7 +112,6 @@ export async function POST(request: Request) {
       success: true,
       message: `User created and access granted for account ${accountNumber}`,
       userId: userRecord.uid,
-      tempPassword,
       resetLink,
       row: targetRowIndex,
     })
