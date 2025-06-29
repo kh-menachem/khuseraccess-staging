@@ -327,9 +327,9 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
-
+  return (
     <div className="flex min-h-screen flex-col">
       <header
         className="border-b shadow-sm"
@@ -686,5 +686,5 @@ export default function AdminPage() {
         </div>
       </footer>
     </div>
-  )
+  );
 }
