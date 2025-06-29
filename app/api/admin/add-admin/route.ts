@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const adminEmail = body.adminEmail || body.email
     const adminName = body.adminName || body.name
     const requestorEmail = body.requestorEmail
-    const createFirebaseUser = body.createFirebaseUser !== true // Default to true
+    const createFirebaseUser = body.createFirebaseUser !== false // Default to true
 
     console.log("Parsed values:")
     console.log("Admin Email:", adminEmail)
