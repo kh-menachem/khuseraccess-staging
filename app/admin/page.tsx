@@ -288,7 +288,7 @@ export default function AdminPage() {
       </Tabs>
     </div>
   );
-}
+
 
 
 // Loading state
