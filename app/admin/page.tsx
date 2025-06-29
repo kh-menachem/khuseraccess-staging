@@ -30,23 +30,8 @@ export default function AdminPage() {
   // Add User Access form state
   const [accountNumber, setAccountNumber] = useState("")
   const [userEmail, setUserEmail] = useState("")
-  const [userPassword, setUserPassword] = useState("")
   const [isAddingAccess, setIsAddingAccess] = useState(false)
   const [addAccessError, setAddAccessError] = useState<string | null>(null)
-  
-  useEffect(() => {
-  const generateRandomPassword = (length = 10) => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
-    let password = ""
-    for (let i = 0; i < length; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    return password
-  }
-
-  setUserPassword(generateRandomPassword())
-}, [])
-
 
   // Create New User form state
   const [newUserEmail, setNewUserEmail] = useState("")
@@ -176,81 +161,69 @@ export default function AdminPage() {
 
   // Replace the existing handleAddUserAccess function
   const handleAddUserAccess = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setIsAddingAccess(true)
-  setAddAccessError(null)
-  setAddAccessSuccess(null)
+    e.preventDefault()
+    setIsAddingAccess(true)
+    setAddAccessError(null)
+    setAddAccessSuccess(null)
 
-  if (!selectedAccount) {
-    setAddAccessError("Please select an account")
-    setIsAddingAccess(false)
-    return
-  }
+    console.log("Adding user access:", { selectedAccount, userEmail })
 
-  try {
-    // Step 1: Create Firebase user
-    const createResponse = await fetch("/api/admin/create-user-simple", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: userEmail,
-        password: userPassword,
-      }),
-    })
-
-    const createResult = await createResponse.json()
-
-    if (!createResult.success) {
-      throw new Error(createResult.error || "Failed to create Firebase user")
+    // Validate account selection
+    if (!selectedAccount) {
+      setAddAccessError("Please select an account")
+      setIsAddingAccess(false)
+      return
     }
 
-    // Step 2: Record access in Sheets or DB
-    const accessResponse = await fetch("/api/admin/add-user-access", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        accountNumber: selectedAccount,
-        userEmail,
-        password: userPassword,
-      }),
-    })
-
-    const accessResult = await accessResponse.json()
-
-    if (accessResult.success) {
-      const selectedAccountInfo = accounts.find((acc) => acc.accountNumber === selectedAccount)
-      const accountName = selectedAccountInfo
-        ? `${selectedAccountInfo.firstName} ${selectedAccountInfo.lastName}`
-        : selectedAccount
-
-      setAddAccessSuccess(`✅ Access granted for ${userEmail} (${accountName})`)
-      toast({
-        title: "Success",
-        description: `User access added successfully for ${selectedAccount}`,
+    try {
+      const response = await fetch("/api/admin/add-user-access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountNumber: selectedAccount,
+          userEmail: userEmail,
+        }),
       })
-      setSelectedAccount("")
-      setUserEmail("")
-      setUserPassword(generateRandomPassword())
-    } else {
-      throw new Error(accessResult.error || "Failed to update user access")
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    setAddAccessError(message)
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: message,
-    })
-  } finally {
-    setIsAddingAccess(false)
-  }
-}
 
+      const result = await response.json()
+      console.log("Add user access result:", result)
+
+      if (result.success) {
+        const selectedAccountInfo = accounts.find((acc) => acc.accountNumber === selectedAccount)
+        const accountName = selectedAccountInfo
+          ? `${selectedAccountInfo.firstName} ${selectedAccountInfo.lastName}`
+          : selectedAccount
+
+        setAddAccessSuccess(`User access added successfully for account ${selectedAccount} (${accountName})`)
+        toast({
+          title: "Success",
+          description: `User access added successfully for account ${selectedAccount}`,
+        })
+        setSelectedAccount("")
+        setUserEmail("")
+      } else {
+        setAddAccessError(result.error || "Failed to add user access")
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Failed to add user access",
+        })
+      }
+    } catch (error) {
+      console.error("Error adding user access:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setAddAccessError(`Failed to add user access: ${errorMessage}`)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add user access",
+      })
+    } finally {
+      setIsAddingAccess(false)
+    }
+  }
 
   // Replace the existing handleCreateNewUser function
   const handleCreateNewUser = async (e: React.FormEvent) => {
@@ -269,8 +242,8 @@ export default function AdminPage() {
     }
 
     // Validate password length
-    if (newUserPassword.length < 8) {
-      setCreateUserError("Password must be at least 8 characters including 1 number")
+    if (newUserPassword.length < 6) {
+      setCreateUserError("Password must be at least 6 characters")
       setIsCreatingUser(false)
       return
     }
@@ -598,19 +571,6 @@ export default function AdminPage() {
                         placeholder="Enter user email address"
                         value={userEmail}
                         onChange={(e) => setUserEmail(e.target.value)}
-                        required
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="userPassword">Generated Password</Label>
-                      <Input
-                        id="userPassword"
-                        type="text"
-                        placeholder="Auto-generated password"
-                        value={userPassword}
-                        onChange={(e) => setUserPassword(e.target.value)}
                         required
                         className="border-red-200 focus:border-red-500 focus:ring-red-500"
                       />
