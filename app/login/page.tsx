@@ -232,6 +232,26 @@ const handleSubmit = async (e: React.FormEvent) => {
           {/* Header */}
           <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
+
+          {/* Notice line with warning icon */}
+          <div className="flex items-center justify-center text-red-600 text-base font-semibold mb-2">
+            <svg
+              className="w-5 h-5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+              />
+            </svg>
+            {language === "he" ? "שים לב!" : "Notice!"}
+          </div>
+
           <p className="text-sm text-gray-600">{t.firstTimeLine1}</p>
           <p className="text-sm text-gray-600">
             {t.firstTimeBeforeLink}{" "}
@@ -242,6 +262,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           </p>
           <p className="text-sm text-gray-600">{t.firstTimeLine3}</p>
         </div>
+
 
 
 
