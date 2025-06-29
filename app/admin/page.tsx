@@ -29,7 +29,6 @@ export default function AdminPage() {
   // Create User states
   const [newUserEmail, setNewUserEmail] = useState("")
   const [newUserPassword, setNewUserPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [isCreatingUser, setIsCreatingUser] = useState(false)
   const [createUserError, setCreateUserError] = useState<string | null>(null)
   const [createUserSuccess, setCreateUserSuccess] = useState<string | null>(null)
@@ -190,11 +189,6 @@ export default function AdminPage() {
       return
     }
 
-    if (newUserPassword !== confirmPassword) {
-      setCreateUserError("Passwords do not match")
-      setIsCreatingUser(false)
-      return
-    }
 
     try {
       const response = await fetch("/api/admin/create-user-simple", {
@@ -212,7 +206,6 @@ export default function AdminPage() {
         setCreateUserSuccess("User created successfully")
         setNewUserEmail("")
         setNewUserPassword(generateRandomPassword())
-        setConfirmPassword("")
       } else {
         setCreateUserError(result.error || "Failed to create user")
       }
