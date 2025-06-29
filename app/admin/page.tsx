@@ -91,10 +91,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!newUserPassword) {
-      setNewUserPassword(generateRandomPassword());
-      setConfirmPassword(newUserPassword);
+      const random = generateRandomPassword();
+      setNewUserPassword(random);
+      setConfirmPassword(random);
     }
-  }, [newUserPassword]);
+  }, []);
+
 
   const loadAccounts = async () => {
     setIsLoadingAccounts(true);
