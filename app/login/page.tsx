@@ -231,26 +231,39 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* Header */}
           <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">{t.welcome}</h1>
 
-          {/* Notice line with warning icon */}
-          <div className="flex items-center justify-center mx-auto text-red-600 text-lg font-bold mb-3 w-fit">
-          <svg
-            className="w-6 h-6 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
-            />
-          </svg>
-          {language === "he" ? "!שים לב" : "Notice!"}
+          <div className="border-2 border-red-500 rounded-lg p-4 max-w-md mx-auto bg-white shadow-sm">
+            <div className="flex items-center justify-center text-red-600 text-xl font-bold mb-3">
+              <svg
+                className="w-6 h-6 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+                />
+              </svg>
+              {language === "he" ? "שים לב!" : "Notice!"}
+            </div>
+
+            <p className="text-sm text-gray-700">{t.firstTimeLine1}</p>
+            <p className="text-sm text-gray-700">
+              {t.firstTimeBeforeLink}{" "}
+              <Link href="/forgot-password">
+                <strong className="text-teal-700 hover:underline">{t.forgotPassword}</strong>
+              </Link>{" "}
+              {t.firstTimeAfterLink}
+            </p>
+            <p className="text-sm text-gray-700">{t.firstTimeLine3}</p>
+          </div>
         </div>
+
 
           <p className="text-sm text-gray-600">{t.firstTimeLine1}</p>
           <p className="text-sm text-gray-600">
