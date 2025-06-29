@@ -262,20 +262,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             </p>
             <p className="text-sm text-gray-700">{t.firstTimeLine3}</p>
           </div>
-        </div>
-
-
-          <p className="text-sm text-gray-600">{t.firstTimeLine1}</p>
-          <p className="text-sm text-gray-600">
-            {t.firstTimeBeforeLink}{" "}
-            <Link href="/forgot-password">
-              <strong className="text-teal-700 hover:underline">{t.forgotPassword}</strong>
-            </Link>{" "}
-            {t.firstTimeAfterLink}
-          </p>
-          <p className="text-sm text-gray-600">{t.firstTimeLine3}</p>
-        </div>
-
+        
 
 
 
