@@ -184,7 +184,9 @@ export default function AdminPage() {
         body: JSON.stringify({
           accountNumber: selectedAccount,
           userEmail: userEmail,
+          password: userPassword,
         }),
+
       })
 
       const result = await response.json()
@@ -571,6 +573,19 @@ export default function AdminPage() {
                         placeholder="Enter user email address"
                         value={userEmail}
                         onChange={(e) => setUserEmail(e.target.value)}
+                        required
+                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="userPassword">Generated Password</Label>
+                      <Input
+                        id="userPassword"
+                        type="text"
+                        placeholder="Auto-generated password"
+                        value={userPassword}
+                        onChange={(e) => setUserPassword(e.target.value)}
                         required
                         className="border-red-200 focus:border-red-500 focus:ring-red-500"
                       />
