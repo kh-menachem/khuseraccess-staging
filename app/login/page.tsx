@@ -34,7 +34,7 @@ const translations = {
     accountNotFound: "החשבון לא נמצא במערכת",
     firstTimeLine1: ",אם זו הפעם הראשונה שאתה נכנס לחשבון שלך",
     firstTimeBeforeLink: "לחץ",
-    forgotPassword: "כאן",
+    forgotPassword2: "כאן",
     firstTimeAfterLink: "כדי להגדיר סיסמה.",
     firstTimeLine3: ".אנא בדוק את תיקיית הספאם שלך עבור האימייל",
   },
