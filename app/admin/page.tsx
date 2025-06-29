@@ -350,7 +350,6 @@ export default function AdminPage() {
     )
   }
 
-  return (
     <div className="flex min-h-screen flex-col">
       <header
         className="border-b shadow-sm"
