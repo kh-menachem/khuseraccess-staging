@@ -534,20 +534,7 @@ export default function AdminPage() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        placeholder="Confirm password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        minLength={8}
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                    </div>
-
+                    
                     <Alert className="border-red-200 bg-red-50">
                       <AlertCircle className="h-4 w-4 text-red-600" />
                       <AlertDescription className="text-red-800">
