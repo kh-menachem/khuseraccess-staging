@@ -73,7 +73,11 @@ export async function POST(request: Request) {
     for (let i = 1; i < allData.length; i++) {
       const row = allData[i]
       const uniqueNumberValue = row[0]?.toString().trim()
-      if (uniqueNumberValue === accountNumber || uniqueNumberValue.replace(/\D/g, "") === accountNumber) {
+      if (
+        uniqueNumberValue === accountNumber ||
+        (uniqueNumberValue && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
+      ) {
+
         targetRowIndex = i + 1
         existingEmail = row[39] // Column AN = index 39
         break
