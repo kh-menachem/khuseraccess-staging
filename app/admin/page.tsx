@@ -225,7 +225,6 @@ export default function AdminPage() {
         setCreateUserSuccess("User created successfully");
         setNewUserEmail("");
         setNewUserPassword("");
-        setConfirmPassword("");
       } else {
         setCreateUserError(result.error || "Failed to create user");
       }
