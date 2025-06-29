@@ -57,7 +57,7 @@ const translations = {
     accountNotFound: "Account not found in system",
     firstTimeLine1: "If this is your first time signing in to your account,",
     firstTimeBeforeLink: "Click",
-    forgotPassword: "Here",
+    forgotPassword2: "Here",
     firstTimeAfterLink: "to set your password.",
     firstTimeLine3: "Please check your spam folder for the email.",
   },
@@ -256,7 +256,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             <p className="text-sm text-gray-700">
               {t.firstTimeBeforeLink}{" "}
               <Link href="/forgot-password">
-                <strong className="text-teal-700 hover:underline">{t.forgotPassword}</strong>
+                <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
               </Link>{" "}
               {t.firstTimeAfterLink}
             </p>
