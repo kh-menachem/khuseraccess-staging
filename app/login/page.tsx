@@ -260,7 +260,8 @@ const handleSubmit = async (e: React.FormEvent) => {
             {t.firstTimeAfterLink}
             </p>
           </div>
-        </div>
+        </div> {/* closes .mb-8.text-center */}
+
 
 
 
