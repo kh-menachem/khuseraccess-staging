@@ -33,6 +33,20 @@ export default function AdminPage() {
   const [userPassword, setUserPassword] = useState("")
   const [isAddingAccess, setIsAddingAccess] = useState(false)
   const [addAccessError, setAddAccessError] = useState<string | null>(null)
+  
+  useEffect(() => {
+  const generateRandomPassword = (length = 10) => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
+    let password = ""
+    for (let i = 0; i < length; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return password
+  }
+
+  setUserPassword(generateRandomPassword())
+}, [])
+
 
   // Create New User form state
   const [newUserEmail, setNewUserEmail] = useState("")
