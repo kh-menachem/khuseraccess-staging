@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Copy } from "lucide-react"
 
 export default function UserAccessForm() {
   const [accountNumber, setAccountNumber] = useState("")
@@ -25,6 +26,20 @@ export default function UserAccessForm() {
     const newPassword = generateRandomPassword()
     setPassword(newPassword)
   }, [])
+
+  const regeneratePassword = () => {
+    const newPassword = generateRandomPassword()
+    setPassword(newPassword)
+  }
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(password)
+      setMessage("🔑 Password copied to clipboard")
+    } catch (err) {
+      setMessage("❌ Failed to copy password")
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,13 +89,19 @@ export default function UserAccessForm() {
 
       <div>
         <Label htmlFor="password">Generated Password</Label>
-        <Input
-          id="password"
-          type="text"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="flex gap-2 items-center">
+          <Input
+            id="password"
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <Button type="button" variant="outline" onClick={regeneratePassword}>↻</Button>
+          <Button type="button" variant="outline" onClick={copyToClipboard}>
+            <Copy className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <Button type="submit" disabled={loading} className="w-full">
