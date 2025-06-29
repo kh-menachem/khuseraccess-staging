@@ -253,11 +253,11 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
 
             <p className="text-sm text-gray-700">
-  {t.firstTimeBeforeLink}{" "}
-  <Link href={{ pathname: "/forgot-password", query: { lang: language } }}>
-    <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
-  </Link>{" "}
-  {t.firstTimeAfterLink}
+            {t.firstTimeBeforeLink}{" "}
+            <Link href={{ pathname: "/forgot-password", query: { lang: language } }}>
+              <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
+            </Link>{" "}
+            {t.firstTimeAfterLink}
           </div>
         </div>
 
