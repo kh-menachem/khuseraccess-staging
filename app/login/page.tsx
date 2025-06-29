@@ -249,7 +249,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   d="M12 9v2m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
                 />
               </svg>
-              {language === "he" ? "שים לב!" : "Notice!"}
+              {language === "he" ? "!שים לב" : "Notice!"}
             </div>
 
             <p className="text-sm text-gray-700">{t.firstTimeLine1}</p>
