@@ -262,7 +262,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             </p>
             <p className="text-sm text-gray-700">{t.firstTimeLine3}</p>
           </div>
-        
+        </div>
 
 
 
