@@ -1,114 +1,117 @@
-"use client"
+import { NextResponse } from "next/server"
+import { google } from "googleapis"
+import { writeFileSync, unlinkSync } from "fs"
+import { join } from "path"
+import * as os from "os"
+import { initializeApp, getApps, cert } from "firebase-admin/app"
+import { getAuth } from "firebase-admin/auth"
 
-import React, { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Copy } from "lucide-react"
+// Initialize Firebase Admin SDK
+if (!getApps().length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || "{}")
+    initializeApp({
+      credential: cert(serviceAccount),
+      projectId: serviceAccount.project_id,
+    })
+  } catch (error) {
+    console.error("Firebase Admin initialization error:", error)
+  }
+}
 
-export default function UserAccessForm() {
-  const [accountNumber, setAccountNumber] = useState("")
-  const [userEmail, setUserEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [message, setMessage] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+export async function POST(request: Request) {
+  let tempFilePath: string | null = null
 
-  function generateRandomPassword(length = 10) {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
-    let password = ""
-    for (let i = 0; i < length; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length))
+  try {
+    const { accountNumber, userEmail, password } = await request.json()
+
+    if (!accountNumber || !userEmail || !password) {
+      return NextResponse.json({ success: false, error: "Account number, email, and password are required" }, { status: 400 })
     }
-    return password
-  }
 
-  useEffect(() => {
-    const newPassword = generateRandomPassword()
-    setPassword(newPassword)
-  }, [])
-
-  const regeneratePassword = () => {
-    const newPassword = generateRandomPassword()
-    setPassword(newPassword)
-  }
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(password)
-      setMessage("🔑 Password copied to clipboard")
-    } catch (err) {
-      setMessage("❌ Failed to copy password")
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(userEmail)) {
+      return NextResponse.json({ success: false, error: "Invalid email format" }, { status: 400 })
     }
-  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage(null)
+    if (password.length < 8 || !/[0-9]/.test(password)) {
+      return NextResponse.json({ success: false, error: "Password must be at least 8 characters and include a number" }, { status: 400 })
+    }
 
-    const response = await fetch("/api/admin/add-access", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ accountNumber, userEmail, password }),
+    const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    if (!credentials) {
+      return NextResponse.json({ success: false, error: "Google credentials not found" }, { status: 500 })
+    }
+
+    tempFilePath = join(os.tmpdir(), `google-credentials-${Date.now()}.json`)
+    writeFileSync(tempFilePath, credentials)
+
+    const auth = new google.auth.GoogleAuth({
+      keyFile: tempFilePath,
+      scopes: [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/drive",
+      ],
     })
 
-    const result = await response.json()
-    if (result.success) {
-      setMessage("✅ Access granted and user created successfully.")
-    } else {
-      setMessage(`❌ Error: ${result.error}`)
+    const sheets = google.sheets({ version: "v4", auth })
+    const spreadsheetId = process.env.SPREADSHEET_ID
+    if (!spreadsheetId) {
+      return NextResponse.json({ success: false, error: "Spreadsheet ID not found" }, { status: 500 })
     }
-    setLoading(false)
+
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "People!U:AN",
+    })
+    const allData = dataResponse.data.values || []
+
+    let targetRowIndex = -1
+    let existingEmail = null
+
+    for (let i = 1; i < allData.length; i++) {
+      const row = allData[i]
+      const uniqueNumberValue = row[0]?.toString().trim()
+      if (uniqueNumberValue === accountNumber || uniqueNumberValue.replace(/\D/g, "") === accountNumber) {
+        targetRowIndex = i + 1
+        existingEmail = row[39] // Column AN = index 39
+        break
+      }
+    }
+
+    if (targetRowIndex === -1) {
+      return NextResponse.json({ success: false, error: `Account number ${accountNumber} not found` }, { status: 404 })
+    }
+
+    if (existingEmail) {
+      return NextResponse.json({ success: false, error: `User already exists for this account`, existingEmail }, { status: 400 })
+    }
+
+    // Update email in sheet
+    const updateRange = `People!AN${targetRowIndex}`
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: updateRange,
+      valueInputOption: "RAW",
+      requestBody: { values: [[userEmail]] },
+    })
+
+    // Create Firebase user
+    const firebaseAuth = getAuth()
+    const userRecord = await firebaseAuth.createUser({ email: userEmail, password, emailVerified: false })
+
+    return NextResponse.json({
+      success: true,
+      message: `User created and access granted for account ${accountNumber}`,
+      userId: userRecord.uid,
+      row: targetRowIndex,
+    })
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+  } finally {
+    if (tempFilePath) {
+      try { unlinkSync(tempFilePath) } catch (e) { console.error("Temp cleanup failed:", e) }
+    }
   }
-
-  return (
-    <form onSubmit={handleSubmit} className="max-w-lg mx-auto p-6 bg-white shadow-md rounded-md space-y-4">
-      <div>
-        <Label htmlFor="accountNumber">Account Number</Label>
-        <Input
-          id="accountNumber"
-          type="text"
-          value={accountNumber}
-          onChange={(e) => setAccountNumber(e.target.value)}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="userEmail">User Email</Label>
-        <Input
-          id="userEmail"
-          type="email"
-          value={userEmail}
-          onChange={(e) => setUserEmail(e.target.value)}
-          required
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="password">Generated Password</Label>
-        <div className="flex gap-2 items-center">
-          <Input
-            id="password"
-            type="text"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <Button type="button" variant="outline" onClick={regeneratePassword}>↻</Button>
-          <Button type="button" variant="outline" onClick={copyToClipboard}>
-            <Copy className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <Button type="submit" disabled={loading} className="w-full">
-        {loading ? "Creating..." : "Grant Access"}
-      </Button>
-
-      {message && <p className="text-sm text-center mt-2">{message}</p>}
-    </form>
-  )
 }
