@@ -35,7 +35,7 @@ const translations = {
     firstTimeLine1: ",אם זו הפעם הראשונה שאתה נכנס לחשבון שלך",
     firstTimeBeforeLink: "לחץ",
     forgotPassword2: "כאן",
-    firstTimeAfterLink: "כדי להגדיר סיסמה.",
+    firstTimeAfterLink: ".כדי להגדיר סיסמה",
     firstTimeLine3: ".אנא בדוק את תיקיית הספאם שלך עבור האימייל",
   },
   en: {
@@ -252,15 +252,12 @@ const handleSubmit = async (e: React.FormEvent) => {
               {language === "he" ? "שים לב!" : "Notice!"}
             </div>
 
-            <p className="text-sm text-gray-700">{t.firstTimeLine1}</p>
             <p className="text-sm text-gray-700">
-              {t.firstTimeBeforeLink}{" "}
-              <Link href="/forgot-password">
-                <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
-              </Link>{" "}
-              {t.firstTimeAfterLink}
-            </p>
-            <p className="text-sm text-gray-700">{t.firstTimeLine3}</p>
+  {t.firstTimeBeforeLink}{" "}
+  <Link href={{ pathname: "/forgot-password", query: { lang: language } }}>
+    <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
+  </Link>{" "}
+  {t.firstTimeAfterLink}
           </div>
         </div>
 
