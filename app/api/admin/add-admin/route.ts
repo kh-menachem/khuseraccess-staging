@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     const adminName = body.adminName || body.name
     const requestorEmail = body.requestorEmail
     const createFirebaseUser = body.createFirebaseUser !== false // default to true
+    console.log("Request to add admin received:", { adminEmail, adminName, createFirebaseUser })
 
     if (!adminEmail || !adminName) {
       return NextResponse.json({ success: false, error: "Admin email and name are required" }, { status: 400 })
@@ -103,6 +104,38 @@ export async function POST(request: Request) {
     })
 
     let firebaseResult = null
+
+    if (createFirebaseUser) {
+      try {
+        console.log("Creating Firebase user for:", adminEmail)
+        const auth = getAuth()
+        const tempPassword = Math.random().toString(36).slice(-12) + "A1!"
+        const userRecord = await auth.createUser({
+          email: adminEmail,
+          password: tempPassword,
+          emailVerified: false,
+        })
+        console.log("Firebase user created:", userRecord.uid)
+
+        const resetLink = await auth.generatePasswordResetLink(adminEmail, {
+          url: process.env.NEXT_PUBLIC_SITE_URL + "/admin/login",
+          handleCodeInApp: false,
+        })
+        console.log("Password reset link generated")
+
+        firebaseResult = {
+          userId: userRecord.uid,
+          resetLink,
+          note: "Password reset email sent to admin",
+        }
+      } catch (e: any) {
+        console.error("Firebase user creation error:", e.message)
+        firebaseResult = {
+          error: e.message,
+          note: "Admin was added to sheet, but Firebase user creation failed",
+        }
+      }
+    }
     if (createFirebaseUser) {
       try {
         const auth = getAuth()
