@@ -3,21 +3,8 @@ import { google } from "googleapis"
 import { writeFileSync, unlinkSync } from "fs"
 import { join } from "path"
 import * as os from "os"
-import { initializeApp, getApps, cert } from "firebase-admin/app"
-import { getAuth } from "firebase-admin/auth"
 
-// Initialize Firebase Admin SDK
-if (!getApps().length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || "{}")
-    initializeApp({
-      credential: cert(serviceAccount),
-      projectId: serviceAccount.project_id,
-    })
-  } catch (error) {
-    console.error("Firebase Admin initialization error:", error)
-  }
-}
+// No Firebase Admin SDK imported or used
 
 export async function POST(request: Request) {
   let tempFilePath: string | null = null
@@ -97,23 +84,10 @@ export async function POST(request: Request) {
       requestBody: { values: [[userEmail]] },
     })
 
-    // Create Firebase user with a dummy password (required), but immediately send reset link
-    const firebaseAuth = getAuth()
-    const userRecord = await firebaseAuth.createUser({
-      email: userEmail,
-      password: "Temp1234!", // Firebase requires password on creation
-      emailVerified: false,
-    })
-
-    // Generate password reset link
-    const resetLink = await firebaseAuth.generatePasswordResetLink(userEmail)
-
     return NextResponse.json({
       success: true,
-      message: `User created and access granted for account ${accountNumber}`,
-      userId: userRecord.uid,
-      resetLink,
-      row: targetRowIndex,
+      message: `User access granted for account ${accountNumber}`,
+      updatedRow: targetRowIndex,
     })
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 })
