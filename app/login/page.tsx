@@ -258,7 +258,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
             </Link>{" "}
             {t.firstTimeAfterLink}
-          </div>
+          </p>
         </div>
 
 
