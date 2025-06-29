@@ -1,96 +1,79 @@
-"use client";
+"use client"
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertCircle,
-  UserPlus,
-  Mail,
-  Shield,
-  LogOut,
-  Users,
-  Trash2,
-} from "lucide-react";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
+import type React from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle, UserPlus, Mail, Shield, LogOut, Users, Trash2 } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import Image from "next/image"
 
 export default function AdminPage() {
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const [adminUser, setAdminUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("add-access");
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
+  const [adminUser, setAdminUser] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState("add-access")
 
-  const [userEmail, setUserEmail] = useState("");
-  const [isAddingAccess, setIsAddingAccess] = useState(false);
-  const [addAccessError, setAddAccessError] = useState<string | null>(null);
-  const [addAccessSuccess, setAddAccessSuccess] = useState<string | null>(null);
+  // Add User Access states
+  const [userEmail, setUserEmail] = useState("")
+  const [isAddingAccess, setIsAddingAccess] = useState(false)
+  const [addAccessError, setAddAccessError] = useState<string | null>(null)
+  const [addAccessSuccess, setAddAccessSuccess] = useState<string | null>(null)
 
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
-  const [createUserError, setCreateUserError] = useState<string | null>(null);
-  const [createUserSuccess, setCreateUserSuccess] = useState<string | null>(null);
+  // Create User states
+  const [newUserEmail, setNewUserEmail] = useState("")
+  const [newUserPassword, setNewUserPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [createUserError, setCreateUserError] = useState<string | null>(null)
+  const [createUserSuccess, setCreateUserSuccess] = useState<string | null>(null)
 
-  const [accounts, setAccounts] = useState<
-    Array<{ accountNumber: string; firstName: string; lastName: string }>
-  >([]);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState("");
+  // Admin management states
+  const [adminEmail, setAdminEmail] = useState("")
+  const [adminName, setAdminName] = useState("")
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false)
+  const [addAdminError, setAddAdminError] = useState<string | null>(null)
+  const [admins, setAdmins] = useState<Array<{ id: number; email: string; name: string }>>([])
+  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false)
 
-  const { user: firebaseUser, logout } = useAuth();
-  const router = useRouter();
+  // Account selection states
+  const [accounts, setAccounts] = useState<Array<{ accountNumber: string; firstName: string; lastName: string }>>([])
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
+  const [selectedAccount, setSelectedAccount] = useState("")
+
+  const { user: firebaseUser, logout } = useAuth()
+  const router = useRouter()
 
   const generateRandomPassword = (length = 10) => {
-    const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-    const numbers = "23456789";
-    const symbols = "!@#$%&*";
-    const requiredChars = [
-      numbers[Math.floor(Math.random() * numbers.length)],
-    ];
-    const allChars = letters + numbers + symbols;
+    const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    const numbers = "23456789"
+    const symbols = "!@#$%&*"
+    const requiredChars = [numbers[Math.floor(Math.random() * numbers.length)]]
+    const allChars = letters + numbers + symbols
     for (let i = requiredChars.length; i < length; i++) {
-      requiredChars.push(allChars[Math.floor(Math.random() * allChars.length)]);
+      requiredChars.push(allChars[Math.floor(Math.random() * allChars.length)])
     }
     for (let i = requiredChars.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]]
     }
-    return requiredChars.join("");
-  };
+    return requiredChars.join("")
+  }
 
   useEffect(() => {
     if (!newUserPassword) {
-      setNewUserPassword(generateRandomPassword());
+      setNewUserPassword(generateRandomPassword())
     }
-  }, []);
+  }, [newUserPassword])
 
   const loadAccounts = async () => {
-    setIsLoadingAccounts(true);
+    setIsLoadingAccounts(true)
     try {
       const response = await fetch("/api/admin/get-accounts", {
         method: "POST",
@@ -98,23 +81,44 @@ export default function AdminPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ requestorEmail: firebaseUser?.email }),
-      });
-      const result = await response.json();
+      })
+      const result = await response.json()
       if (result.success) {
-        setAccounts(result.accounts || []);
+        setAccounts(result.accounts || [])
       }
     } catch (error) {
-      console.error("Error loading accounts:", error);
+      console.error("Error loading accounts:", error)
     } finally {
-      setIsLoadingAccounts(false);
+      setIsLoadingAccounts(false)
     }
-  };
+  }
+
+  const loadAdmins = async () => {
+    setIsLoadingAdmins(true)
+    try {
+      const response = await fetch("/api/admin/list-admins", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ requestorEmail: firebaseUser?.email }),
+      })
+      const result = await response.json()
+      if (result.success) {
+        setAdmins(result.admins || [])
+      }
+    } catch (error) {
+      console.error("Error loading admins:", error)
+    } finally {
+      setIsLoadingAdmins(false)
+    }
+  }
 
   useEffect(() => {
     const checkAdminAccess = async () => {
       if (!firebaseUser) {
-        setIsAuthorized(false);
-        return;
+        setIsAuthorized(false)
+        return
       }
       try {
         const response = await fetch("/api/admin/verify", {
@@ -123,28 +127,29 @@ export default function AdminPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email: firebaseUser.email }),
-        });
-        const result = await response.json();
+        })
+        const result = await response.json()
         if (result.success && result.isAdmin) {
-          setIsAuthorized(true);
-          setAdminUser(result.adminUser);
-          loadAccounts();
+          setIsAuthorized(true)
+          setAdminUser(result.adminUser)
+          loadAccounts()
+          loadAdmins()
         } else {
-          setIsAuthorized(false);
+          setIsAuthorized(false)
         }
       } catch (error) {
-        console.error("Error checking admin access:", error);
-        setIsAuthorized(false);
+        console.error("Error checking admin access:", error)
+        setIsAuthorized(false)
       }
-    };
-    checkAdminAccess();
-  }, [firebaseUser]);
+    }
+    checkAdminAccess()
+  }, [firebaseUser])
 
   const handleAddUserAccess = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAddingAccess(true);
-    setAddAccessError(null);
-    setAddAccessSuccess(null);
+    e.preventDefault()
+    setIsAddingAccess(true)
+    setAddAccessError(null)
+    setAddAccessSuccess(null)
     try {
       const response = await fetch("/api/admin/add-user-access", {
         method: "POST",
@@ -155,34 +160,40 @@ export default function AdminPage() {
           accountNumber: selectedAccount,
           userEmail,
         }),
-      });
-      const result = await response.json();
+      })
+      const result = await response.json()
       if (result.success) {
-        setAddAccessSuccess("User access added successfully.");
-        setSelectedAccount("");
-        setUserEmail("");
-        setActiveTab("create-user");
-        setNewUserPassword(generateRandomPassword());
+        setAddAccessSuccess("User access added successfully.")
+        setSelectedAccount("")
+        setUserEmail("")
+        setActiveTab("create-user")
+        setNewUserPassword(generateRandomPassword())
       } else {
-        setAddAccessError(result.error || "Failed to add user access");
+        setAddAccessError(result.error || "Failed to add user access")
       }
     } catch (error) {
-      setAddAccessError("Error adding user access");
+      setAddAccessError("Error adding user access")
     } finally {
-      setIsAddingAccess(false);
+      setIsAddingAccess(false)
     }
-  };
+  }
 
   const handleCreateNewUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsCreatingUser(true);
-    setCreateUserError(null);
-    setCreateUserSuccess(null);
+    e.preventDefault()
+    setIsCreatingUser(true)
+    setCreateUserError(null)
+    setCreateUserSuccess(null)
 
     if (newUserPassword.length < 8 || !/\d/.test(newUserPassword)) {
-      setCreateUserError("Password must be at least 8 characters and include a number");
-      setIsCreatingUser(false);
-      return;
+      setCreateUserError("Password must be at least 8 characters and include a number")
+      setIsCreatingUser(false)
+      return
+    }
+
+    if (newUserPassword !== confirmPassword) {
+      setCreateUserError("Passwords do not match")
+      setIsCreatingUser(false)
+      return
     }
 
     try {
@@ -195,103 +206,88 @@ export default function AdminPage() {
           email: newUserEmail,
           password: newUserPassword,
         }),
-      });
-      const result = await response.json();
+      })
+      const result = await response.json()
       if (result.success) {
-        setCreateUserSuccess("User created successfully");
-        setNewUserEmail("");
-        setNewUserPassword(generateRandomPassword());
+        setCreateUserSuccess("User created successfully")
+        setNewUserEmail("")
+        setNewUserPassword(generateRandomPassword())
+        setConfirmPassword("")
       } else {
-        setCreateUserError(result.error || "Failed to create user");
+        setCreateUserError(result.error || "Failed to create user")
       }
     } catch (error) {
-      setCreateUserError("Error creating user");
+      setCreateUserError("Error creating user")
     } finally {
-      setIsCreatingUser(false);
+      setIsCreatingUser(false)
     }
-  };
+  }
 
-  if (isAuthorized === null) return <p>Loading...</p>;
-  if (!isAuthorized) return <p>Access Denied</p>;
+  const handleAddAdmin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsAddingAdmin(true)
+    setAddAdminError(null)
 
-  return (
-    <div className="max-w-2xl mx-auto p-4">
-      <Tabs value={activeTab} onValueChange={(val) => {
-        setActiveTab(val);
-        if (val === "create-user") {
-          setNewUserPassword(generateRandomPassword());
-        }
-      }}>
-        <TabsList className="grid grid-cols-2">
-          <TabsTrigger value="add-access">Add User Access</TabsTrigger>
-          <TabsTrigger value="create-user">Create New User</TabsTrigger>
-        </TabsList>
+    try {
+      const response = await fetch("/api/admin/add-admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminEmail,
+          adminName,
+          requestorEmail: firebaseUser?.email,
+        }),
+      })
+      const result = await response.json()
+      if (result.success) {
+        setAdminEmail("")
+        setAdminName("")
+        loadAdmins() // Reload the admins list
+      } else {
+        setAddAdminError(result.error || "Failed to add admin")
+      }
+    } catch (error) {
+      setAddAdminError("Error adding admin")
+    } finally {
+      setIsAddingAdmin(false)
+    }
+  }
 
-        <TabsContent value="add-access">
-          <form onSubmit={handleAddUserAccess} className="space-y-4 mt-4">
-            <div>
-              <Label htmlFor="account">Account Number</Label>
-              <Input
-                id="account"
-                value={selectedAccount}
-                onChange={(e) => setSelectedAccount(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="email">User Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={isAddingAccess}>
-              {isAddingAccess ? "Adding..." : "Add Access"}
-            </Button>
-            {addAccessError && <p className="text-red-500">{addAccessError}</p>}
-            {addAccessSuccess && <p className="text-green-600">{addAccessSuccess}</p>}
-          </form>
-        </TabsContent>
+  const handleRemoveAdmin = async (admin: { id: number; email: string; name: string }) => {
+    try {
+      const response = await fetch("/api/admin/remove-admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminEmail: admin.email,
+          requestorEmail: firebaseUser?.email,
+        }),
+      })
+      const result = await response.json()
+      if (result.success) {
+        loadAdmins() // Reload the admins list
+      } else {
+        console.error("Failed to remove admin:", result.error)
+      }
+    } catch (error) {
+      console.error("Error removing admin:", error)
+    }
+  }
 
-        <TabsContent value="create-user">
-          <form onSubmit={handleCreateNewUser} className="space-y-4 mt-4">
-            <div>
-              <Label htmlFor="newEmail">User Email</Label>
-              <Input
-                id="newEmail"
-                type="email"
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="text"
-                value={newUserPassword}
-                onChange={(e) => setNewUserPassword(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={isCreatingUser}>
-              {isCreatingUser ? "Creating..." : "Create User"}
-            </Button>
-            {createUserError && <p className="text-red-500">{createUserError}</p>}
-            {createUserSuccess && <p className="text-green-600">{createUserSuccess}</p>}
-          </form>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
--}
+  const handleLogout = async () => {
+    try {
+      await logout()
+      router.push("/")
+    } catch (error) {
+      console.error("Error logging out:", error)
+    }
+  }
 
-
-// Loading state
+  // Loading state
   if (isAuthorized === null) {
     return (
       <div
@@ -327,8 +323,9 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
-    );
+    )
   }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header
@@ -371,13 +368,16 @@ export default function AdminPage() {
             <p className="text-gray-600">Welcome, {adminUser?.name || firebaseUser?.email}</p>
           </div>
 
-          <Tabs value={activeTab} onValueChange={(val) => {
-            setActiveTab(val);
-            if (val === "create-user") {
-              setNewUserPassword(generateRandomPassword());
-            }
-          }} className="space-y-6">
-
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              setActiveTab(val)
+              if (val === "create-user") {
+                setNewUserPassword(generateRandomPassword())
+              }
+            }}
+            className="space-y-6"
+          >
             <TabsList className="grid w-full grid-cols-3 bg-red-50">
               <TabsTrigger
                 value="add-access"
@@ -401,6 +401,7 @@ export default function AdminPage() {
                 Manage Admins
               </TabsTrigger>
             </TabsList>
+
             <TabsContent value="add-access">
               <Card className="border-red-200">
                 <CardHeader className="bg-red-50">
@@ -478,6 +479,7 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
             <TabsContent value="create-user">
               <Card className="border-red-200">
                 <CardHeader className="bg-red-50">
@@ -523,11 +525,11 @@ export default function AdminPage() {
                       <Input
                         id="newUserPassword"
                         type="password"
-                        placeholder="Enter password (minimum 6 characters)"
+                        placeholder="Enter password (minimum 8 characters)"
                         value={newUserPassword}
                         onChange={(e) => setNewUserPassword(e.target.value)}
                         required
-                        minLength={6}
+                        minLength={8}
                         className="border-red-200 focus:border-red-500 focus:ring-red-500"
                       />
                     </div>
@@ -541,7 +543,7 @@ export default function AdminPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
-                        minLength={6}
+                        minLength={8}
                         className="border-red-200 focus:border-red-500 focus:ring-red-500"
                       />
                     </div>
@@ -560,6 +562,7 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
             <TabsContent value="manage-admins">
               <div className="space-y-6">
                 <Card className="border-red-200">
@@ -686,5 +689,5 @@ export default function AdminPage() {
         </div>
       </footer>
     </div>
-  );
+  )
 }
