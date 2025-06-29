@@ -55,6 +55,7 @@ interface Admin {
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [adminUser, setAdminUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("add-access");
 
   const [accountNumber, setAccountNumber] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -391,7 +392,13 @@ export default function AdminPage() {
             <p className="text-gray-600">Welcome, {adminUser?.name || firebaseUser?.email}</p>
           </div>
 
-          <Tabs defaultValue="add-access" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={(val) => {
+            setActiveTab(val);
+            if (val === "create-user") {
+              setNewUserPassword(generateRandomPassword());
+            }
+          }} className="space-y-6">
+
             <TabsList className="grid w-full grid-cols-3 bg-red-50">
               <TabsTrigger
                 value="add-access"
