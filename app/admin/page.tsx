@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -14,12 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertCircle,
   UserPlus,
@@ -46,18 +40,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 
-interface Admin {
-  id: number;
-  email: string;
-  name: string;
-}
-
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [adminUser, setAdminUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("add-access");
 
-  const [accountNumber, setAccountNumber] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [isAddingAccess, setIsAddingAccess] = useState(false);
   const [addAccessError, setAddAccessError] = useState<string | null>(null);
@@ -76,42 +63,31 @@ export default function AdminPage() {
   const [selectedAccount, setSelectedAccount] = useState("");
 
   const { user: firebaseUser, logout } = useAuth();
-  const { toast } = useToast();
   const router = useRouter();
 
   const generateRandomPassword = (length = 10) => {
     const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
     const numbers = "23456789";
     const symbols = "!@#$%&*";
-
-    // Ensure at least one number
     const requiredChars = [
       numbers[Math.floor(Math.random() * numbers.length)],
     ];
-
-    // Fill the rest of the password
     const allChars = letters + numbers + symbols;
     for (let i = requiredChars.length; i < length; i++) {
       requiredChars.push(allChars[Math.floor(Math.random() * allChars.length)]);
     }
-
-    // Shuffle to randomize the position of the number
     for (let i = requiredChars.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
     }
-
     return requiredChars.join("");
   };
-
 
   useEffect(() => {
     if (!newUserPassword) {
       setNewUserPassword(generateRandomPassword());
     }
   }, []);
-
-
 
   const loadAccounts = async () => {
     setIsLoadingAccounts(true);
@@ -126,8 +102,6 @@ export default function AdminPage() {
       const result = await response.json();
       if (result.success) {
         setAccounts(result.accounts || []);
-      } else {
-        console.error("Failed to load accounts:", result.error);
       }
     } catch (error) {
       console.error("Error loading accounts:", error);
@@ -187,6 +161,8 @@ export default function AdminPage() {
         setAddAccessSuccess("User access added successfully.");
         setSelectedAccount("");
         setUserEmail("");
+        setActiveTab("create-user");
+        setNewUserPassword(generateRandomPassword());
       } else {
         setAddAccessError(result.error || "Failed to add user access");
       }
@@ -203,7 +179,6 @@ export default function AdminPage() {
     setCreateUserError(null);
     setCreateUserSuccess(null);
 
-    
     if (newUserPassword.length < 8 || !/\d/.test(newUserPassword)) {
       setCreateUserError("Password must be at least 8 characters and include a number");
       setIsCreatingUser(false);
@@ -225,7 +200,7 @@ export default function AdminPage() {
       if (result.success) {
         setCreateUserSuccess("User created successfully");
         setNewUserEmail("");
-        setNewUserPassword("");
+        setNewUserPassword(generateRandomPassword());
       } else {
         setCreateUserError(result.error || "Failed to create user");
       }
@@ -241,7 +216,12 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-4">
-      <Tabs defaultValue="add-access">
+      <Tabs value={activeTab} onValueChange={(val) => {
+        setActiveTab(val);
+        if (val === "create-user") {
+          setNewUserPassword(generateRandomPassword());
+        }
+      }}>
         <TabsList className="grid grid-cols-2">
           <TabsTrigger value="add-access">Add User Access</TabsTrigger>
           <TabsTrigger value="create-user">Create New User</TabsTrigger>
@@ -305,11 +285,11 @@ export default function AdminPage() {
             {createUserSuccess && <p className="text-green-600">{createUserSuccess}</p>}
           </form>
         </TabsContent>
-
       </Tabs>
     </div>
   );
 }
+
 
 // Loading state
   if (isAuthorized === null) {
