@@ -61,28 +61,25 @@ export async function POST(request: Request) {
         uniqueNumberValue === accountNumber ||
         (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
       ) {
+        const userAccessEmail = row?.[39]?.trim(); // Column AN
+        if (userAccessEmail) {
+          return NextResponse.json({
+            success: false,
+            error: `Email already assigned: ${userAccessEmail}`,
+          }, { status: 400 });
+        }
+
         targetRowIndex = i + 1
-    const userAccessEmail = row?.[39]?.trim(); // Column AN is the 40th column in range A:AN → index 39
-      if (userAccessEmail) {
-        return NextResponse.json({
-          success: false,
-          error: `Email already assigned: ${userAccessEmail}`,
-        }, { status: 400 });
-      }
         break
       }
     }
+
 
     if (targetRowIndex === -1) {
       return NextResponse.json({ success: false, error: `Account number ${accountNumber} not found` }, { status: 404 })
     }
 
-    if (existingEmail) {
-      return NextResponse.json({
-        success: false,
-        error: `Email already assigned: ${existingEmail}`,
-      }, { status: 400 })
-    }
+   
 
 
     // Update email in sheet
