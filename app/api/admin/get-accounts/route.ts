@@ -66,9 +66,10 @@ export async function POST(request: Request) {
     const headerRow = data[0]
 
     // Dynamically get index for "Unique Number", "First Name", and "Last Name"
-    const accountNumberIndex = headerRow.findIndex(h => h?.toLowerCase().includes("unique"))
-    const firstNameIndex = headerRow.findIndex(h => h?.toLowerCase().includes("first"))
-    const lastNameIndex = headerRow.findIndex(h => h?.toLowerCase().includes("last"))
+    const accountNumberIndex = headerRow.findIndex(h => h?.trim().toLowerCase() === "unique number")
+    const firstNameIndex = headerRow.findIndex(h => h?.trim().toLowerCase() === "first name")
+    const lastNameIndex = headerRow.findIndex(h => h?.trim().toLowerCase() === "last name")
+
 
     console.log("Column indexes:", {
       accountNumberIndex,
