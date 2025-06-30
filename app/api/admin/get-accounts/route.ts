@@ -98,8 +98,8 @@ export async function POST(request: Request) {
 
     // Sort accounts by account number
     accounts.sort((a, b) => {
-      const numA = Number.parseInt(a.accountNumber) || 0
-      const numB = Number.parseInt(b.accountNumber) || 0
+      const numA = Number.parseInt(a.value) || 0
+      const numB = Number.parseInt(b.value) || 0
       return numA - numB
     })
 
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
       total: accounts.length,
     })
   } catch (error) {
-    console.error("Error fetching accounts:", error)
+    console.error("Error fetching accounts:", error instanceof Error ? error.message : error)
     return NextResponse.json(
       {
         success: false,
