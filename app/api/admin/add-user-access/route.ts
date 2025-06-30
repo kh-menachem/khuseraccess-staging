@@ -54,25 +54,36 @@ export async function POST(request: Request) {
     let existingEmail = null
 
     for (let i = 1; i < allData.length; i++) {
-      const row = allData[i]
-      const uniqueNumberValue = row?.[0]?.toString().trim()
+      // First, get header row indexes
+const headerRow = allData[0]
+const uniqueNumberIndex = headerRow.findIndex(h => h?.trim() === "Unique Number")
 
-      if (
-        uniqueNumberValue === accountNumber ||
-        (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
-      ) {
-        targetRowIndex = i + 1
-        const userAccessEmail = row?.[39]?.trim(); // Column AN
-        if (userAccessEmail) {
-          return NextResponse.json({
-            success: false,
-            error: `Email already assigned: ${userAccessEmail}`,
-          }, { status: 400 });
-        }
+if (uniqueNumberIndex === -1) {
+  return NextResponse.json({ success: false, error: `"Unique Number" column not found` }, { status: 500 })
+}
 
-        break
+// Now loop through rows and use that index
+for (let i = 1; i < allData.length; i++) {
+  const row = allData[i]
+  const uniqueNumberValue = row?.[uniqueNumberIndex]?.toString().trim()
+
+    if (
+      uniqueNumberValue === accountNumber ||
+      (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
+    ) {
+      targetRowIndex = i + 1
+      const userAccessEmail = row?.[39]?.trim(); // Column AN
+      if (userAccessEmail) {
+        return NextResponse.json({
+          success: false,
+          error: `Email already assigned: ${userAccessEmail}`,
+        }, { status: 400 });
       }
+
+      break
     }
+  }
+
 
 
     if (targetRowIndex === -1) {
