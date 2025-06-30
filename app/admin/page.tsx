@@ -203,7 +203,7 @@ export default function AdminPage() {
       // ✅ Step 3: Wait a tick and auto-submit Create User form
       setTimeout(() => {
         handleCreateNewUser(); // No event needed
-      }, 600);
+      }, 800);
 
       // ✅ Step 4: Reset Add Access form
       setSelectedAccount("");
