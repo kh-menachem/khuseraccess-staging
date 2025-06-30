@@ -455,7 +455,7 @@ export default function AdminPage() {
                   Manage Admins
                 </TabsTrigger>
               </TabsList>
-              )}
+             )}
 
             <TabsContent value="add-access">
               <Card className="border-red-200">
