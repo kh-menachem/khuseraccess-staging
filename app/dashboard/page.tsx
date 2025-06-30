@@ -918,7 +918,6 @@ export default function Dashboard() {
                               {translateType(tx.type, t)}
                             </Badge>
                           </TableCell>
-                          <TableCell>{translateNotes(tx.description, language)}</TableCell>
                           <TableCell className="font-medium text-black">
                             {shouldHideDonationInfo(tx.donorName || "", "amount")
                               ? "***"
