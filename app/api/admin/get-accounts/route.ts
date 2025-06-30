@@ -89,10 +89,10 @@ export async function POST(request: Request) {
       // Only include rows that have an account number
       if (accountNumber && accountNumber !== "") {
         accounts.push({
-          accountNumber: accountNumber,
-          firstName: firstName,
-          lastName: lastName,
+          value: accountNumber,
+          label: `${accountNumber} - ${firstName} ${lastName}`.trim(),
         })
+
       }
     }
 
