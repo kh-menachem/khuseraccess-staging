@@ -192,12 +192,20 @@ export default function AdminPage() {
 
     if (result.success) {
       setAddAccessSuccess("User access added successfully.");
-      
-      // ✅ Populate newUserEmail when switching to "create-user"
+
+      // ✅ Step 1: Fill in user email + password
       setNewUserEmail(userEmail);
       setNewUserPassword(generateRandomPassword());
+
+      // ✅ Step 2: Switch to Create User tab
       setActiveTab("create-user");
 
+      // ✅ Step 3: Wait a tick and auto-submit Create User form
+      setTimeout(() => {
+        handleCreateNewUser(); // No event needed
+      }, 100);
+
+      // ✅ Step 4: Reset Add Access form
       setSelectedAccount("");
       setUserEmail("");
     } else {
@@ -211,44 +219,53 @@ export default function AdminPage() {
 };
 
 
-  const handleCreateNewUser = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsCreatingUser(true)
-    setCreateUserError(null)
-    setCreateUserSuccess(null)
 
-    if (newUserPassword.length < 8 || !/\d/.test(newUserPassword)) {
-      setCreateUserError("Password must be at least 8 characters and include a number")
-      setIsCreatingUser(false)
-      return
-    }
+  const handleCreateNewUser = async (e?: React.FormEvent) => {
+  if (e) e.preventDefault();
 
+  setIsCreatingUser(true);
+  setCreateUserError(null);
+  setCreateUserSuccess(null);
 
-    try {
-      const response = await fetch("/api/admin/create-user-simple", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: newUserEmail,
-          password: newUserPassword,
-        }),
-      })
-      const result = await response.json()
-      if (result.success) {
-        setCreateUserSuccess("User created successfully")
-        setNewUserEmail("")
-        setNewUserPassword(generateRandomPassword())
-      } else {
-        setCreateUserError(result.error || "Failed to create user")
-      }
-    } catch (error) {
-      setCreateUserError("Error creating user")
-    } finally {
-      setIsCreatingUser(false)
-    }
+  if (newUserPassword.length < 8 || !/\d/.test(newUserPassword)) {
+    setCreateUserError("Password must be at least 8 characters and include a number");
+    setIsCreatingUser(false);
+    return;
   }
+
+  try {
+    const response = await fetch("/api/admin/create-user-simple", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: newUserEmail,
+        password: newUserPassword,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      setCreateUserSuccess("User created successfully");
+
+      // Reset fields for next use
+      setNewUserEmail("");
+      setNewUserPassword(generateRandomPassword());
+
+      // ✅ Go back to Add Access tab
+      setActiveTab("add-access");
+    } else {
+      setCreateUserError(result.error || "Failed to create user");
+    }
+  } catch (error) {
+    setCreateUserError("Error creating user");
+  } finally {
+    setIsCreatingUser(false);
+  }
+};
+
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault()
