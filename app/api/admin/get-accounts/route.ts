@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     // Get People sheet data - columns B (Last Name), C (First Name), and U (Unique Number/Account Number)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "People!B:U",
+      range: "People!A:AN", // full columns so we never get trimmed rows
     })
 
     const data = response.data.values || []
@@ -65,16 +65,16 @@ export async function POST(request: Request) {
 
     const headerRow = data[0]
 
-    // Find column indexes
-    // Column B = index 0 (Last Name)
-    // Column C = index 1 (First Name)
-    // Column U = index 19 (Unique Number/Account Number)
+    // Dynamically get index for "Unique Number", "First Name", and "Last Name"
+    const accountNumberIndex = headerRow.findIndex(h => h?.toLowerCase().includes("unique"))
+    const firstNameIndex = headerRow.findIndex(h => h?.toLowerCase().includes("first"))
+    const lastNameIndex = headerRow.findIndex(h => h?.toLowerCase().includes("last"))
 
-    const lastNameIndex = 0 // Column B
-    const firstNameIndex = 1 // Column C
-    const accountNumberIndex = 18 // Column U
-
-    console.log("Header row sample:", headerRow.slice(0, 5), "...", headerRow.slice(18, 21))
+    console.log("Column indexes:", {
+      accountNumberIndex,
+      firstNameIndex,
+      lastNameIndex,
+    })
 
     // Process accounts data
     const accounts = []
@@ -82,17 +82,16 @@ export async function POST(request: Request) {
     for (let i = 1; i < data.length; i++) {
       const row = data[i]
 
-      const accountNumber = row[accountNumberIndex]?.toString().trim()
+      const accountNumber = row[accountNumberIndex]?.toString().trim() || ""
       const firstName = row[firstNameIndex]?.toString().trim() || ""
       const lastName = row[lastNameIndex]?.toString().trim() || ""
 
       // Only include rows that have an account number
-      if (accountNumber && accountNumber !== "") {
+      if (accountNumber) {
         accounts.push({
           value: accountNumber,
           label: `${accountNumber} - ${firstName} ${lastName}`.trim(),
         })
-
       }
     }
 
