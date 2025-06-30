@@ -193,26 +193,25 @@ export default function AdminPage() {
     if (result.success) {
       setAddAccessSuccess("User access added successfully.");
 
-      // ✅ Step 1: Fill in user email + password
-      setNewUserEmail(userEmail);
       const tempPassword = generateRandomPassword();
+
+      // Store for display
+      setNewUserEmail(userEmail);
       setNewUserPassword(tempPassword);
 
-      // ✅ Step 2: Switch to Create User tab
+      // Go to Create User tab
       setActiveTab("create-user");
 
-      // ✅ Step 3: Wait for next tick + frame to ensure state updates apply
+      // Auto-submit with explicit data
       setTimeout(() => {
-        requestAnimationFrame(() => {
-          handleCreateNewUser(); // auto-submit without event
-        });
-      }, 200);
+        handleCreateNewUser(undefined, userEmail, tempPassword);
+      }, 300); // 300ms should be plenty
 
-      // ✅ Step 4: Reset Add Access form (after delay to avoid wiping email before submit)
+      // Reset Add Access form
       setTimeout(() => {
         setSelectedAccount("");
         setUserEmail("");
-      }, 400); // slightly after the submit fires
+      }, 600);
     } else {
       setAddAccessError(result.error || "Failed to add user access");
     }
@@ -226,51 +225,54 @@ export default function AdminPage() {
 
 
 
-  const handleCreateNewUser = async (e?: React.FormEvent) => {
-  if (e) e.preventDefault();
+  const handleCreateNewUser = async (
+    e?: React.FormEvent,
+    emailOverride?: string,
+    passwordOverride?: string
+  ) => {
+    if (e) e.preventDefault();
 
-  setIsCreatingUser(true);
-  setCreateUserError(null);
-  setCreateUserSuccess(null);
+    const email = emailOverride ?? newUserEmail;
+    const password = passwordOverride ?? newUserPassword;
 
-  if (newUserPassword.length < 8 || !/\d/.test(newUserPassword)) {
-    setCreateUserError("Password must be at least 8 characters and include a number");
-    setIsCreatingUser(false);
-    return;
-  }
+    setIsCreatingUser(true);
+    setCreateUserError(null);
+    setCreateUserSuccess(null);
 
-  try {
-    const response = await fetch("/api/admin/create-user-simple", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: newUserEmail,
-        password: newUserPassword,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      setCreateUserSuccess("User created successfully");
-
-      // Reset fields for next use
-      setNewUserEmail("");
-      setNewUserPassword(generateRandomPassword());
-
-      // ✅ Go back to Add Access tab
-      setActiveTab("add-access");
-    } else {
-      setCreateUserError(result.error || "Failed to create user");
+    if (password.length < 8 || !/\d/.test(password)) {
+      setCreateUserError("Password must be at least 8 characters and include a number");
+      setIsCreatingUser(false);
+      return;
     }
-  } catch (error) {
-    setCreateUserError("Error creating user");
-  } finally {
-    setIsCreatingUser(false);
-  }
-};
+
+    try {
+      const response = await fetch("/api/admin/create-user-simple", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setCreateUserSuccess("User created successfully");
+        setNewUserEmail("");
+        setNewUserPassword(generateRandomPassword());
+        setActiveTab("add-access");
+      } else {
+        setCreateUserError(result.error || "Failed to create user");
+      }
+    } catch (error) {
+      setCreateUserError("Error creating user");
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
 
 
   const handleAddAdmin = async (e: React.FormEvent) => {
