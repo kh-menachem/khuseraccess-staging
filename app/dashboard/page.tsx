@@ -202,27 +202,6 @@ const translateType = (type: string, t: any) => {
   return t.types[lowerType] || type
 }
 
-// Enhanced function to translate notes content
-const translateNotes = (description: string, language: "en" | "he") => {
-  if (!description || language === "en") return description
-
-  const lowerDescription = description.toLowerCase().trim()
-
-
-  // Create a translated version by replacing words
-  let translatedDescription = description
-
-  // Sort by length (longest first) to avoid partial replacements
-  const sortedTranslations = Object.entries(notesTranslations).sort((a, b) => b[0].length - a[0].length)
-
-  for (const [english, hebrew] of sortedTranslations) {
-    // Use word boundaries to match whole words only
-    const regex = new RegExp(`\\b${english.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
-    translatedDescription = translatedDescription.replace(regex, hebrew)
-  }
-
-  return translatedDescription
-}
 
 // Function to check if donation should be hidden or have restricted info
 const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "all") => {
