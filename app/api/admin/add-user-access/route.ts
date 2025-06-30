@@ -61,6 +61,7 @@ export async function POST(request: Request) {
         uniqueNumberValue === accountNumber ||
         (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
       ) {
+        targetRowIndex = i + 1
         const userAccessEmail = row?.[39]?.trim(); // Column AN
         if (userAccessEmail) {
           return NextResponse.json({
@@ -69,7 +70,6 @@ export async function POST(request: Request) {
           }, { status: 400 });
         }
 
-        targetRowIndex = i + 1
         break
       }
     }
