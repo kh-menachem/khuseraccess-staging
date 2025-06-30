@@ -195,22 +195,28 @@ export default function AdminPage() {
 
       // ✅ Step 1: Fill in user email + password
       setNewUserEmail(userEmail);
-      setNewUserPassword(generateRandomPassword());
+      const tempPassword = generateRandomPassword();
+      setNewUserPassword(tempPassword);
 
       // ✅ Step 2: Switch to Create User tab
       setActiveTab("create-user");
 
-      // ✅ Step 3: Wait a tick and auto-submit Create User form
+      // ✅ Step 3: Wait for next tick + frame to ensure state updates apply
       setTimeout(() => {
-        handleCreateNewUser(); // No event needed
-      }, 2000);
+        requestAnimationFrame(() => {
+          handleCreateNewUser(); // auto-submit without event
+        });
+      }, 200);
 
-      // ✅ Step 4: Reset Add Access form
-      setSelectedAccount("");
-      setUserEmail("");
+      // ✅ Step 4: Reset Add Access form (after delay to avoid wiping email before submit)
+      setTimeout(() => {
+        setSelectedAccount("");
+        setUserEmail("");
+      }, 400); // slightly after the submit fires
     } else {
       setAddAccessError(result.error || "Failed to add user access");
     }
+
   } catch (error) {
     setAddAccessError("Error adding user access");
   } finally {
