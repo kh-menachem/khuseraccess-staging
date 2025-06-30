@@ -72,8 +72,12 @@ export async function POST(request: Request) {
     }
 
     if (existingEmail) {
-      return NextResponse.json({ success: false, error: `User already exists for this account`, existingEmail }, { status: 400 })
+      return NextResponse.json({
+        success: false,
+        error: `Email already assigned: ${existingEmail}`,
+      }, { status: 400 })
     }
+
 
     // Update email in sheet
     const updateRange = `People!AN${targetRowIndex}`
