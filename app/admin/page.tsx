@@ -498,13 +498,10 @@ export default function AdminPage() {
                           />
                           <datalist id="accounts-list">
                             {accounts.map((account) => (
-                              <option
-                                key={account.accountNumber}
-                                value={`${account.accountNumber} - ${account.firstName} ${account.lastName}`}
-                              />
-
+                              <option key={account.value} value={account.label} />
                             ))}
                           </datalist>
+
                         </div>
                       )}
                     </div>
