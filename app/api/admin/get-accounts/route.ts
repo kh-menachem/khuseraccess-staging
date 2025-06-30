@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
     const lastNameIndex = 0 // Column B
     const firstNameIndex = 1 // Column C
-    const accountNumberIndex = 19 // Column U
+    const accountNumberIndex = 18 // Column U
 
     console.log("Header row sample:", headerRow.slice(0, 5), "...", headerRow.slice(18, 21))
 
