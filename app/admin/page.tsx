@@ -446,16 +446,15 @@ export default function AdminPage() {
                 <Mail className="h-4 w-4" />
                 Create New User
               </TabsTrigger>
-              {isSuperAdmin && (
-                <TabsTrigger
-                  value="manage-admins"
-                  className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
-                >
-                  <Users className="h-4 w-4" />
-                  Manage Admins
-                </TabsTrigger>
-              </TabsList>
-             )}
+            {isSuperAdmin && (
+              <TabsTrigger
+                value="manage-admins"
+                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+              >
+                <Users className="h-4 w-4" />                  Manage Admins
+               </TabsTrigger>
+            </TabsList>
+           )}
 
             <TabsContent value="add-access">
               <Card className="border-red-200">
@@ -604,119 +603,118 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            {isSuperAdmin && (
-              <TabsContent value="manage-admins">
-                <div className="space-y-6">
-                  <Card className="border-red-200">
-                    <CardHeader className="bg-red-50">
-                      <CardTitle className="flex items-center gap-2 text-red-800">
-                        <UserPlus className="h-5 w-5" />
-                        Add Admin
-                      </CardTitle>
-                      <CardDescription>Add or remove admin users who can access this admin panel</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <form onSubmit={handleAddAdmin} className="space-y-4">
-                        {addAdminError && (
-                          <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{addAdminError}</AlertDescription>
-                          </Alert>
-                        )}
-
-                        <div className="space-y-2">
-                          <Label htmlFor="adminEmail">Admin Email</Label>
-                          <Input
-                            id="adminEmail"
-                            type="email"
-                            placeholder="Enter admin email address"
-                            value={adminEmail}
-                            onChange={(e) => setAdminEmail(e.target.value)}
-                            required
-                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="adminName">Admin Name</Label>
-                          <Input
-                            id="adminName"
-                            type="text"
-                            placeholder="Enter admin full name"
-                            value={adminName}
-                            onChange={(e) => setAdminName(e.target.value)}
-                            required
-                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                          />
-                        </div>
-
-                        <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAdmin}>
-                          {isAddingAdmin ? "Adding Admin..." : "Add Admin"}
-                        </Button>
-                      </form>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-red-200">
-                    <CardHeader className="bg-red-50">
-                      <CardTitle className="flex items-center gap-2 text-red-800">
-                        <Users className="h-5 w-5" />
-                        Current Admins
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      {isLoadingAdmins ? (
-                        <div className="text-center py-4">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
-                        </div>
-                      ) : admins.length === 0 ? (
-                        <p className="text-gray-500 text-center py-4">No admins found</p>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Email</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {admins.map((admin) => (
-                              <TableRow key={admin.id}>
-                                <TableCell className="font-medium">{admin.name}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {admin.email}
-                                    {admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase() && (
-                                      <Badge variant="secondary" className="bg-red-100 text-red-800">
-                                        You
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRemoveAdmin(admin)}
-                                    disabled={admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase()}
-                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-200"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Remove
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+           {isSuperAdmin && (
+            <TabsContent value="manage-admins">
+              <div className="space-y-6">
+                <Card className="border-red-200">
+                  <CardHeader className="bg-red-50">
+                    <CardTitle className="flex items-center gap-2 text-red-800">                        <UserPlus className="h-5 w-5" />
+                       Add Admin
+                    </CardTitle>
+                    <CardDescription>Add or remove admin users who can access this admin panel</CardDescription>
+                  </CardHeader>
+                   <CardContent className="pt-6">
+                    <form onSubmit={handleAddAdmin} className="space-y-4">
+                      {addAdminError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Error</AlertTitle>
+                          <AlertDescription>{addAdminError}</AlertDescription>
+                        </Alert>
                       )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-           )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="adminEmail">Admin Email</Label>
+                        <Input
+                          id="adminEmail"
+                           type="email"
+                          placeholder="Enter admin email address"
+                          value={adminEmail}
+                          onChange={(e) => setAdminEmail(e.target.value)}
+                          required
+                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="adminName">Admin Name</Label>
+                        <Input
+                          id="adminName"
+                          type="text"
+                          placeholder="Enter admin full name"
+                          value={adminName}
+                          onChange={(e) => setAdminName(e.target.value)}
+                          required
+                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                        />
+                      </div>
+
+                       <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAdmin}>
+                        {isAddingAdmin ? "Adding Admin..." : "Add Admin"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                 <Card className="border-red-200">
+                  <CardHeader className="bg-red-50">
+                    <CardTitle className="flex items-center gap-2 text-red-800">
+                      <Users className="h-5 w-5" />
+                      Current Admins
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                     {isLoadingAdmins ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+                      </div>
+                    ) : admins.length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No admins found</p>
+                    ) : (
+                       <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {admins.map((admin) => (
+                            <TableRow key={admin.id}>
+                               <TableCell className="font-medium">{admin.name}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {admin.email}
+                                  {admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase() && (
+                                    <Badge variant="secondary" className="bg-red-100 text-red-800">
+                                      You
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRemoveAdmin(admin)}
+                                  disabled={admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase()}
+                                  className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-200"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Remove
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                           ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+         )}
           </Tabs>
         </div>
       </main>
