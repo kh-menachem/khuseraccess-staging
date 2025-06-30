@@ -171,37 +171,45 @@ export default function AdminPage() {
 
 
   const handleAddUserAccess = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsAddingAccess(true)
-    setAddAccessError(null)
-    setAddAccessSuccess(null)
-    try {
-      const response = await fetch("/api/admin/add-user-access", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountNumber: selectedAccount,
-          userEmail,
-        }),
-      })
-      const result = await response.json()
-      if (result.success) {
-        setAddAccessSuccess("User access added successfully.")
-        setSelectedAccount("")
-        setUserEmail("")
-        setActiveTab("create-user")
-        setNewUserPassword(generateRandomPassword())
-      } else {
-        setAddAccessError(result.error || "Failed to add user access")
-      }
-    } catch (error) {
-      setAddAccessError("Error adding user access")
-    } finally {
-      setIsAddingAccess(false)
+  e.preventDefault();
+  setIsAddingAccess(true);
+  setAddAccessError(null);
+  setAddAccessSuccess(null);
+
+  try {
+    const response = await fetch("/api/admin/add-user-access", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        accountNumber: selectedAccount,
+        userEmail,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      setAddAccessSuccess("User access added successfully.");
+      
+      // ✅ Populate newUserEmail when switching to "create-user"
+      setNewUserEmail(userEmail);
+      setNewUserPassword(generateRandomPassword());
+      setActiveTab("create-user");
+
+      setSelectedAccount("");
+      setUserEmail("");
+    } else {
+      setAddAccessError(result.error || "Failed to add user access");
     }
+  } catch (error) {
+    setAddAccessError("Error adding user access");
+  } finally {
+    setIsAddingAccess(false);
   }
+};
+
 
   const handleCreateNewUser = async (e: React.FormEvent) => {
     e.preventDefault()
