@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     const dataResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "People!U:AN",
+      range: "People!A:AN",
     })
     const allData = dataResponse.data.values || []
 
@@ -62,7 +62,13 @@ export async function POST(request: Request) {
         (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
       ) {
         targetRowIndex = i + 1
-        existingEmail = row?.[39] // Column AN = index 39
+    const userAccessEmail = row?.[39]?.trim(); // Column AN is the 40th column in range A:AN → index 39
+      if (userAccessEmail) {
+        return NextResponse.json({
+          success: false,
+          error: `Email already assigned: ${userAccessEmail}`,
+        }, { status: 400 });
+      }
         break
       }
     }
