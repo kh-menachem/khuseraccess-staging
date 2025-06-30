@@ -179,13 +179,16 @@ export default function AdminPage() {
     setAddAccessSuccess(null)
 
     try {
+      // Extract just the account number from the input string
+      const accountOnly = selectedAccount.split(" - ")[0].trim()
+
       const response = await fetch("/api/admin/add-user-access", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          accountNumber: selectedAccount,
+          accountNumber: accountOnly, // clean account number
           userEmail,
         }),
       })
@@ -197,19 +200,15 @@ export default function AdminPage() {
 
         const tempPassword = generateRandomPassword()
 
-        // Store for display
         setNewUserEmail(userEmail)
         setNewUserPassword(tempPassword)
 
-        // Go to Create User tab
         setActiveTab("create-user")
 
-        // Auto-submit with explicit data
         setTimeout(() => {
           handleCreateNewUser(undefined, userEmail, tempPassword)
-        }, 300) // 300ms should be plenty
+        }, 300)
 
-        // Reset Add Access form
         setTimeout(() => {
           setSelectedAccount("")
           setUserEmail("")
@@ -223,6 +222,7 @@ export default function AdminPage() {
       setIsAddingAccess(false)
     }
   }
+
 
   const handleCreateNewUser = async (e?: React.FormEvent, emailOverride?: string, passwordOverride?: string) => {
     if (e) e.preventDefault()
