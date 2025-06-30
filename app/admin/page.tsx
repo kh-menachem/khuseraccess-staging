@@ -47,6 +47,7 @@ export default function AdminPage() {
   const [selectedAccount, setSelectedAccount] = useState("")
 
   const { user: firebaseUser, logout } = useAuth()
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
   const generateRandomPassword = (length = 10) => {
@@ -143,6 +144,32 @@ export default function AdminPage() {
     }
     checkAdminAccess()
   }, [firebaseUser])
+
+  useEffect(() => {
+    const resetTimer = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => {
+        logout()
+        router.push("/admin/login")
+      }, 10 * 60 * 1000) // 10 minutes
+    }
+
+    const activityEvents = ["mousemove", "keydown", "scroll", "click"]
+
+    activityEvents.forEach(event =>
+      window.addEventListener(event, resetTimer)
+    )
+
+    resetTimer() // Start initial timer
+
+    return () => {
+      activityEvents.forEach(event =>
+        window.removeEventListener(event, resetTimer)
+      )
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [logout, router])
+
 
   const handleAddUserAccess = async (e: React.FormEvent) => {
     e.preventDefault()
