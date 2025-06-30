@@ -4,8 +4,6 @@ import { writeFileSync, unlinkSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 
-// No Firebase Admin SDK imported or used
-
 export async function POST(request: Request) {
   let tempFilePath: string | null = null
 
@@ -50,17 +48,15 @@ export async function POST(request: Request) {
     })
     const allData = dataResponse.data.values || []
 
-    // First, get header row indexes
     const headerRow = allData[0]
     const uniqueNumberIndex = headerRow.findIndex((h) => h?.trim() === "Unique Number")
 
     if (uniqueNumberIndex === -1) {
-      return NextResponse.json({ success: false, error: `"Unique Number" column not found` }, { status: 500 })
+      return NextResponse.json({ success: false, error: "Unique Number column not found" }, { status: 500 })
     }
 
     let targetRowIndex = -1
 
-    // Now loop through rows and use that index
     for (let i = 1; i < allData.length; i++) {
       const row = allData[i]
       const uniqueNumberValue = row?.[uniqueNumberIndex]?.toString().trim()
@@ -70,7 +66,7 @@ export async function POST(request: Request) {
         (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
       ) {
         targetRowIndex = i + 1
-        const userAccessEmail = row?.[39]?.trim() // Column AN
+        const userAccessEmail = row?.[39]?.trim()
         if (userAccessEmail) {
           return NextResponse.json(
             {
@@ -88,7 +84,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: `Account number ${accountNumber} not found` }, { status: 404 })
     }
 
-    // Update email in sheet
     const updateRange = `People!AN${targetRowIndex}`
     await sheets.spreadsheets.values.update({
       spreadsheetId,

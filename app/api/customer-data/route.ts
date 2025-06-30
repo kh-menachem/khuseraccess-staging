@@ -5,7 +5,6 @@ import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 
-// Function to get hardcoded percentages as fallback
 function getHardcodedPercentages(): Map<string, number> {
   const percentagesMap = new Map<string, number>()
 
@@ -38,21 +37,18 @@ function getHardcodedPercentages(): Map<string, number> {
   return percentagesMap
 }
 
-// Updated function to process the Donors table - only use name column
 function processDonors(rows: string[][]): Map<string, string> {
   const donorsMap = new Map<string, string>()
 
-  if (rows.length <= 1) return donorsMap // No data or just header
+  if (rows.length <= 1) return donorsMap
 
   const headerRow = rows[0]
   console.log("Donors sheet headers:", headerRow)
 
-  // Find the UNIQUEID column in Donors table
   const uniqueIdIndex = headerRow.findIndex(
     (header: string) => header?.toLowerCase().trim() === "uniqueid" || header?.toLowerCase().trim() === "unique id",
   )
 
-  // Find the name column only
   const nameIndex = headerRow.findIndex(
     (header: string) =>
       header?.toLowerCase().trim() === "name" ||
@@ -72,7 +68,6 @@ function processDonors(rows: string[][]): Map<string, string> {
     return donorsMap
   }
 
-  // Process each row to build the map
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i]
     if (row[uniqueIdIndex] && row[nameIndex]) {
@@ -87,16 +82,14 @@ function processDonors(rows: string[][]): Map<string, string> {
   return donorsMap
 }
 
-// New function to process the Machines table
 function processMachines(rows: string[][]): Map<string, string> {
   const machinesMap = new Map<string, string>()
 
-  if (rows.length <= 1) return machinesMap // No data or just header
+  if (rows.length <= 1) return machinesMap
 
   const headerRow = rows[0]
   console.log("Machines sheet headers:", headerRow)
 
-  // Find the machine reference and machine ID columns
   const machineRefIndex = headerRow.findIndex(
     (header: string) =>
       header?.toLowerCase().trim() === "machine" ||
@@ -118,7 +111,6 @@ function processMachines(rows: string[][]): Map<string, string> {
     return machinesMap
   }
 
-  // Process each row to build the map
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i]
     if (row[machineRefIndex] && row[machineIdIndex]) {
@@ -132,7 +124,6 @@ function processMachines(rows: string[][]): Map<string, string> {
   return machinesMap
 }
 
-// Update the processPercentages function to prioritize sheet data over hardcoded values
 function processPercentages(rows: string[][]): Map<string, number> {
   const percentagesMap = new Map<string, number>()
 
@@ -144,7 +135,6 @@ function processPercentages(rows: string[][]): Map<string, number> {
   const headerRow = rows[0]
   console.log("Percentages sheet headers:", headerRow)
 
-  // Find the type and value columns
   const typeIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "type")
 
   const valueIndex = headerRow.findIndex(
@@ -162,28 +152,24 @@ function processPercentages(rows: string[][]): Map<string, number> {
     return getHardcodedPercentages()
   }
 
-  // Start with hardcoded values as base
   const hardcodedMap = getHardcodedPercentages()
   for (const [key, value] of hardcodedMap) {
     percentagesMap.set(key, value)
   }
 
-  // Process each row from the sheet to override hardcoded values
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i]
     if (row[typeIndex] && row[valueIndex]) {
       const type = row[typeIndex].trim()
-      // Try to parse the value directly as a multiplier
       try {
         const valueStr = row[valueIndex].toString().trim().replace("%", "")
         let multiplier = Number.parseFloat(valueStr)
 
         if (!Number.isNaN(multiplier)) {
-          // If it's a percentage (e.g., 96.5), convert to multiplier (0.965)
           if (multiplier > 1) {
             multiplier = multiplier / 100
           }
-          percentagesMap.set(type.toLowerCase(), multiplier) // Store type in lowercase for case-insensitive matching
+          percentagesMap.set(type.toLowerCase(), multiplier)
           console.log(`Added/Updated multiplier from sheet for type ${type}: ${multiplier}`)
         }
       } catch (error) {
@@ -195,17 +181,14 @@ function processPercentages(rows: string[][]): Map<string, number> {
   return percentagesMap
 }
 
-// Update the processTransactions function to use the multiplier directly
 function processTransactions(rows: string[][], userId: string, percentagesMap: Map<string, number>): Transaction[] {
   if (rows.length === 0) return []
 
   const headerRow = rows[0]
   console.log("Transaction sheet headers:", headerRow)
 
-  // Look for person column (contains the UNIQUEID from People table)
   const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
 
-  // Find the amount column
   const amountIndex = headerRow.findIndex(
     (header: string) =>
       header?.toLowerCase().trim() === "amount" ||
@@ -213,10 +196,8 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       header?.toLowerCase().trim() === "total",
   )
 
-  // Find the type column for percentage lookup
   const typeIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "type")
 
-  // Find other important columns
   const dateIndex = headerRow.findIndex(
     (header: string) =>
       header?.toLowerCase().trim() === "date" ||
@@ -253,27 +234,22 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     return []
   }
 
-  const filteredRows = rows
-    .slice(1) // Skip header row
-    .filter((row: string[]) => {
-      if (!row[personIndex]) return false
-      const rowPersonId = row[personIndex]?.toString().trim()
-      return rowPersonId === userId
-    })
+  const filteredRows = rows.slice(1).filter((row: string[]) => {
+    if (!row[personIndex]) return false
+    const rowPersonId = row[personIndex]?.toString().trim()
+    return rowPersonId === userId
+  })
 
   console.log(`Found ${filteredRows.length} matching transactions for user UNIQUEID ${userId}`)
 
   return filteredRows.map((row: string[], index: number) => {
-    // Get the base amount
     let originalAmount = 0
     let netAmount = 0
     try {
-      // Handle various number formats and negative values
       const amountStr = row[amountIndex]?.toString().trim() || "0"
-      // Remove any currency symbols and commas, but preserve negative sign
       const cleanedAmount = amountStr.replace(/[$,]/g, "")
       originalAmount = Number.parseFloat(cleanedAmount)
-      netAmount = originalAmount // Start with original amount
+      netAmount = originalAmount
 
       if (Number.isNaN(originalAmount)) {
         console.log(`Invalid amount value: ${amountStr}, defaulting to 0`)
@@ -286,16 +262,12 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       netAmount = 0
     }
 
-    // Get the transaction type
     const transactionType = typeIndex !== -1 ? row[typeIndex]?.toString().trim() : ""
 
-    // Apply multiplier if type exists and is in the percentages map
     if (transactionType) {
       const lowerCaseType = transactionType.toLowerCase()
       if (percentagesMap.has(lowerCaseType)) {
         const multiplier = percentagesMap.get(lowerCaseType) || 1
-
-        // Apply the multiplier directly
         netAmount = originalAmount * multiplier
 
         console.log(
@@ -303,7 +275,6 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
         )
       } else {
         console.log(`No multiplier found for type: ${transactionType}, using 1.0`)
-        // If no multiplier found, net amount equals original amount
         netAmount = originalAmount
       }
     }
@@ -313,8 +284,8 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
       description: notesIndex !== -1 ? row[notesIndex] || "" : "",
       reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
-      amount: originalAmount, // Store original amount
-      net: netAmount, // Store computed net value
+      amount: originalAmount,
+      net: netAmount,
       type: transactionType || "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
       cardknox: cardknoxIndex !== -1 ? row[cardknoxIndex] || "" : "",
@@ -329,7 +300,6 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
   console.log("Donations sheet headers:", headerRow)
   console.log("Total columns in donations sheet:", headerRow.length)
 
-  // Look for PersonID column (contains the UNIQUEID from People table)
   const personIdIndex = headerRow.findIndex(
     (header: string) =>
       header?.toLowerCase().trim() === "personid" ||
@@ -345,7 +315,6 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
     return []
   }
 
-  // Find other important columns
   const dateIndex = headerRow.findIndex(
     (header: string) =>
       header?.toLowerCase().trim() === "date" ||
@@ -375,22 +344,18 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
       header?.toLowerCase().trim() === "total",
   )
 
-  const filteredRows = rows
-    .slice(1) // Skip header row
-    .filter((row: string[]) => {
-      if (!row[personIdIndex]) return false
-      const rowPersonId = row[personIdIndex]?.toString().trim()
-      return rowPersonId === userId
-    })
+  const filteredRows = rows.slice(1).filter((row: string[]) => {
+    if (!row[personIdIndex]) return false
+    const rowPersonId = row[personIdIndex]?.toString().trim()
+    return rowPersonId === userId
+  })
 
   console.log(`Found ${filteredRows.length} matching donations for user UNIQUEID ${userId}`)
 
   return filteredRows.map((row: string[], index: number) => {
-    // Parse amount with error handling - amount is net for donations
     let amount = 0
     try {
       const amountStr = row[amountIndex]?.toString().trim() || "0"
-      // Remove any currency symbols and commas
       const cleanedAmount = amountStr.replace(/[$,]/g, "")
       amount = Number.parseFloat(cleanedAmount)
 
@@ -403,7 +368,6 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
       amount = 0
     }
 
-    // Get donor information - only use name column
     const donorId = donorIdIndex !== -1 ? row[donorIdIndex]?.toString().trim() || "" : ""
     let donorName = ""
 
@@ -411,7 +375,7 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
       donorName = donorsMap.get(donorId)!
       console.log(`Found donor name for ${donorId}: "${donorName}"`)
     } else {
-      donorName = donorId // Fallback to donor ID if no mapping found
+      donorName = donorId
       console.log(`No donor mapping found for ${donorId}, using donor ID as name`)
     }
 
@@ -419,11 +383,11 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
       id: row[0] || `DON-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
       donorId: donorId,
-      donorName: donorName, // This will be shown in the notes column
+      donorName: donorName,
       purpose: purposeIndex !== -1 ? row[purposeIndex] || "" : "",
-      amount: amount, // Amount is net for donations
-      net: amount, // Net equals amount for donations
-      type: "Donation", // Fixed type for donations
+      amount: amount,
+      net: amount,
+      type: "Donation",
     }
   })
 }
@@ -435,7 +399,6 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
   console.log("Machine Records sheet headers:", headerRow)
   console.log("Total columns in machine records sheet:", headerRow.length)
 
-  // Look for person column (contains the UNIQUEID from People table)
   const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
 
   console.log("Person column index in machine records:", personIndex)
@@ -446,7 +409,6 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
     return []
   }
 
-  // Find other important columns
   const machineRefIndex = headerRow.findIndex(
     (header: string) =>
       header?.toLowerCase().trim() === "machine" ||
@@ -472,17 +434,14 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
       header?.toLowerCase().trim() === "cost",
   )
 
-  const filteredRows = rows
-    .slice(1) // Skip header row
-    .filter((row: string[]) => {
-      if (!row[personIndex]) return false
-      const rowPersonId = row[personIndex]?.toString().trim()
-      return rowPersonId === userId
-    })
+  const filteredRows = rows.slice(1).filter((row: string[]) => {
+    if (!row[personIndex]) return false
+    const rowPersonId = row[personIndex]?.toString().trim()
+    return rowPersonId === userId
+  })
 
   console.log(`Found ${filteredRows.length} matching machine records for user UNIQUEID ${userId}`)
 
-  // Group records by machine reference to combine In/Out records
   const machineGroups = new Map<string, { in?: any; out?: any }>()
 
   filteredRows.forEach((row: string[]) => {
@@ -490,7 +449,6 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
     const status = statusIndex !== -1 ? row[statusIndex]?.toString().trim().toLowerCase() : ""
     const date = dateIndex !== -1 ? row[dateIndex] || "" : ""
 
-    // Parse fee with error handling
     let fee = 0
     try {
       const feeStr = row[feeIndex]?.toString().trim() || "0"
@@ -523,22 +481,17 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
     }
   })
 
-  // Convert grouped records to MachineRental objects
   const machineRentals: MachineRental[] = []
   let index = 0
 
   machineGroups.forEach((group, machineRef) => {
-    // Get the machine ID from the machines map
     const machineId = machinesMap.get(machineRef) || machineRef
 
-    // Determine rental and return dates
     const rentalDate = group.out?.date || ""
     const returnDate = group.in?.date || null
 
-    // Use fee from out record, or in record if no out record
     const fee = group.out?.fee || group.in?.fee || 0
 
-    // Determine status
     let status = "Unknown"
     if (group.out && group.in) {
       status = "Returned"
@@ -570,14 +523,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User email or ID is required" }, { status: 400 })
     }
 
-    // Get the credentials from the environment variable
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
 
-    // Create a temporary file with the credentials
     const tempFilePath = join(os.tmpdir(), "google-credentials.json")
     writeFileSync(tempFilePath, credentials || "{}")
 
-    // Initialize the Sheets API client
     const auth = new google.auth.GoogleAuth({
       keyFile: tempFilePath,
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -586,7 +536,6 @@ export async function POST(request: NextRequest) {
     const sheets = google.sheets({ version: "v4", auth })
     const spreadsheetId = process.env.SPREADSHEET_ID
 
-    // First, fetch the Percentages table to use for calculations
     console.log("Fetching Percentages table first")
     let percentagesMap = new Map<string, number>()
 
@@ -602,11 +551,9 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error("Error fetching percentages data:", error)
       console.log("Will proceed with hardcoded percentage adjustments")
-      // Use hardcoded values as fallback
       percentagesMap = getHardcodedPercentages()
     }
 
-    // Fetch the Machines table to get machine IDs
     console.log("Fetching Machines table")
     let machinesMap = new Map<string, string>()
 
@@ -624,7 +571,6 @@ export async function POST(request: NextRequest) {
       console.log("Will proceed without machine ID mapping")
     }
 
-    // Fetch the Donors table to get donor names
     console.log("Fetching Donors table")
     let donorsMap = new Map<string, string>()
 
@@ -642,7 +588,6 @@ export async function POST(request: NextRequest) {
       console.log("Will proceed without donor name mapping")
     }
 
-    // Fetch data from all sheets using your exact sheet names
     const [
       currentTransactionsResponse,
       transactions2024Response,
@@ -672,7 +617,6 @@ export async function POST(request: NextRequest) {
       }),
     ])
 
-    // Process responses
     const responses = [
       currentTransactionsResponse,
       transactions2024Response,
@@ -687,22 +631,12 @@ export async function POST(request: NextRequest) {
     const donationsData = responses[3].status === "fulfilled" ? responses[3].value.data.values || [] : []
     const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
 
-    // Process current transactions
     const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
-
-    // Process 2024 transactions
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
-
-    // Process old transactions
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
-
-    // Process donations with donor name lookup
     const donations = processDonations(donationsData, userId, donorsMap)
-
-    // Process machine rentals with machine ID mapping
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
 
-    // Add logging to see what data is being fetched
     console.log(`Found ${currentTransactions.length} current transactions`)
     console.log(`Found ${transactions2024.length} transactions from 2024`)
     console.log(`Found ${oldTransactions.length} old transactions`)
@@ -722,7 +656,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching customer data:", error)
 
-    // Return mock data as fallback
     const mockData: CustomerData = {
       id: "123",
       currentTransactions: [
@@ -732,7 +665,7 @@ export async function POST(request: NextRequest) {
           description: "Monthly Subscription",
           reference: "SUB12345",
           amount: 49.99,
-          net: 48.24, // 49.99 * 0.965 for Credit Card
+          net: 48.24,
           type: "Credit Card",
         },
         {
@@ -741,7 +674,7 @@ export async function POST(request: NextRequest) {
           description: "Service Fee",
           reference: "SVC98765",
           amount: -125.0,
-          net: -125.0, // -125.0 * 1 for Check
+          net: -125.0,
           type: "Check",
         },
       ],
@@ -752,7 +685,7 @@ export async function POST(request: NextRequest) {
           description: "Annual Membership",
           reference: "MEM24001",
           amount: 199.99,
-          net: 192.99, // 199.99 * 0.965 for Credit Card
+          net: 192.99,
           type: "Credit Card",
         },
       ],
@@ -763,7 +696,7 @@ export async function POST(request: NextRequest) {
           description: "Legacy Subscription",
           reference: "LEG22110",
           amount: -39.99,
-          net: -39.99, // -39.99 * 1 for Cash
+          net: -39.99,
           type: "Cash",
         },
       ],
@@ -775,7 +708,7 @@ export async function POST(request: NextRequest) {
           donorName: "Jane Smith",
           purpose: "Annual Fundraiser",
           amount: 500.0,
-          net: 500.0, // For donations, amount is net
+          net: 500.0,
           type: "Donation",
         },
       ],
