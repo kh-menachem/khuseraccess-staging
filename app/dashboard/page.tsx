@@ -693,24 +693,25 @@ export default function Dashboard() {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="grid gap-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
+            <div className={`w-full ${language === "he" ? "text-right" : "text-left"}`} dir={language === "he" ? "rtl" : "ltr"}>
               <h2 className="text-3xl font-bold tracking-tight text-gray-800">{t.dashboard}</h2>
-              <p
-                className={`text-gray-600 ${language === "he" ? "text-right" : ""}`}
-                dir={language === "he" ? "rtl" : "ltr"}
-              >
+              <p className="text-gray-600">
                 {t.welcomeBack}, {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.name} ({user?.email})
               </p>
-              <div
-                className={`mt-2 p-3 rounded-md bg-yellow-100 text-yellow-800 text-sm font-medium ${
-                  language === "he" ? "text-right" : "text-center"
-                }`}
-                dir={language === "he" ? "rtl" : "ltr"}
-              >
-                {language === "he"
-                  ? "זה מה שמעודכן כרגע במערכת שלנו. ייתכנו תרומות שיעודכנו במועד מאוחר יותר. תודה על ההבנה."
-                  : "This is what is currently updated in our system. There may be donations that will be updated at a later time. Thank you for understanding."}
+
+              <div className="w-full mt-2 flex justify-center">
+                <div
+                  className={`max-w-2xl w-full p-3 rounded-md bg-yellow-100 text-yellow-800 text-sm font-medium ${
+                    language === "he" ? "text-right" : "text-center"
+                  }`}
+                  dir={language === "he" ? "rtl" : "ltr"}
+                >
+                  {language === "he"
+                    ? "זה מה שמעודכן כרגע במערכת שלנו. ייתכנו תרומות שיעודכנו במועד מאוחר יותר. תודה על ההבנה."
+                    : "This is what is currently updated in our system. There may be donations that will be updated at a later time. Thank you for understanding."}
+                </div>
               </div>
+            </div>
 
             </div>
           </div>

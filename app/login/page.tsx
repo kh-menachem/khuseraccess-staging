@@ -202,8 +202,8 @@ const handleSubmit = async (e: React.FormEvent) => {
   return (
     <div className={`min-h-screen flex ${isRTL ? "rtl" : "ltr"}`} style={{ backgroundColor: "#f8fafc" }}>
       {/* Login Form Side */}
-      <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 ${isRTL ? "lg:order-last" : ""}`}>
-        <div className="w-full max-w-md">
+      <div className={`w-full lg:w-1/2 flex items-center justify-center px-6 py-4 ${isRTL ? "lg:order-last" : ""}`}>
+        <div className="w-full max-w-sm">
           {/* Language Toggle */}
           <div className={`mb-8 ${isRTL ? "text-right" : "text-left"}`}>
             <Button
