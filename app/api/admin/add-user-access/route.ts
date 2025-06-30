@@ -50,48 +50,43 @@ export async function POST(request: Request) {
     })
     const allData = dataResponse.data.values || []
 
-    let targetRowIndex = -1
-    let existingEmail = null
+    // First, get header row indexes
+    const headerRow = allData[0]
+    const uniqueNumberIndex = headerRow.findIndex((h) => h?.trim() === "Unique Number")
 
-    for (let i = 1; i < allData.length; i++) {
-      // First, get header row indexes
-const headerRow = allData[0]
-const uniqueNumberIndex = headerRow.findIndex(h => h?.trim() === "Unique Number")
-
-if (uniqueNumberIndex === -1) {
-  return NextResponse.json({ success: false, error: `"Unique Number" column not found` }, { status: 500 })
-}
-
-// Now loop through rows and use that index
-for (let i = 1; i < allData.length; i++) {
-  const row = allData[i]
-  const uniqueNumberValue = row?.[uniqueNumberIndex]?.toString().trim()
-
-    if (
-      uniqueNumberValue === accountNumber ||
-      (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
-    ) {
-      targetRowIndex = i + 1
-      const userAccessEmail = row?.[39]?.trim(); // Column AN
-      if (userAccessEmail) {
-        return NextResponse.json({
-          success: false,
-          error: `Email already assigned: ${userAccessEmail}`,
-        }, { status: 400 });
-      }
-
-      break
+    if (uniqueNumberIndex === -1) {
+      return NextResponse.json({ success: false, error: `"Unique Number" column not found` }, { status: 500 })
     }
-  }
 
+    let targetRowIndex = -1
 
+    // Now loop through rows and use that index
+    for (let i = 1; i < allData.length; i++) {
+      const row = allData[i]
+      const uniqueNumberValue = row?.[uniqueNumberIndex]?.toString().trim()
+
+      if (
+        uniqueNumberValue === accountNumber ||
+        (typeof uniqueNumberValue === "string" && uniqueNumberValue.replace(/\D/g, "") === accountNumber)
+      ) {
+        targetRowIndex = i + 1
+        const userAccessEmail = row?.[39]?.trim() // Column AN
+        if (userAccessEmail) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Email already assigned: ${userAccessEmail}`,
+            },
+            { status: 400 },
+          )
+        }
+        break
+      }
+    }
 
     if (targetRowIndex === -1) {
       return NextResponse.json({ success: false, error: `Account number ${accountNumber} not found` }, { status: 404 })
     }
-
-   
-
 
     // Update email in sheet
     const updateRange = `People!AN${targetRowIndex}`
@@ -111,7 +106,11 @@ for (let i = 1; i < allData.length; i++) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 })
   } finally {
     if (tempFilePath) {
-      try { unlinkSync(tempFilePath) } catch (e) { console.error("Temp cleanup failed:", e) }
+      try {
+        unlinkSync(tempFilePath)
+      } catch (e) {
+        console.error("Temp cleanup failed:", e)
+      }
     }
   }
 }
