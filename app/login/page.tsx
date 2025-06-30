@@ -35,7 +35,7 @@ const translations = {
     firstTimeLine1: ",אם זו הפעם הראשונה שאתה נכנס לחשבון שלך",
     firstTimeBeforeLink: "לחץ",
     forgotPassword2: "כאן",
-    firstTimeAfterLink: " .כדי להגדיר סיסמה",
+    firstTimeAfterLink: "כדי להגדיר סיסמה.",
     firstTimeLine3: ".אנא בדוק את תיקיית הספאם שלך עבור האימייל",
   },
   en: {
