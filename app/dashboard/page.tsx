@@ -202,7 +202,6 @@ const translateType = (type: string, t: any) => {
   return t.types[lowerType] || type
 }
 
-
 // Function to check if donation should be hidden or have restricted info
 const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "all") => {
   const lowerDonorName = donorName?.toLowerCase().trim() || ""
@@ -245,13 +244,12 @@ export default function Dashboard() {
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
   const { user: firebaseUser, logout } = useAuth()
   const router = useRouter()
-  
+
   useSessionManager({
     mode: "inactivity",
     minutes: 10,
-    redirectTo: "/login", // or your actual login route
+    redirectTo: "/login",
   })
-
 
   const t = translations[language]
 
@@ -694,29 +692,29 @@ export default function Dashboard() {
         <div className="grid gap-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             {/* Title + Welcome */}
-              <div className={`w-full ${language === "he" ? "text-right" : "text-left"}`} dir={language === "he" ? "rtl" : "ltr"}>
-                <h2 className="text-3xl font-bold tracking-tight text-gray-800">{t.dashboard}</h2>
-                <p className="text-gray-600">
-                  {t.welcomeBack}, {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.name} ({user?.email})
-                </p>
-              </div>
+            <div
+              className={`w-full ${language === "he" ? "text-right" : "text-left"}`}
+              dir={language === "he" ? "rtl" : "ltr"}
+            >
+              <h2 className="text-3xl font-bold tracking-tight text-gray-800">{t.dashboard}</h2>
+              <p className="text-gray-600">
+                {t.welcomeBack}, {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.name}{" "}
+                ({user?.email})
+              </p>
             </div>
+          </div>
 
-            {/* Yellow Box */}
-            <div className="w-full flex justify-center">
-              <div
-                className={`max-w-2xl w-full p-3 rounded-md bg-yellow-100 text-yellow-800 text-sm font-medium ${
-                  language === "he" ? "text-right" : "text-center"
-                }`}
-                dir={language === "he" ? "rtl" : "ltr"}
-              >
-                {language === "he"
-                  ? "זה מה שמעודכן כרגע במערכת שלנו. ייתכנו תרומות שיעודכנו במועד מאוחר יותר. תודה על ההבנה."
-                  : "This is what is currently updated in our system. There may be donations that will be updated at a later time. Thank you for understanding."}
-              </div>
-              </div>
-            </div>
-
+          {/* Yellow Box */}
+          <div className="w-full flex justify-center">
+            <div
+              className={`max-w-2xl w-full p-3 rounded-md bg-yellow-100 text-yellow-800 text-sm font-medium ${
+                language === "he" ? "text-right" : "text-center"
+              }`}
+              dir={language === "he" ? "rtl" : "ltr"}
+            >
+              {language === "he"
+                ? "זה מה שמעודכן כרגע במערכת שלנו. ייתכנו תרומות שיעודכנו במועד מאוחר יותר. תודה על ההבנה."
+                : "This is what is currently updated in our system. There may be donations that will be updated at a later time. Thank you for understanding."}
             </div>
           </div>
 
@@ -936,6 +934,7 @@ export default function Dashboard() {
                               {translateType(tx.type, t)}
                             </Badge>
                           </TableCell>
+                          <TableCell>{tx.description}</TableCell>
                           <TableCell className="font-medium text-black">
                             {shouldHideDonationInfo(tx.donorName || "", "amount")
                               ? "***"

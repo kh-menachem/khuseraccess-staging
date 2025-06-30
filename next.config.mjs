@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverComponentsExternalPackages: ['googleapis']
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -7,8 +10,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
-  },
+    domains: ['localhost'],
+    unoptimized: true
+  }
 }
 
 export default nextConfig
