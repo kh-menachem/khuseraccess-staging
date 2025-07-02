@@ -524,52 +524,41 @@ function processLinksTransactions(rows: string[][], userId: string): Transaction
 
   const headerRow = rows[0]
 
-  const personIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "person")
-  const amountIndex = headerRow.findIndex(h => h?.toLowerCase().includes("amount"))
-  const typeIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "type")
-  const resultIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "result")
-  const dateIndex = headerRow.findIndex(h => h?.toLowerCase().includes("date"))
-  const notesIndex = headerRow.findIndex(h => h?.toLowerCase().includes("note"))
-  const referenceIndex = headerRow.findIndex(h =>
-    ["reference", "ref", "uniqueid", "id"].includes(h?.toLowerCase().trim())
-  )
+  const personIdIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "personid")
+  const dateIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "date")
+  const nameIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "name")
+  const amountIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "amount")
+  const descriptionIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "description")
 
   const filteredRows = rows.slice(1).filter(row => {
-    const person = row[personIndex]?.toString().trim()
+    const person = row[personIdIndex]?.toString().trim()
     return person === userId
   })
 
   return filteredRows.map((row, index) => {
-      const type = row[typeIndex]?.trim() || ""
-      const result = row[resultIndex]?.trim() || ""
-      const amountStr = row[amountIndex]?.replace(/[$,]/g, "") || "0"
-      const originalAmount = parseFloat(amountStr) || 0
-      let netAmount = 0
+    const name = nameIndex !== -1 ? row[nameIndex]?.trim() || "" : ""
+    const description = descriptionIndex !== -1 ? row[descriptionIndex]?.trim() || "" : ""
+    const date = dateIndex !== -1 ? row[dateIndex] || "" : ""
+    const reference = `LINK-${index}`
 
-      if (result === "Approved") {
-        if (type === "CC:Sale") netAmount = originalAmount * 0.965
-        else if (type === "CC:Refund") netAmount = -1 * originalAmount
-        else if (type === "Check:Sale") netAmount = originalAmount * 0.9985
-        else if (type === "Grant:Recommendation") netAmount = originalAmount * 0.965
-        else netAmount = originalAmount
-      } else {
-        netAmount = 0
-      }
+    const amountStr = row[amountIndex]?.replace(/[$,]/g, "") || "0"
+    const amount = parseFloat(amountStr) || 0
+    const net = amount * 0.965
 
-      let description = notesIndex !== -1 ? row[notesIndex]?.trim() || "" : ""
+    return {
+      id: reference,
+      date,
+      description: `${name} - ${description}`,
+      reference,
+      amount,
+      net,
+      type: "Links/Phone",
+      notCleared: "",
+    }
+  })
+}
 
-      return {
-        id: referenceIndex !== -1 ? row[referenceIndex] || `LINK-${index}` : `LINK-${index}`,
-        date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-        description,
-        reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
-        amount: originalAmount,
-        net: netAmount,
-        type,
-        notCleared: "",
-      }
-    })
-  }
+
 
 export async function POST(request: NextRequest) {
   try {
