@@ -652,6 +652,7 @@ export async function POST(request: NextRequest) {
       oldTransactionsResponse,
       donationsResponse,
       machineRentalsResponse,
+      linksAndPhoneResponse,
     ] = await Promise.allSettled([
       sheets.spreadsheets.values.get({
         spreadsheetId,
