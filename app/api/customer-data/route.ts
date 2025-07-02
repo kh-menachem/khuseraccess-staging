@@ -519,6 +519,57 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
 
   return machineRentals
 }
+function processLinksTransactions(rows: string[][], userId: string): Transaction[] {
+  if (rows.length === 0) return []
+
+  const headerRow = rows[0]
+
+  const personIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "person")
+  const amountIndex = headerRow.findIndex(h => h?.toLowerCase().includes("amount"))
+  const typeIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "type")
+  const resultIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "result")
+  const dateIndex = headerRow.findIndex(h => h?.toLowerCase().includes("date"))
+  const notesIndex = headerRow.findIndex(h => h?.toLowerCase().includes("note"))
+  const referenceIndex = headerRow.findIndex(h =>
+    ["reference", "ref", "uniqueid", "id"].includes(h?.toLowerCase().trim())
+  )
+
+  const filteredRows = rows.slice(1).filter(row => {
+    const person = row[personIndex]?.toString().trim()
+    return person === userId
+  })
+
+  return filteredRows.map((row, index) => {
+      const type = row[typeIndex]?.trim() || ""
+      const result = row[resultIndex]?.trim() || ""
+      const amountStr = row[amountIndex]?.replace(/[$,]/g, "") || "0"
+      const originalAmount = parseFloat(amountStr) || 0
+      let netAmount = 0
+
+      if (result === "Approved") {
+        if (type === "CC:Sale") netAmount = originalAmount * 0.965
+        else if (type === "CC:Refund") netAmount = -1 * originalAmount
+        else if (type === "Check:Sale") netAmount = originalAmount * 0.9985
+        else if (type === "Grant:Recommendation") netAmount = originalAmount * 0.965
+        else netAmount = originalAmount
+      } else {
+        netAmount = 0
+      }
+
+      let description = notesIndex !== -1 ? row[notesIndex]?.trim() || "" : ""
+
+      return {
+        id: referenceIndex !== -1 ? row[referenceIndex] || `LINK-${index}` : `LINK-${index}`,
+        date: dateIndex !== -1 ? row[dateIndex] || "" : "",
+        description,
+        reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
+        amount: originalAmount,
+        net: netAmount,
+        type,
+        notCleared: "",
+      }
+    })
+  }
 
 export async function POST(request: NextRequest) {
   try {
@@ -621,6 +672,10 @@ export async function POST(request: NextRequest) {
         spreadsheetId,
         range: "Machine Records!A:AQ",
       }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "LinksandPhone!A:AQ", // 👈 add this
+      }),
     ])
 
     const responses = [
@@ -629,6 +684,7 @@ export async function POST(request: NextRequest) {
       oldTransactionsResponse,
       donationsResponse,
       machineRentalsResponse,
+      linksAndPhoneResponse,
     ]
 
     const currentTransactionsData = responses[0].status === "fulfilled" ? responses[0].value.data.values || [] : []
@@ -636,12 +692,15 @@ export async function POST(request: NextRequest) {
     const oldTransactionsData = responses[2].status === "fulfilled" ? responses[2].value.data.values || [] : []
     const donationsData = responses[3].status === "fulfilled" ? responses[3].value.data.values || [] : []
     const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
+    const linksAndPhoneData =linksAndPhoneResponse.status === "fulfilled" ?linksAndPhoneResponse.value.data.values || [] : []
+
 
     const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
+    const linksAndPhoneTransactions = processTransactions(linksAndPhoneData, userId, percentagesMap)
 
     console.log(`Found ${currentTransactions.length} current transactions`)
     console.log(`Found ${transactions2024.length} transactions from 2024`)
@@ -656,6 +715,7 @@ export async function POST(request: NextRequest) {
       oldTransactions,
       donations,
       machineRentals,
+      linksAndPhoneTransactions,
     }
 
     return NextResponse.json(customerData)
