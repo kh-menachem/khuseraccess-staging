@@ -278,17 +278,24 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
         netAmount = originalAmount
       }
     }
+    // Prepare description (notes) and optionally include cardknox value
+    let description = notesIndex !== -1 ? row[notesIndex] || "" : ""
+    const cardknoxValue = cardknoxIndex !== -1 ? row[cardknoxIndex]?.toString().trim() : ""
 
+    // Append Cardknox value to description if available
+    if (cardknoxValue) {
+      description = `${description ? description + " - " : ""}${cardknoxValue}`
+    }
     return {
       id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      description: notesIndex !== -1 ? row[notesIndex] || "" : "",
+      description, // 👈 use modified description
       reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
       amount: originalAmount,
       net: netAmount,
       type: transactionType || "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
-      cardknox: cardknoxIndex !== -1 ? row[cardknoxIndex] || "" : "",
+      cardknox: cardknoxValue, // 👈 clean version
     }
   })
 }
