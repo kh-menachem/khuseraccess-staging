@@ -543,7 +543,19 @@ function processLinksTransactions(rows: string[][], userId: string): Transaction
 
     const amountStr = row[amountIndex]?.replace(/[$,]/g, "") || "0"
     const amount = parseFloat(amountStr) || 0
-    const net = amount * 0.965
+    const commandIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "command")
+    const command = commandIndex !== -1 ? row[commandIndex]?.trim().toLowerCase() : ""
+
+    let net = 0
+    if (command === "cc:sale" || command === "grant:recommendation") {
+      net = amount * 0.965
+    } else if (command === "cc:refund") {
+      net = -amount
+    } else if (command === "check:sale") {
+      net = amount * 0.9985
+    } else {
+      net = 0 // fallback if command not matched
+    }
 
     return {
       id: reference,
