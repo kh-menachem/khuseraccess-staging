@@ -295,7 +295,6 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       net: netAmount,
       type: transactionType || "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
-      cardknox: cardknoxValue, // 👈 clean version
     }
   })
 }
