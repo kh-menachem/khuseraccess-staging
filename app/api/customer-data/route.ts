@@ -700,7 +700,8 @@ export async function POST(request: NextRequest) {
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
-    const linksAndPhoneTransactions = processTransactions(linksAndPhoneData, userId, percentagesMap)
+    const linksAndPhoneTransactions = processLinksTransactions(linksAndPhoneData, userId)
+
 
     console.log(`Found ${currentTransactions.length} current transactions`)
     console.log(`Found ${transactions2024.length} transactions from 2024`)
