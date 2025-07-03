@@ -758,7 +758,7 @@ export async function POST(request: NextRequest) {
       oldTransactions,
       donations,
       machineRentals,
-        linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap(t => t.details || [])
+      linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap(t => t.details || [])
     }
 
     return NextResponse.json(customerData)
