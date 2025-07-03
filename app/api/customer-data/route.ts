@@ -519,56 +519,93 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
 
   return machineRentals
 }
-function processLinksTransactions(rows: string[][], userId: string): Transaction[] {
+function processLinksTransactionsGrouped(rows: string[][], userId: string): Transaction[] {
   if (rows.length === 0) return []
 
-  const headerRow = rows[0]
+  const hdr = rows[0].map(h => h.toLowerCase().trim())
 
-  const personIdIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "personid")
-  const dateIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "date")
-  const nameIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "name")
-  const amountIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "amount")
-  const descriptionIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "description")
+  const iPerson = hdr.indexOf('personid')   // L
+  const iDate   = hdr.indexOf('date')       // B
+  const iName   = hdr.indexOf('name')       // C
+  const iAmount = hdr.indexOf('amount')     // E
+  const iDesc   = hdr.indexOf('description')// G
+  const iResult = hdr.indexOf('result')     // H
+  const iType   = hdr.indexOf('type')       // J
+  const iMid    = hdr.indexOf('mid')        // K
 
-  const filteredRows = rows.slice(1).filter(row => {
-    const person = row[personIdIndex]?.toString().trim()
-    return person === userId
-  })
+  if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some(i => i === -1)) {
+    console.error("Missing one or more required columns in LinksandPhone")
+    return []
+  }
 
-  return filteredRows.map((row, index) => {
-    const name = nameIndex !== -1 ? row[nameIndex]?.trim() || "" : ""
-    const description = descriptionIndex !== -1 ? row[descriptionIndex]?.trim() || "" : ""
-    const date = dateIndex !== -1 ? row[dateIndex] || "" : ""
-    const reference = `LINK-${index}`
+  const details = rows.slice(1)
+    .filter(r => r[iPerson]?.trim() === userId)
+    .filter(r => r[iResult]?.trim() === "Approved")
+    .filter(r => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
+    .map((r, index) => {
+      const date = r[iDate]
+      const yearMonth = date.slice(0, 7)
+      const amt = parseFloat(r[iAmount].replace(/[$,]/g, '')) || 0
+      const type = r[iType]?.trim()
+      let net = 0
+      switch(type) {
+        case "CC:Sale": net = amt * 0.965; break
+        case "Grant:Recommendation": net = amt * 0.965; break
+        case "CC:Refund": net = -amt; break
+        case "Check:Sale": net = amt * 0.9985; break
+        default: net = 0; break
+      }
 
-    const amountStr = row[amountIndex]?.replace(/[$,]/g, "") || "0"
-    const amount = parseFloat(amountStr) || 0
-    const commandIndex = headerRow.findIndex(h => h?.toLowerCase().trim() === "command")
-    const command = commandIndex !== -1 ? row[commandIndex]?.trim().toLowerCase() : ""
+      const source = r[iMid] === "31393" ? "Links Donation"
+                   : r[iMid] === "40939" ? "Phone Donation" : ""
 
-    let net = 0
-    if (command === "cc:sale" || command === "grant:recommendation") {
-      net = amount * 0.965
-    } else if (command === "cc:refund") {
-      net = -amount
-    } else if (command === "check:sale") {
-      net = amount * 0.9985
-    } else {
-      net = 0 // fallback if command not matched
+      return {
+        id: `LINK-${index}`,
+        date,
+        name: r[iName],
+        amount: amt,
+        net,
+        description: r[iDesc] || "",
+        source,
+        yearMonth,
+      }
+    })
+
+  // Group by month
+  const grouped = new Map<string, Transaction>()
+  for (const d of details) {
+    const key = d.yearMonth
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        id: `LINKS-${key}`,
+        date: d.date,
+        description: "Links/Phone Donations",
+        reference: "",
+        amount: 0,
+        net: 0,
+        type: "Links/Phone Donations",
+        notCleared: "Cleared",
+        details: [], // this is for your nested view
+      })
     }
 
-    return {
-      id: reference,
-      date,
-      description: `${name} - ${description}`,
-      reference,
-      amount,
-      net,
-      type: "Links/Phone",
-      notCleared: "",
-    }
-  })
+    const tx = grouped.get(key)!
+    tx.amount += d.amount
+    tx.net += d.net
+    if (!tx.date || d.date < tx.date) tx.date = d.date // earliest date
+    tx.details!.push({
+      date: d.date,
+      name: d.name,
+      amount: d.amount,
+      net: d.net,
+      description: d.description,
+      source: d.source,
+    })
+  }
+
+  return Array.from(grouped.values())
 }
+
 
 
 
