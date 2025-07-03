@@ -734,12 +734,15 @@ export async function POST(request: NextRequest) {
     const linksAndPhoneData =linksAndPhoneResponse.status === "fulfilled" ?linksAndPhoneResponse.value.data.values || [] : []
 
 
-    const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
+    const currentTransactions = [
+      ...processTransactions(currentTransactionsData, userId, percentagesMap),
+      ...linksAndPhoneGrouped // <-- now included!
+    ]
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
-    const linksAndPhoneTransactions = processLinksTransactions(linksAndPhoneData, userId)
+    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId)
 
 
     console.log(`Found ${currentTransactions.length} current transactions`)
@@ -755,7 +758,7 @@ export async function POST(request: NextRequest) {
       oldTransactions,
       donations,
       machineRentals,
-      linksAndPhoneTransactions,
+        linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap(t => t.details || [])
     }
 
     return NextResponse.json(customerData)
