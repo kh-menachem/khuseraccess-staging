@@ -733,6 +733,8 @@ export async function POST(request: NextRequest) {
     const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
     const linksAndPhoneData =linksAndPhoneResponse.status === "fulfilled" ?linksAndPhoneResponse.value.data.values || [] : []
 
+    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId)
+
 
     const currentTransactions = [
       ...processTransactions(currentTransactionsData, userId, percentagesMap),
@@ -742,7 +744,6 @@ export async function POST(request: NextRequest) {
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
-    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId)
 
 
     console.log(`Found ${currentTransactions.length} current transactions`)
