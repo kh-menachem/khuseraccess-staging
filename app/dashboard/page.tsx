@@ -925,14 +925,7 @@ export default function Dashboard() {
                     ) : (
                       filteredTransactions.map((tx) => (
                         <TableRow key={`${tx.source}-${tx.id}`}>
-                          <TableCell>
-                            {shouldHideDonationInfo(tx.donorName || "", "date")
-                              ? "***"
-                              : new Date(tx.date).toLocaleDateString(language === "he" ? "he-IL" : "en-US", {
-                                  year: "numeric",
-                                  month: "long",
-                                })}
-                          </TableCell>
+                          <TableCell>{shouldHideDonationInfo(tx.donorName || "", "date") ? "***" : tx.date}</TableCell>
                           <TableCell>
                             <Badge
                               variant="outline"
