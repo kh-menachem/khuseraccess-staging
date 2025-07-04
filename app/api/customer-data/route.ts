@@ -37,6 +37,24 @@ function getHardcodedPercentages(): Map<string, number> {
   return percentagesMap
 }
 
+function getMonthName(yearMonth: string, language: string): string {
+  const [year, month] = yearMonth.split("-").map(Number)
+
+  const months = {
+    en: [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ],
+    he: [
+      "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+      "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
+    ]
+  }
+
+  const names = months[language === "he" ? "he" : "en"]
+  return `${names[month - 1]} ${year}`
+}
+
 function processDonors(rows: string[][]): Map<string, string> {
   const donorsMap = new Map<string, string>()
 
@@ -519,7 +537,7 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
 
   return machineRentals
 }
-function processLinksTransactionsGrouped(rows: string[][], userId: string): Transaction[] {
+function processLinksTransactionsGrouped(rows: string[][], userId: string, language: string): Transaction[] {
   if (rows.length === 0) return []
 
   const hdr = rows[0].map(h => h.toLowerCase().trim())
@@ -578,14 +596,14 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string): Tran
     if (!grouped.has(key)) {
       grouped.set(key, {
         id: `LINKS-${key}`,
-        date: d.date,
-        description: "Links/Phone Donations",
+        date: key + "-01",
+        description: getMonthName(key, language),
         reference: "",
         amount: 0,
         net: 0,
-        type: "Links/Phone Donations",
-        notCleared: "Cleared",
-        details: [], // this is for your nested view
+        type: language === "he" ? "תרומות קישורים / טלפון" : "Links/Phone Donations",
+        notCleared: language === "he" ? "זמין" : "Cleared",
+        details: [],
       })
     }
 
@@ -611,7 +629,8 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string): Tran
 
 export async function POST(request: NextRequest) {
   try {
-    const { userEmail, userId } = await request.json()
+    const { userEmail, userId, language } = await request.json()
+    const lang = language === "he" ? "he" : "en"
     console.log(`Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
     if (!userEmail && !userId) {
@@ -733,7 +752,7 @@ export async function POST(request: NextRequest) {
     const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
     const linksAndPhoneData =linksAndPhoneResponse.status === "fulfilled" ?linksAndPhoneResponse.value.data.values || [] : []
 
-    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId)
+    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
 
 
     const currentTransactions = [
