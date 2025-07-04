@@ -205,12 +205,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
   const headerRow = rows[0]
   console.log("Transaction sheet headers:", headerRow)
 
-  const personIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "person" ||
-      header?.toLowerCase().trim() === "personid" ||
-      header?.toLowerCase().trim() === "person id"
-  )
+  const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
 
   const amountIndex = headerRow.findIndex(
     (header: string) =>
@@ -310,17 +305,15 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       description = `${description ? description + " - " : ""}${cardknoxValue}`
     }
     return {
-      id: row[0] || `DON-${index}`,
+      id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      donorId: donorId,
-      donorName: donorName,
-      purpose: purposeIndex !== -1 ? row[purposeIndex] || "" : "",
-      amount: amount,
-      net: amount,
-      type: "Donation",
+      description, // 👈 use modified description
+      reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
+      amount: originalAmount,
+      net: netAmount,
+      type: transactionType || "",
+      notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
     }
-
-
   })
 }
 
