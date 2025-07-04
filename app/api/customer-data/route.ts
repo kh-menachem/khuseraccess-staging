@@ -205,7 +205,12 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
   const headerRow = rows[0]
   console.log("Transaction sheet headers:", headerRow)
 
-  const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
+  const personIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "person" ||
+      header?.toLowerCase().trim() === "personid" ||
+      header?.toLowerCase().trim() === "person id"
+  )
 
   const amountIndex = headerRow.findIndex(
     (header: string) =>
