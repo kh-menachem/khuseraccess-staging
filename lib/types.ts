@@ -13,7 +13,7 @@ export interface Transaction {
   description: string
   reference: string
   amount: number
-  net: number // Add computed net value
+  net: number
   type: string
   notCleared?: string
   cardknox?: string
@@ -26,8 +26,8 @@ export interface Donation {
   donorName: string
   purpose: string
   amount: number
-  net: number // Add computed net value
-  type: string // Add type field
+  net: number
+  type: string
 }
 
 export interface MachineRental {

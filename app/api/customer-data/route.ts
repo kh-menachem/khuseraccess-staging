@@ -42,13 +42,20 @@ function getMonthName(yearMonth: string, language: string): string {
 
   const months = {
     en: [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ],
-    he: [
-      "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
-      "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
-    ]
+    he: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"],
   }
 
   const names = months[language === "he" ? "he" : "en"]
@@ -209,7 +216,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     (header: string) =>
       header?.toLowerCase().trim() === "person" ||
       header?.toLowerCase().trim() === "personid" ||
-      header?.toLowerCase().trim() === "person id"
+      header?.toLowerCase().trim() === "person id",
   )
 
   const amountIndex = headerRow.findIndex(
@@ -301,6 +308,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
         netAmount = originalAmount
       }
     }
+
     // Prepare description (notes) and optionally include cardknox value
     let description = notesIndex !== -1 ? row[notesIndex] || "" : ""
     const cardknoxValue = cardknoxIndex !== -1 ? row[cardknoxIndex]?.toString().trim() : ""
@@ -309,18 +317,18 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     if (cardknoxValue) {
       description = `${description ? description + " - " : ""}${cardknoxValue}`
     }
+
     return {
-      id: row[0] || `DON-${index}`,
+      id: row[referenceIndex] || `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      donorId: donorId,
-      donorName: donorName,
-      purpose: purposeIndex !== -1 ? row[purposeIndex] || "" : "",
-      amount: amount,
-      net: amount,
-      type: "Donation",
+      description: description,
+      reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
+      amount: originalAmount,
+      net: netAmount,
+      type: transactionType || "Unknown",
+      notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
+      cardknox: cardknoxValue,
     }
-
-
   })
 }
 
@@ -544,45 +552,65 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
 
   return machineRentals
 }
+
+interface TransactionDetail {
+  date: string
+  name: string
+  amount: number
+  net: number
+  description: string
+  source: string
+}
+
 function processLinksTransactionsGrouped(rows: string[][], userId: string, language: string): Transaction[] {
   if (rows.length === 0) return []
 
-  const hdr = rows[0].map(h => h.toLowerCase().trim())
+  const hdr = rows[0].map((h: string) => h.toLowerCase().trim())
 
-  const iPerson = hdr.indexOf('personid')   // L
-  const iDate   = hdr.indexOf('date')       // B
-  const iName   = hdr.indexOf('name')       // C
-  const iAmount = hdr.indexOf('amount')     // E
-  const iDesc   = hdr.indexOf('description')// G
-  const iResult = hdr.indexOf('result')     // H
-  const iType   = hdr.indexOf('type')       // J
-  const iMid    = hdr.indexOf('mid')        // K
+  const iPerson = hdr.indexOf("personid") // L
+  const iDate = hdr.indexOf("date") // B
+  const iName = hdr.indexOf("name") // C
+  const iAmount = hdr.indexOf("amount") // E
+  const iDesc = hdr.indexOf("description") // G
+  const iResult = hdr.indexOf("result") // H
+  const iType = hdr.indexOf("type") // J
+  const iMid = hdr.indexOf("mid") // K
 
-  if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some(i => i === -1)) {
+  if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some((i) => i === -1)) {
     console.error("Missing one or more required columns in LinksandPhone")
     return []
   }
 
-  const details = rows.slice(1)
-    .filter(r => r[iPerson]?.trim() === userId)
-    .filter(r => r[iResult]?.trim() === "Approved")
-    .filter(r => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
-    .map((r, index) => {
+  const details = rows
+    .slice(1)
+    .filter((r: string[]) => r[iPerson]?.trim() === userId)
+    .filter((r: string[]) => r[iResult]?.trim() === "Approved")
+    .filter((r: string[]) => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
+    .map((r: string[], index: number) => {
       const date = r[iDate]
       const yearMonth = date.slice(0, 7)
-      const amt = parseFloat(r[iAmount].replace(/[$,]/g, '')) || 0
+      const amt = Number.parseFloat(r[iAmount].replace(/[$,]/g, "")) || 0
       const type = r[iType]?.trim()
       let net = 0
-      switch(type) {
-        case "CC:Sale": net = amt * 0.965; break
-        case "Grant:Recommendation": net = amt * 0.965; break
-        case "CC:Refund": net = -amt; break
-        case "Check:Sale": net = amt * 0.9985; break
-        default: net = 0; break
+      switch (type) {
+        case "CC:Sale":
+          net = amt * 0.965
+          break
+        case "Grant:Recommendation":
+          net = amt * 0.965
+          break
+        case "CC:Refund":
+          net = -amt
+          break
+        case "Check:Sale":
+          net = amt * 0.9985
+          break
+        default:
+          net = 0
+          break
       }
 
-      const source = r[iMid] === "31393" ? "Links Donation"
-                   : r[iMid] === "40939" ? "Phone Donation" : ""
+      const source = r[iMid] === "31393" ? "Links Donation" : r[iMid] === "40939" ? "Phone Donation" : ""
 
       return {
         id: `LINK-${index}`,
@@ -597,7 +625,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     })
 
   // Group by month
-  const grouped = new Map<string, Transaction>()
+  const grouped = new Map<string, Transaction & { details?: TransactionDetail[] }>()
   for (const d of details) {
     const key = d.yearMonth
     if (!grouped.has(key)) {
@@ -630,9 +658,6 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
 
   return Array.from(grouped.values())
 }
-
-
-
 
 export async function POST(request: NextRequest) {
   try {
@@ -739,7 +764,7 @@ export async function POST(request: NextRequest) {
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "LinksandPhone!A:AQ", // 👈 add this
+        range: "LinksandPhone!A:AQ",
       }),
     ])
 
@@ -757,20 +782,19 @@ export async function POST(request: NextRequest) {
     const oldTransactionsData = responses[2].status === "fulfilled" ? responses[2].value.data.values || [] : []
     const donationsData = responses[3].status === "fulfilled" ? responses[3].value.data.values || [] : []
     const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
-    const linksAndPhoneData =linksAndPhoneResponse.status === "fulfilled" ?linksAndPhoneResponse.value.data.values || [] : []
+    const linksAndPhoneData =
+      linksAndPhoneResponse.status === "fulfilled" ? linksAndPhoneResponse.value.data.values || [] : []
 
     const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
 
-
     const currentTransactions = [
       ...processTransactions(currentTransactionsData, userId, percentagesMap),
-      ...linksAndPhoneGrouped // <-- now included!
+      ...linksAndPhoneGrouped,
     ]
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
-
 
     console.log(`Found ${currentTransactions.length} current transactions`)
     console.log(`Found ${transactions2024.length} transactions from 2024`)
@@ -785,7 +809,6 @@ export async function POST(request: NextRequest) {
       oldTransactions,
       donations,
       machineRentals,
-      linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap(t => t.details || [])
     }
 
     return NextResponse.json(customerData)
