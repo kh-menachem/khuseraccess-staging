@@ -309,16 +309,21 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     if (cardknoxValue) {
       description = `${description ? description + " - " : ""}${cardknoxValue}`
     }
+    const purpose = purposeIndex !== -1 ? row[purposeIndex]?.toString().trim() || "" : ""
+    const description = donorName ? `${donorName}${purpose ? ` - ${purpose}` : ""}` : purpose
+
     return {
-      id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
+      id: row[0] || `DON-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      description, // 👈 use modified description
-      reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
-      amount: originalAmount,
-      net: netAmount,
-      type: transactionType || "",
-      notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
+      donorId,
+      donorName,
+      purpose,
+      amount,
+      net: amount,
+      type: "Donation",
+      description,
     }
+
   })
 }
 
