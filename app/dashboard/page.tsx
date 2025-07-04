@@ -396,6 +396,18 @@ export default function Dashboard() {
         notCleared: "", // Donations don't have not cleared status
         cardknox: "", // Donations don't have cardknox
       })),
+       // ✅ Add this block for LinksandPhone detailed entries
+      ...customerData.linksAndPhoneTransactions.map((tx) => ({
+        id: tx.id,
+        date: tx.date,
+        description: tx.description,
+        reference: tx.name,
+        amount: tx.amount,
+        net: tx.net,
+        type: "Links/Phone",
+        source: tx.source || "LinksandPhone",
+        notCleared: "Cleared", // or localized version if needed
+      })),
     ]
 
     return combined
