@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
+import React from "react"
 
 // Function to format numbers with commas
 const formatNumber = (num: number): string => {
@@ -396,9 +397,9 @@ export default function Dashboard() {
         notCleared: "", // Donations don't have not cleared status
         cardknox: "", // Donations don't have cardknox
       })),
-       // ✅ Add this block for LinksandPhone detailed entries
-      ...customerData.linksAndPhoneTransactions.map((tx) => ({
-        id: tx.id,
+      // Add LinksandPhone transactions if they exist
+      ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
+        id: tx.id || `LINK-${Math.random()}`,
         date: tx.date,
         description: tx.description,
         reference: tx.name,
@@ -407,6 +408,7 @@ export default function Dashboard() {
         type: "Links/Phone",
         source: tx.source || "LinksandPhone",
         notCleared: "Cleared", // or localized version if needed
+        cardknox: "",
       })),
     ]
 
@@ -936,68 +938,82 @@ export default function Dashboard() {
                       </TableRow>
                     ) : (
                       Object.entries(
-                          filteredTransactions.reduce((groups, tx) => {
+                        filteredTransactions.reduce(
+                          (groups, tx) => {
                             const date = new Date(tx.date)
                             const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
                             if (!groups[yearMonth]) groups[yearMonth] = []
                             groups[yearMonth].push(tx)
                             return groups
-                          }, {} as Record<string, CombinedTransaction[]>)
-                        ).map(([yearMonth, txs]) => {
-                          const [year, month] = yearMonth.split("-")
-                          const monthLabel = new Date(Number(year), Number(month) - 1).toLocaleString(language === "he" ? "he-IL" : "en-US", {
+                          },
+                          {} as Record<string, CombinedTransaction[]>,
+                        ),
+                      ).map(([yearMonth, txs]) => {
+                        const [year, month] = yearMonth.split("-")
+                        const monthLabel = new Date(Number(year), Number(month) - 1).toLocaleString(
+                          language === "he" ? "he-IL" : "en-US",
+                          {
                             month: "long",
                             year: "numeric",
-                          })
+                          },
+                        )
 
-                          return (
-                            <React.Fragment key={yearMonth}>
-                              <TableRow>
-                                <TableCell colSpan={7} className="bg-gray-100 font-bold text-gray-700 text-lg">
-                                  {monthLabel}
+                        return (
+                          <React.Fragment key={yearMonth}>
+                            <TableRow>
+                              <TableCell colSpan={7} className="bg-gray-100 font-bold text-gray-700 text-lg">
+                                {monthLabel}
+                              </TableCell>
+                            </TableRow>
+                            {txs.map((tx) => (
+                              <TableRow key={`${tx.source}-${tx.id}`}>
+                                <TableCell>
+                                  {shouldHideDonationInfo(tx.donorName || "", "date") ? "***" : tx.date}
                                 </TableCell>
-                              </TableRow>
-                              {txs.map((tx) => (
-                                <TableRow key={`${tx.source}-${tx.id}`}>
-                                  <TableCell>{shouldHideDonationInfo(tx.donorName || "", "date") ? "***" : tx.date}</TableCell>
-                                  <TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant="outline"
+                                    className={`${
+                                      tx.net >= 0
+                                        ? "bg-blue-50 text-blue-800 border-blue-200"
+                                        : "bg-red-50 text-red-800 border-red-200"
+                                    }`}
+                                  >
+                                    {translateType(tx.type, t)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{tx.description}</TableCell>
+                                <TableCell className="font-medium text-black">
+                                  {shouldHideDonationInfo(tx.donorName || "", "amount")
+                                    ? "***"
+                                    : `$${formatNumber(tx.amount)}`}
+                                </TableCell>
+                                <TableCell className={`font-medium ${tx.net < 0 ? "text-red-600" : "text-green-600"}`}>
+                                  {shouldHideDonationInfo(tx.donorName || "", "amount")
+                                    ? "***"
+                                    : `$${formatNumber(tx.net)}`}
+                                </TableCell>
+                                <TableCell>
+                                  {tx.notCleared && (
                                     <Badge
-                                      variant="outline"
-                                      className={`${tx.net >= 0 ? "bg-blue-50 text-blue-800 border-blue-200" : "bg-red-50 text-red-800 border-red-200"}`}
+                                      variant={
+                                        tx.notCleared.toLowerCase().trim() === "true" ||
+                                        tx.notCleared.toLowerCase().trim() === "yes" ||
+                                        tx.notCleared.toLowerCase().trim() === "1"
+                                          ? "destructive"
+                                          : "secondary"
+                                      }
                                     >
-                                      {translateType(tx.type, t)}
+                                      {t.notClearedStatuses[tx.notCleared.toLowerCase().trim()] || tx.notCleared}
                                     </Badge>
-                                  </TableCell>
-                                  <TableCell>{tx.description}</TableCell>
-                                  <TableCell className="font-medium text-black">
-                                    {shouldHideDonationInfo(tx.donorName || "", "amount") ? "***" : `$${formatNumber(tx.amount)}`}
-                                  </TableCell>
-                                  <TableCell className={`font-medium ${tx.net < 0 ? "text-red-600" : "text-green-600"}`}>
-                                    {shouldHideDonationInfo(tx.donorName || "", "amount") ? "***" : `$${formatNumber(tx.net)}`}
-                                  </TableCell>
-                                  <TableCell>
-                                    {tx.notCleared && (
-                                      <Badge
-                                        variant={
-                                          tx.notCleared.toLowerCase().trim() === "true" ||
-                                          tx.notCleared.toLowerCase().trim() === "yes" ||
-                                          tx.notCleared.toLowerCase().trim() === "1"
-                                            ? "destructive"
-                                            : "secondary"
-                                        }
-                                      >
-                                        {t.notClearedStatuses[tx.notCleared.toLowerCase().trim()] || tx.notCleared}
-                                      </Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>{tx.cardknox}</TableCell>
-                                </TableRow>
-                              ))}
-                            </React.Fragment>
-                          )
-                        })
-
-                      ))
+                                  )}
+                                </TableCell>
+                                <TableCell>{tx.cardknox}</TableCell>
+                              </TableRow>
+                            ))}
+                          </React.Fragment>
+                        )
+                      })
                     )}
                   </TableBody>
                 </Table>

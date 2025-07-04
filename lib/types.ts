@@ -5,6 +5,7 @@ export interface CustomerData {
   oldTransactions: Transaction[]
   donations: Donation[]
   machineRentals: MachineRental[]
+  linksAndPhoneTransactions?: TransactionDetail[]
 }
 
 export interface Transaction {
@@ -17,6 +18,17 @@ export interface Transaction {
   type: string
   notCleared?: string
   cardknox?: string
+  source?: string
+  details?: TransactionDetail[]
+}
+
+export interface TransactionDetail {
+  date: string
+  name: string
+  amount: number
+  net: number
+  description: string
+  source: string
 }
 
 export interface Donation {
