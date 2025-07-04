@@ -593,16 +593,18 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
   const grouped = new Map<string, Transaction>()
   for (const d of details) {
     const key = d.yearMonth
+
     if (!grouped.has(key)) {
       grouped.set(key, {
         id: `LINKS-${key}`,
-        date: key + "-01",
+        date: `${key}-01`, // default to first of month
         description: getMonthName(key, language),
-        reference: "",
+        reference: `LINKS-${key}`,
         amount: 0,
         net: 0,
         type: language === "he" ? "תרומות קישורים / טלפון" : "Links/Phone Donations",
         notCleared: language === "he" ? "זמין" : "Cleared",
+        source: "LinksandPhone",
         details: [],
       })
     }
@@ -610,7 +612,8 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     const tx = grouped.get(key)!
     tx.amount += d.amount
     tx.net += d.net
-    if (!tx.date || d.date < tx.date) tx.date = d.date // earliest date
+    if (!tx.date || d.date < tx.date) tx.date = d.date // keep earliest real date
+
     tx.details!.push({
       date: d.date,
       name: d.name,
@@ -619,6 +622,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       description: d.description,
       source: d.source,
     })
+
   }
 
   return Array.from(grouped.values())
