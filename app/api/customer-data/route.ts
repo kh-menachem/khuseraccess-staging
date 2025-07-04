@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
 import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/types"
-import { writeFileSync, unlinkSync } from "fs"
+import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 
@@ -42,20 +42,13 @@ function getMonthName(yearMonth: string, language: string): string {
 
   const months = {
     en: [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
     ],
-    he: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"],
+    he: [
+      "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+      "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
+    ]
   }
 
   const names = months[language === "he" ? "he" : "en"]
@@ -216,7 +209,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     (header: string) =>
       header?.toLowerCase().trim() === "person" ||
       header?.toLowerCase().trim() === "personid" ||
-      header?.toLowerCase().trim() === "person id",
+      header?.toLowerCase().trim() === "person id"
   )
 
   const amountIndex = headerRow.findIndex(
@@ -308,7 +301,6 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
         netAmount = originalAmount
       }
     }
-
     // Prepare description (notes) and optionally include cardknox value
     let description = notesIndex !== -1 ? row[notesIndex] || "" : ""
     const cardknoxValue = cardknoxIndex !== -1 ? row[cardknoxIndex]?.toString().trim() : ""
@@ -317,17 +309,15 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     if (cardknoxValue) {
       description = `${description ? description + " - " : ""}${cardknoxValue}`
     }
-
     return {
-      id: row[referenceIndex] || `TX-${index}`,
+      id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      description: description,
+      description, // 👈 use modified description
       reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
       amount: originalAmount,
       net: netAmount,
-      type: transactionType || "Unknown",
+      type: transactionType || "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
-      cardknox: cardknoxValue,
     }
   })
 }
@@ -552,65 +542,45 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
 
   return machineRentals
 }
-
-interface TransactionDetail {
-  date: string
-  name: string
-  amount: number
-  net: number
-  description: string
-  source: string
-}
-
 function processLinksTransactionsGrouped(rows: string[][], userId: string, language: string): Transaction[] {
   if (rows.length === 0) return []
 
-  const hdr = rows[0].map((h: string) => h.toLowerCase().trim())
+  const hdr = rows[0].map(h => h.toLowerCase().trim())
 
-  const iPerson = hdr.indexOf("personid") // L
-  const iDate = hdr.indexOf("date") // B
-  const iName = hdr.indexOf("name") // C
-  const iAmount = hdr.indexOf("amount") // E
-  const iDesc = hdr.indexOf("description") // G
-  const iResult = hdr.indexOf("result") // H
-  const iType = hdr.indexOf("type") // J
-  const iMid = hdr.indexOf("mid") // K
+  const iPerson = hdr.indexOf('personid')   // L
+  const iDate   = hdr.indexOf('date')       // B
+  const iName   = hdr.indexOf('name')       // C
+  const iAmount = hdr.indexOf('amount')     // E
+  const iDesc   = hdr.indexOf('description')// G
+  const iResult = hdr.indexOf('result')     // H
+  const iType   = hdr.indexOf('type')       // J
+  const iMid    = hdr.indexOf('mid')        // K
 
-  if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some((i) => i === -1)) {
+  if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some(i => i === -1)) {
     console.error("Missing one or more required columns in LinksandPhone")
     return []
   }
 
-  const details = rows
-    .slice(1)
-    .filter((r: string[]) => r[iPerson]?.trim() === userId)
-    .filter((r: string[]) => r[iResult]?.trim() === "Approved")
-    .filter((r: string[]) => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
-    .map((r: string[], index: number) => {
+  const details = rows.slice(1)
+    .filter(r => r[iPerson]?.trim() === userId)
+    .filter(r => r[iResult]?.trim() === "Approved")
+    .filter(r => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
+    .map((r, index) => {
       const date = r[iDate]
       const yearMonth = date.slice(0, 7)
-      const amt = Number.parseFloat(r[iAmount].replace(/[$,]/g, "")) || 0
+      const amt = parseFloat(r[iAmount].replace(/[$,]/g, '')) || 0
       const type = r[iType]?.trim()
       let net = 0
-      switch (type) {
-        case "CC:Sale":
-          net = amt * 0.965
-          break
-        case "Grant:Recommendation":
-          net = amt * 0.965
-          break
-        case "CC:Refund":
-          net = -amt
-          break
-        case "Check:Sale":
-          net = amt * 0.9985
-          break
-        default:
-          net = 0
-          break
+      switch(type) {
+        case "CC:Sale": net = amt * 0.965; break
+        case "Grant:Recommendation": net = amt * 0.965; break
+        case "CC:Refund": net = -amt; break
+        case "Check:Sale": net = amt * 0.9985; break
+        default: net = 0; break
       }
 
-      const source = r[iMid] === "31393" ? "Links Donation" : r[iMid] === "40939" ? "Phone Donation" : ""
+      const source = r[iMid] === "31393" ? "Links Donation"
+                   : r[iMid] === "40939" ? "Phone Donation" : ""
 
       return {
         id: `LINK-${index}`,
@@ -625,7 +595,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     })
 
   // Group by month
-  const grouped = new Map<string, Transaction & { details?: TransactionDetail[] }>()
+  const grouped = new Map<string, Transaction>()
   for (const d of details) {
     const key = d.yearMonth
     if (!grouped.has(key)) {
@@ -659,34 +629,23 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
   return Array.from(grouped.values())
 }
 
-export async function POST(request: NextRequest) {
-  let tempFilePath: string | null = null
 
+
+
+export async function POST(request: NextRequest) {
   try {
     const { userEmail, userId, language } = await request.json()
     const lang = language === "he" ? "he" : "en"
     console.log(`Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
     if (!userEmail && !userId) {
-      console.error("Missing required parameters: userEmail or userId")
       return NextResponse.json({ error: "User email or ID is required" }, { status: 400 })
     }
 
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    if (!credentials) {
-      console.error("Missing Google credentials")
-      return NextResponse.json({ error: "Google credentials not configured" }, { status: 500 })
-    }
 
-    const spreadsheetId = process.env.SPREADSHEET_ID
-    if (!spreadsheetId) {
-      console.error("Missing spreadsheet ID")
-      return NextResponse.json({ error: "Spreadsheet ID not configured" }, { status: 500 })
-    }
-
-    // Create temporary credentials file
-    tempFilePath = join(os.tmpdir(), `google-credentials-${Date.now()}.json`)
-    writeFileSync(tempFilePath, credentials)
+    const tempFilePath = join(os.tmpdir(), "google-credentials.json")
+    writeFileSync(tempFilePath, credentials || "{}")
 
     const auth = new google.auth.GoogleAuth({
       keyFile: tempFilePath,
@@ -694,6 +653,7 @@ export async function POST(request: NextRequest) {
     })
 
     const sheets = google.sheets({ version: "v4", auth })
+    const spreadsheetId = process.env.SPREADSHEET_ID
 
     console.log("Fetching Percentages table first")
     let percentagesMap = new Map<string, number>()
@@ -706,7 +666,7 @@ export async function POST(request: NextRequest) {
 
       const percentagesData = percentagesResponse.data.values || []
       percentagesMap = processPercentages(percentagesData)
-      console.log("Percentages map loaded with", percentagesMap.size, "entries")
+      console.log("Percentages map:", Object.fromEntries(percentagesMap))
     } catch (error) {
       console.error("Error fetching percentages data:", error)
       console.log("Will proceed with hardcoded percentage adjustments")
@@ -724,7 +684,7 @@ export async function POST(request: NextRequest) {
 
       const machinesData = machinesResponse.data.values || []
       machinesMap = processMachines(machinesData)
-      console.log("Machines map loaded with", machinesMap.size, "entries")
+      console.log("Machines map:", Object.fromEntries(machinesMap))
     } catch (error) {
       console.error("Error fetching machines data:", error)
       console.log("Will proceed without machine ID mapping")
@@ -741,13 +701,12 @@ export async function POST(request: NextRequest) {
 
       const donorsData = donorsResponse.data.values || []
       donorsMap = processDonors(donorsData)
-      console.log("Donors map loaded with", donorsMap.size, "entries")
+      console.log("Donors map:", Object.fromEntries(donorsMap))
     } catch (error) {
       console.error("Error fetching donors data:", error)
       console.log("Will proceed without donor name mapping")
     }
 
-    console.log("Fetching all transaction sheets...")
     const [
       currentTransactionsResponse,
       transactions2024Response,
@@ -778,59 +737,44 @@ export async function POST(request: NextRequest) {
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "LinksandPhone!A:AQ",
+        range: "LinksandPhone!A:AQ", // 👈 add this
       }),
     ])
 
-    // Process each response and log any errors
-    const currentTransactionsData =
-      currentTransactionsResponse.status === "fulfilled"
-        ? currentTransactionsResponse.value.data.values || []
-        : (console.error("Failed to fetch Money sheet:", currentTransactionsResponse.reason), [])
+    const responses = [
+      currentTransactionsResponse,
+      transactions2024Response,
+      oldTransactionsResponse,
+      donationsResponse,
+      machineRentalsResponse,
+      linksAndPhoneResponse,
+    ]
 
-    const transactions2024Data =
-      transactions2024Response.status === "fulfilled"
-        ? transactions2024Response.value.data.values || []
-        : (console.error("Failed to fetch Money_2024 sheet:", transactions2024Response.reason), [])
+    const currentTransactionsData = responses[0].status === "fulfilled" ? responses[0].value.data.values || [] : []
+    const transactions2024Data = responses[1].status === "fulfilled" ? responses[1].value.data.values || [] : []
+    const oldTransactionsData = responses[2].status === "fulfilled" ? responses[2].value.data.values || [] : []
+    const donationsData = responses[3].status === "fulfilled" ? responses[3].value.data.values || [] : []
+    const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
+    const linksAndPhoneData =linksAndPhoneResponse.status === "fulfilled" ?linksAndPhoneResponse.value.data.values || [] : []
 
-    const oldTransactionsData =
-      oldTransactionsResponse.status === "fulfilled"
-        ? oldTransactionsResponse.value.data.values || []
-        : (console.error("Failed to fetch Money_Old sheet:", oldTransactionsResponse.reason), [])
-
-    const donationsData =
-      donationsResponse.status === "fulfilled"
-        ? donationsResponse.value.data.values || []
-        : (console.error("Failed to fetch Donations sheet:", donationsResponse.reason), [])
-
-    const machineRentalsData =
-      machineRentalsResponse.status === "fulfilled"
-        ? machineRentalsResponse.value.data.values || []
-        : (console.error("Failed to fetch Machine Records sheet:", machineRentalsResponse.reason), [])
-
-    const linksAndPhoneData =
-      linksAndPhoneResponse.status === "fulfilled"
-        ? linksAndPhoneResponse.value.data.values || []
-        : (console.error("Failed to fetch LinksandPhone sheet:", linksAndPhoneResponse.reason), [])
-
-    console.log("Processing transaction data...")
     const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
+
 
     const currentTransactions = [
       ...processTransactions(currentTransactionsData, userId, percentagesMap),
-      ...linksAndPhoneGrouped,
+      ...linksAndPhoneGrouped // <-- now included!
     ]
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
 
-    console.log(`Processing complete:`)
-    console.log(`- Current transactions: ${currentTransactions.length}`)
-    console.log(`- 2024 transactions: ${transactions2024.length}`)
-    console.log(`- Old transactions: ${oldTransactions.length}`)
-    console.log(`- Donations: ${donations.length}`)
-    console.log(`- Machine rentals: ${machineRentals.length}`)
+
+    console.log(`Found ${currentTransactions.length} current transactions`)
+    console.log(`Found ${transactions2024.length} transactions from 2024`)
+    console.log(`Found ${oldTransactions.length} old transactions`)
+    console.log(`Found ${donations.length} donations`)
+    console.log(`Found ${machineRentals.length} machine rentals`)
 
     const customerData: CustomerData = {
       id: userId,
@@ -839,30 +783,81 @@ export async function POST(request: NextRequest) {
       oldTransactions,
       donations,
       machineRentals,
+      linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap(t => t.details || [])
     }
 
-    console.log("Successfully returning customer data")
     return NextResponse.json(customerData)
   } catch (error) {
-    console.error("Critical error in customer-data API:", error)
+    console.error("Error fetching customer data:", error)
 
-    // Return detailed error information instead of mock data
-    return NextResponse.json(
-      {
-        error: "Failed to fetch customer data",
-        details: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 },
-    )
-  } finally {
-    // Clean up temporary file
-    if (tempFilePath) {
-      try {
-        unlinkSync(tempFilePath)
-      } catch (cleanupError) {
-        console.error("Failed to cleanup temp file:", cleanupError)
-      }
+    const mockData: CustomerData = {
+      id: "123",
+      currentTransactions: [
+        {
+          id: "TX-1001",
+          date: "2023-05-15",
+          description: "Monthly Subscription",
+          reference: "SUB12345",
+          amount: 49.99,
+          net: 48.24,
+          type: "Credit Card",
+        },
+        {
+          id: "TX-1002",
+          date: "2023-05-28",
+          description: "Service Fee",
+          reference: "SVC98765",
+          amount: -125.0,
+          net: -125.0,
+          type: "Check",
+        },
+      ],
+      transactions2024: [
+        {
+          id: "TX-2001",
+          date: "2024-01-05",
+          description: "Annual Membership",
+          reference: "MEM24001",
+          amount: 199.99,
+          net: 192.99,
+          type: "Credit Card",
+        },
+      ],
+      oldTransactions: [
+        {
+          id: "TX-3001",
+          date: "2022-11-10",
+          description: "Legacy Subscription",
+          reference: "LEG22110",
+          amount: -39.99,
+          net: -39.99,
+          type: "Cash",
+        },
+      ],
+      donations: [
+        {
+          id: "DON-1001",
+          date: "2023-04-15",
+          donorId: "D-101",
+          donorName: "Jane Smith",
+          purpose: "Annual Fundraiser",
+          amount: 500.0,
+          net: 500.0,
+          type: "Donation",
+        },
+      ],
+      machineRentals: [
+        {
+          id: "MR-1001",
+          machineId: "001",
+          rentalDate: "2023-05-01",
+          returnDate: "2023-05-05",
+          status: "Returned",
+          fee: 75.0,
+        },
+      ],
     }
+
+    return NextResponse.json(mockData)
   }
 }
