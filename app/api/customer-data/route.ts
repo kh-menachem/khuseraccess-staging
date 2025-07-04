@@ -596,7 +596,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     if (!grouped.has(key)) {
       grouped.set(key, {
         id: `LINKS-${key}`,
-        date: key + "-01",
+        date: new Date(`${key}-01T00:00:00Z`).toISOString(),
         description: getMonthName(key, language),
         reference: "",
         amount: 0,
@@ -610,7 +610,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     const tx = grouped.get(key)!
     tx.amount += d.amount
     tx.net += d.net
-    if (!tx.date || d.date < tx.date) tx.date = d.date // earliest date
+    tx.date = new Date(`${key}-01T00:00:00Z`).toISOString()
     tx.details!.push({
       date: d.date,
       name: d.name,
