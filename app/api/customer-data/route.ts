@@ -310,15 +310,17 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       description = `${description ? description + " - " : ""}${cardknoxValue}`
     }
     return {
-      id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
+      id: row[0] || `DON-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      description, // 👈 use modified description
-      reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
-      amount: originalAmount,
-      net: netAmount,
-      type: transactionType || "",
-      notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
+      donorId: donorId,
+      donorName: donorName,
+      purpose: purposeIndex !== -1 ? row[purposeIndex] || "" : "",
+      amount: amount,
+      net: amount,
+      type: "Donation",
     }
+
+
   })
 }
 
