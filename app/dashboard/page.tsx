@@ -407,7 +407,7 @@ export default function Dashboard() {
         net: tx.net,
         type: "Links/Phone",
         source: tx.source || "LinksandPhone",
-        notCleared: t.notClearedStatuses, // or localized version if needed
+        notCleared: {t.notClearedStatuses}, // or localized version if needed
         cardknox: "",
       })),
     ]
