@@ -205,12 +205,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
   const headerRow = rows[0]
   console.log("Transaction sheet headers:", headerRow)
 
-  const personIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "person" ||
-      header?.toLowerCase().trim() === "personid" ||
-      header?.toLowerCase().trim() === "person id"
-  )
+  const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
 
   const amountIndex = headerRow.findIndex(
     (header: string) =>
@@ -309,21 +304,16 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     if (cardknoxValue) {
       description = `${description ? description + " - " : ""}${cardknoxValue}`
     }
-    const purpose = purposeIndex !== -1 ? row[purposeIndex]?.toString().trim() || "" : ""
-    const description = donorName ? `${donorName}${purpose ? ` - ${purpose}` : ""}` : purpose
-
     return {
-      id: row[0] || `DON-${index}`,
+      id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      donorId,
-      donorName,
-      purpose,
-      amount,
-      net: amount,
-      type: "Donation",
-      description,
+      description, // 👈 use modified description
+      reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
+      amount: originalAmount,
+      net: netAmount,
+      type: transactionType || "",
+      notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
     }
-
   })
 }
 
@@ -606,7 +596,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     if (!grouped.has(key)) {
       grouped.set(key, {
         id: `LINKS-${key}`,
-        date: new Date(`${key}-01T00:00:00Z`).toISOString(),
+        date: key + "-01",
         description: getMonthName(key, language),
         reference: "",
         amount: 0,
@@ -620,7 +610,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     const tx = grouped.get(key)!
     tx.amount += d.amount
     tx.net += d.net
-    tx.date = new Date(`${key}-01T00:00:00Z`).toISOString()
+    if (!tx.date || d.date < tx.date) tx.date = d.date // earliest date
     tx.details!.push({
       date: d.date,
       name: d.name,
