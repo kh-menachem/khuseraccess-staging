@@ -761,7 +761,6 @@ export async function POST(request: NextRequest) {
 
     const currentTransactions = [
       ...processTransactions(currentTransactionsData, userId, percentagesMap),
-      ...linksAndPhoneGrouped // <-- now included!
     ]
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
