@@ -401,7 +401,7 @@ export default function Dashboard() {
       ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
         id: tx.id || `LINK-${Math.random()}`,
         date: tx.date,
-        description: `${tx.name || ""} - ${tx.description || ""} -${tx.source || "N/A"}`, // 👈 Combined format
+        description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
         reference: tx.name,
         amount: tx.amount,
         net: tx.net,
