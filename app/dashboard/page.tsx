@@ -407,7 +407,7 @@ export default function Dashboard() {
         net: tx.net,
         type: "Links/Phone",
         source: tx.source || "LinksandPhone",
-        notCleared: language === "he" ? "זמין" : "Cleared", // or localized version if needed
+        notCleared: "",
         cardknox: "",
       })),
     ]
