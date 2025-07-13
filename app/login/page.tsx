@@ -288,9 +288,12 @@ const handleSubmit = async (e: React.FormEvent) => {
                 {error && (
                   <Alert
                     variant={error === "ACCOUNT_NOT_SETUP" ? "default" : "destructive"}
-                    className={
-                      error === "ACCOUNT_NOT_SETUP" ? "border-orange-200 bg-orange-50" : "border-red-200 bg-red-50"
-                    }
+                    className={`${
+                      error === "ACCOUNT_NOT_SETUP"
+                        ? "border-orange-200 bg-orange-50"
+                        : "border-red-200 bg-red-50"
+                    } ${language === "he" ? "text-right" : ""}`}
+                    dir={language === "he" ? "rtl" : "ltr"}
                   >
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle className={error === "ACCOUNT_NOT_SETUP" ? "text-orange-800" : ""}>
