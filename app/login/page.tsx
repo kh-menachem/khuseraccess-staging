@@ -295,7 +295,13 @@ const handleSubmit = async (e: React.FormEvent) => {
                     } ${language === "he" ? "text-right" : ""}`}
                     dir={language === "he" ? "rtl" : "ltr"}
                   >
-                    <AlertCircle className="h-4 w-4" />
+                    <div className={`flex items-start gap-2 ${language === "he" ? "flex-row-reverse" : ""}`}>
+                      <AlertCircle className="h-5 w-5 text-red-600" />
+                      <div>
+                        <AlertTitle>...</AlertTitle>
+                        <AlertDescription>...</AlertDescription>
+                      </div>
+                    </div>
                     <AlertTitle className={error === "ACCOUNT_NOT_SETUP" ? "text-orange-800" : ""}>
                       {error === "ACCOUNT_NOT_SETUP" ? t.accountNotFound : language === "he" ? "שגיאה" : "Error"}
                     </AlertTitle>
