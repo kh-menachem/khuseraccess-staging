@@ -294,7 +294,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   >
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle className={error === "ACCOUNT_NOT_SETUP" ? "text-orange-800" : ""}>
-                      {error === "ACCOUNT_NOT_SETUP" ? t.accountNotFound : "שגיאה"}
+                      {error === "ACCOUNT_NOT_SETUP" ? t.accountNotFound : language === "he" ? "שגיאה" : "Error"}
                     </AlertTitle>
                     <AlertDescription
                       className={error === "ACCOUNT_NOT_SETUP" ? "text-orange-700 text-lg font-medium" : ""}
