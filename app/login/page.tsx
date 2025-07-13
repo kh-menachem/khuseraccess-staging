@@ -186,12 +186,25 @@ const handleSubmit = async (e: React.FormEvent) => {
       })
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    setError(`Login failed: ${errorMessage}`)
+    let errorMessage = "Invalid email or password."
+
+    if (error instanceof Error && error.message.includes("auth/invalid-credential")) {
+      // Optional: handle specific auth errors more gracefully
+      errorMessage = language === "he"
+        ? "האימייל או הסיסמה אינם נכונים."
+        : "Invalid email or password."
+    } else if (error instanceof Error) {
+      // Optionally log for debugging
+      console.error("Login error:", error.message)
+      errorMessage = error.message
+    }
+
+    setError(errorMessage)
+
     toast({
       variant: "destructive",
-      title: "Login failed",
-      description: "Invalid email or password.",
+      title: language === "he" ? "התחברות נכשלה" : "Login failed",
+      description: errorMessage,
     })
   } finally {
     setIsLoading(false)
