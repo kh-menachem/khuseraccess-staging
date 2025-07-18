@@ -18,7 +18,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import React from "react"
-import { SecureStorage } from "@/lib/secure-storage"
 
 // Function to format numbers with commas
 const formatNumber = (num: number): string => {
@@ -262,22 +261,24 @@ export default function Dashboard() {
       return
     }
 
-    // 🔒 SECURITY: Use secure storage instead of localStorage
-    const storedUser = SecureStorage.getItem<any>("user")
+    // Get user data from localStorage
+    const storedUser = localStorage.getItem("user")
     if (!storedUser) {
       router.push("/login")
       return
     }
 
     try {
+      const parsedUser = JSON.parse(storedUser)
+
       // Check if user needs to select an account first
-      if (storedUser.needsAccountSelection) {
+      if (parsedUser.needsAccountSelection) {
         router.push("/select-account")
         return
       }
 
       // Check if user has a selected account
-      if (!storedUser.id) {
+      if (!parsedUser.id) {
         router.push("/select-account")
         return
       }
@@ -286,22 +287,20 @@ export default function Dashboard() {
       const loadData = async () => {
         try {
           setIsLoading(true)
-          setUser(storedUser)
+          setUser(parsedUser)
 
           // Set language from stored user preference
-          if (storedUser.language) {
-            setLanguage(storedUser.language)
+          if (parsedUser.language) {
+            setLanguage(parsedUser.language)
           }
 
           // Pass both email and userId to fetchCustomerData
-          const data = await fetchCustomerData(storedUser.email, storedUser.id)
+          const data = await fetchCustomerData(parsedUser.email, parsedUser.id)
           setCustomerData(data)
         } catch (error) {
           console.error("Error loading customer data:", error)
-          // If authentication fails, redirect to login
-          if (error instanceof Error && error.message.includes("Authentication")) {
-            router.push("/login")
-          }
+          // If there's an error, redirect to login
+          router.push("/login")
         } finally {
           setIsLoading(false)
         }
@@ -316,7 +315,8 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await logout() // This will clear secure storage automatically
+      await logout()
+      localStorage.removeItem("user")
       router.push("/")
     } catch (error) {
       console.error("Error logging out:", error)
@@ -337,9 +337,7 @@ export default function Dashboard() {
       }
 
       setUser(updatedUser)
-
-      // 🔒 SECURITY: Update secure storage
-      SecureStorage.setItem("user", updatedUser)
+      localStorage.setItem("user", JSON.stringify(updatedUser))
 
       // Fetch data for the new account
       const data = await fetchCustomerData(user!.email, account.userId)
@@ -354,11 +352,11 @@ export default function Dashboard() {
   const handleLanguageChange = (newLanguage: "en" | "he") => {
     setLanguage(newLanguage)
 
-    // Update secure storage with new language preference
+    // Update localStorage with new language preference
     if (user) {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
-      SecureStorage.setItem("user", updatedUser)
+      localStorage.setItem("user", JSON.stringify(updatedUser))
     }
   }
 
