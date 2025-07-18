@@ -9,7 +9,7 @@ import { Buffer } from "buffer";
 
 // Required to parse base64 and embed logo
 async function generateQRCodeWithLogo(url: string): Promise<string> {
-  const logoPath = path.join(process.cwd(), "public/logo.png"); // Make sure logo.png is placed in /public
+  const logoPath = path.join(process.cwd(), "public/logo-new.png"); // Make sure logo.png is placed in /public
   const logoBuffer = readFileSync(logoPath);
   const qrBuffer = await QRCode.toBuffer(url, { errorCorrectionLevel: "H" });
 
