@@ -47,6 +47,12 @@ export async function POST(req: NextRequest) {
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(donationURL)}`
 
+    const timestamp = new Date().toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      dateStyle: "medium",
+      timeStyle: "short",
+    })
+
     const html = `
       <div style="font-family: Arial, sans-serif; color: #000; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -154,7 +160,7 @@ export async function POST(req: NextRequest) {
         <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
           <p style="color: #666; font-size: 12px; margin: 0;">
             This email was sent to ${email} for fund ${accountNumber}<br>
-            Generated on ${new Date().toLocaleString()}
+              Generated on ${timestamp} (Eastern Time)
           </p>
         </div>
       </div>
