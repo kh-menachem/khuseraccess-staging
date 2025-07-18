@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
 
         <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
           <p style="color: #666; font-size: 12px; margin: 0;">
-            This email was sent to ${email} for account ${accountNumber}<br>
+            This email was sent to ${email} for fund ${accountNumber}<br>
             Generated on ${new Date().toLocaleString()}
           </p>
         </div>
