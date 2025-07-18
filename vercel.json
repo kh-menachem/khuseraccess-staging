@@ -8,5 +8,6 @@
   },
   "env": {
     "PNPM_FLAGS": "--no-frozen-lockfile"
-  }
+  },
+  "installCommand": "pnpm install --no-frozen-lockfile"
 }
