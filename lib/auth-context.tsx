@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import {
   type User,
@@ -12,6 +11,7 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth"
 import { auth } from "./firebase"
+import { SecureStorage } from "./secure-storage"
 
 interface AuthContextType {
   user: User | null
@@ -57,8 +57,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const logout = async () => {
-    // Clear localStorage when logging out
-    localStorage.removeItem("user")
+    // 🔒 SECURITY: Clear all secure storage when logging out
+    SecureStorage.clear()
     await signOut(auth)
   }
 

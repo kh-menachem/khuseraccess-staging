@@ -1,19 +1,15 @@
 import type { CustomerData } from "./types"
+import { ApiClient } from "./api-client"
 
 export async function fetchCustomerData(userEmail: string, userId: string): Promise<CustomerData> {
   try {
     console.log("Fetching customer data for:", { userEmail, userId })
 
-    const response = await fetch("/api/customer-data", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userEmail,
-        userId,
-        language: "en", // Default language, can be made dynamic
-      }),
+    // 🔒 SECURITY: Use secure API client with authentication
+    const response = await ApiClient.post("/api/customer-data", {
+      userEmail,
+      userId,
+      language: "en", // Default language, can be made dynamic
     })
 
     console.log("API response status:", response.status)
