@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import nodemailer from "nodemailer"
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,12 +9,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
+    // Validate environment variables
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.error("Missing SMTP configuration")
+      return NextResponse.json({ success: false, error: "Email service not configured" }, { status: 500 })
+    }
+
     const subject = `${name} / ${accountNumber}`
     const donationURL = `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
       `${name} / ${accountNumber}`,
     )}&xCustom04=${encodeURIComponent(email)}`
 
-    // Simple QR code URL using a free service
+    // Generate QR code URL using a free service
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(donationURL)}`
 
     const html = `
@@ -102,45 +109,63 @@ export async function POST(req: NextRequest) {
       </div>
     `
 
-    // Use a simple email service or return the HTML for now
-    // For production, you would integrate with your email service
+    // Create Gmail SMTP transporter
+    const transporter = nodemailer.createTransporter({
+      service: "gmail",
+      auth: {
+        user: process.env.SMTP_USER, // Your Gmail address
+        pass: process.env.SMTP_PASS, // Your Gmail App Password
+      },
+    })
 
-    // For now, we'll simulate success and log the email content
-    console.log(`Email would be sent to: ${email}`)
-    console.log(`Subject: Donation Instructions - ${subject}`)
-    console.log(`HTML Content: ${html}`)
+    // Alternative configuration if service: 'gmail' doesn't work
+    // const transporter = nodemailer.createTransporter({
+    //   host: 'smtp.gmail.com',
+    //   port: 587,
+    //   secure: false,
+    //   auth: {
+    //     user: process.env.SMTP_USER,
+    //     pass: process.env.SMTP_PASS,
+    //   },
+    // })
 
-    // Try to use fetch to send via a simple email service
-    try {
-      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          service_id: "default_service",
-          template_id: "template_donation",
-          user_id: process.env.EMAILJS_USER_ID || "demo",
-          template_params: {
-            to_email: email,
-            subject: `Donation Instructions - ${subject}`,
-            html_content: html,
-          },
-        }),
-      })
+    // Send email
+    const info = await transporter.sendMail({
+      from: `"Keren Hatzedakah" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: `Donation Instructions - ${subject}`,
+      html,
+    })
 
-      if (response.ok) {
-        console.log(`Donation instructions email sent successfully to ${email}`)
-        return NextResponse.json({ success: true })
-      } else {
-        throw new Error("Email service failed")
-      }
-    } catch (emailError) {
-      console.log("Email service not available, returning success for demo")
-      return NextResponse.json({ success: true, message: "Email functionality is in demo mode" })
-    }
+    console.log(`Donation instructions email sent successfully to ${email}`)
+    console.log(`Message ID: ${info.messageId}`)
+
+    return NextResponse.json({
+      success: true,
+      messageId: info.messageId,
+    })
   } catch (error) {
     console.error("Email sending failed:", error)
-    return NextResponse.json({ success: false, error: "Failed to send email" }, { status: 500 })
+
+    // Provide more specific error messages
+    let errorMessage = "Failed to send email"
+
+    if (error instanceof Error) {
+      if (error.message.includes("Invalid login")) {
+        errorMessage = "Gmail authentication failed. Please check your email and app password."
+      } else if (error.message.includes("self signed certificate")) {
+        errorMessage = "SSL certificate error. Please check your SMTP configuration."
+      } else {
+        errorMessage = `Email error: ${error.message}`
+      }
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: errorMessage,
+      },
+      { status: 500 },
+    )
   }
 }
