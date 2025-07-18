@@ -65,8 +65,9 @@ export default function SelectAccountPage() {
     try {
       const parsedUser = JSON.parse(storedUser) as StoredUser
 
+      // If user doesn't need account selection or has only one account, redirect
       if (!parsedUser.needsAccountSelection || !parsedUser.accounts || parsedUser.accounts.length <= 1) {
-        router.push("/login")
+        router.push("/dashboard")
         return
       }
 
@@ -93,7 +94,6 @@ export default function SelectAccountPage() {
         lastName: account.lastName,
         accountNumber: account.accountNumber,
         email: user!.email,
-        accounts: user!.accounts, // Keep all accounts for switching later
         language: language,
       }
 

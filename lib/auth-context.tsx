@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth"
 import { auth } from "./firebase"
@@ -33,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
+    // Clear localStorage when logging out
+    localStorage.removeItem("user")
     await signOut(auth)
   }
 

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
@@ -78,27 +77,43 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, language }),
+        body: JSON.stringify({ email }),
       })
 
       const result = await response.json()
 
-      if (result.success) {
-        // Store user data in localStorage
-        const userData = {
-          ...result.user,
-          language: language,
-        }
-        localStorage.setItem("user", JSON.stringify(userData))
+      if (result.success && result.user && result.user.accounts && result.user.accounts.length > 0) {
+        const accounts = result.user.accounts
 
-        // Check if user needs to select an account
-        if (result.user.needsAccountSelection) {
-          router.push("/select-account")
-        } else {
+        if (accounts.length === 1) {
+          // Single account - go directly to dashboard
+          const account = accounts[0]
+          const userData = {
+            id: account.userId,
+            name: account.name,
+            firstName: account.firstName,
+            lastName: account.lastName,
+            accountNumber: account.accountNumber,
+            email: email,
+            language: language,
+          }
+
+          localStorage.setItem("user", JSON.stringify(userData))
           router.push("/dashboard")
+        } else {
+          // Multiple accounts - go to account selection
+          const userData = {
+            email: email,
+            accounts: accounts,
+            language: language,
+            needsAccountSelection: true,
+          }
+
+          localStorage.setItem("user", JSON.stringify(userData))
+          router.push("/select-account")
         }
       } else {
-        setError(result.error || "Login failed")
+        setError(result.error || "User not found in system")
       }
     } catch (error: any) {
       console.error("Login error:", error)
