@@ -5,14 +5,36 @@ export async function POST(req: NextRequest) {
   try {
     const { name, accountNumber, email } = await req.json()
 
+    console.log("Email request received:", { name, accountNumber, email })
+
     if (!name || !accountNumber || !email) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
     // Validate environment variables
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    const requiredEnvVars = {
+      SMTP_HOST: process.env.SMTP_HOST,
+      SMTP_PORT: process.env.SMTP_PORT,
+      SMTP_USER: process.env.SMTP_USER,
+      SMTP_PASS: process.env.SMTP_PASS,
+    }
+
+    console.log("Environment variables check:", {
+      SMTP_HOST: !!requiredEnvVars.SMTP_HOST,
+      SMTP_PORT: !!requiredEnvVars.SMTP_PORT,
+      SMTP_USER: !!requiredEnvVars.SMTP_USER,
+      SMTP_PASS: !!requiredEnvVars.SMTP_PASS,
+    })
+
+    if (!requiredEnvVars.SMTP_HOST || !requiredEnvVars.SMTP_USER || !requiredEnvVars.SMTP_PASS) {
       console.error("Missing SMTP configuration")
-      return NextResponse.json({ success: false, error: "Email service not configured" }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Email service not configured properly. Please contact administrator.",
+        },
+        { status: 500 },
+      )
     }
 
     const subject = `${name} / ${accountNumber}`
@@ -109,52 +131,95 @@ export async function POST(req: NextRequest) {
       </div>
     `
 
-    // Create Gmail SMTP transporter
-    const transporter = nodemailer.createTransporter({
-      service: "gmail",
-      auth: {
-        user: process.env.SMTP_USER, // Your Gmail address
-        pass: process.env.SMTP_PASS, // Your Gmail App Password
-      },
-    })
+    console.log("Creating SMTP transporter...")
 
-    // Alternative configuration if service: 'gmail' doesn't work
-    // const transporter = nodemailer.createTransporter({
-    //   host: 'smtp.gmail.com',
-    //   port: 587,
-    //   secure: false,
-    //   auth: {
-    //     user: process.env.SMTP_USER,
-    //     pass: process.env.SMTP_PASS,
-    //   },
-    // })
+    // Create SMTP transporter with multiple fallback configurations
+    let transporter
+
+    try {
+      // Primary configuration - Gmail with explicit settings
+      transporter = nodemailer.createTransporter({
+        host: requiredEnvVars.SMTP_HOST || "smtp.gmail.com",
+        port: Number.parseInt(requiredEnvVars.SMTP_PORT || "587"),
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: requiredEnvVars.SMTP_USER,
+          pass: requiredEnvVars.SMTP_PASS,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      })
+
+      console.log("SMTP transporter created successfully")
+
+      // Verify connection
+      console.log("Verifying SMTP connection...")
+      await transporter.verify()
+      console.log("SMTP connection verified successfully")
+    } catch (verifyError) {
+      console.error("SMTP verification failed:", verifyError)
+
+      // Fallback: Try Gmail service shorthand
+      try {
+        console.log("Trying Gmail service fallback...")
+        transporter = nodemailer.createTransporter({
+          service: "gmail",
+          auth: {
+            user: requiredEnvVars.SMTP_USER,
+            pass: requiredEnvVars.SMTP_PASS,
+          },
+        })
+
+        await transporter.verify()
+        console.log("Gmail service fallback successful")
+      } catch (fallbackError) {
+        console.error("Gmail service fallback also failed:", fallbackError)
+        throw new Error(`SMTP configuration failed: ${fallbackError.message}`)
+      }
+    }
+
+    console.log("Sending email...")
 
     // Send email
     const info = await transporter.sendMail({
-      from: `"Keren Hatzedakah" <${process.env.SMTP_USER}>`,
+      from: `"Keren Hatzedakah" <${requiredEnvVars.SMTP_USER}>`,
       to: email,
       subject: `Donation Instructions - ${subject}`,
       html,
     })
 
-    console.log(`Donation instructions email sent successfully to ${email}`)
+    console.log(`Email sent successfully to ${email}`)
     console.log(`Message ID: ${info.messageId}`)
 
     return NextResponse.json({
       success: true,
       messageId: info.messageId,
+      message: "Donation instructions sent successfully!",
     })
   } catch (error) {
     console.error("Email sending failed:", error)
 
     // Provide more specific error messages
     let errorMessage = "Failed to send email"
+    let debugInfo = ""
 
     if (error instanceof Error) {
-      if (error.message.includes("Invalid login")) {
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      })
+
+      if (error.message.includes("Invalid login") || error.message.includes("Username and Password not accepted")) {
         errorMessage = "Gmail authentication failed. Please check your email and app password."
+        debugInfo = "Make sure you're using a Gmail App Password, not your regular password."
       } else if (error.message.includes("self signed certificate")) {
         errorMessage = "SSL certificate error. Please check your SMTP configuration."
+      } else if (error.message.includes("ECONNREFUSED") || error.message.includes("ETIMEDOUT")) {
+        errorMessage = "Cannot connect to email server. Please check your network connection."
+      } else if (error.message.includes("ENOTFOUND")) {
+        errorMessage = "Email server not found. Please check SMTP host configuration."
       } else {
         errorMessage = `Email error: ${error.message}`
       }
@@ -164,6 +229,8 @@ export async function POST(req: NextRequest) {
       {
         success: false,
         error: errorMessage,
+        debugInfo: debugInfo,
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
