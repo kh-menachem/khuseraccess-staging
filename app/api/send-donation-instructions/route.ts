@@ -94,15 +94,22 @@ export async function POST(req: NextRequest) {
 
             <li style="margin-bottom: 15px;">
               <strong>Credit Card Donations</strong> - אשראי<br>
+
+              <!-- Button with full link -->
               <a href="${donationURL}" 
                 style="background:#e60000;color:white;padding:12px 24px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:10px;font-weight:bold;">
                 💳 Donate Here →
               </a>
+
+              <!-- Display a short version below -->
               <p style="margin-top: 8px; font-size: 13px; color: #555;">
-                Or copy this link: <br>
-                <a href="${donationURL}" style="color: #007bff; word-break: break-all;">${donationURL}</a>
+                Or copy this link:<br>
+                <a href="${donationURL}" style="color: #007bff; word-break: break-all;">
+                  khdonate.org/${accountNumber}
+                </a>
               </p>
             </li>
+
 
             <li style="margin-bottom: 15px;">
               <strong>Donation Hotline</strong> - Call 
