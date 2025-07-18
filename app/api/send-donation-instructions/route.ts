@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
     console.log("🔧 Creating SMTP transporter...")
 
     // Create Gmail transporter
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: "gmail", // Use Gmail service
       auth: {
         user: smtpConfig.user,
