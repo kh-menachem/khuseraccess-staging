@@ -64,10 +64,23 @@ export async function POST(req: NextRequest) {
           <ol style="line-height: 1.8; padding-left: 20px;">
             <li style="margin-bottom: 15px;">
               <strong>Chase Quickpay / Zelle</strong> - 
-              <a href="mailto:kerenhatzedaka@gmail.com" style="color: #20B2AA;">kerenhatzedaka@gmail.com</a> 
               זעל קוויק פאי<br>
-              <em style="color: #d63384;">You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong></em>
+
+              <!-- Donation reference note -->
+              <em style="color: #d63384;">
+                You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong>
+              </em><br>
+
+              <!-- Emails listed separately -->
+              <span style="display: block; margin-top: 8px; font-size: 14px;">
+                Send to one of the following email addresses:
+                <br />
+                <a href="mailto:kerenhatzedaka@gmail.com" style="color: #007bff;">kerenhatzedaka@gmail.com</a><br />
+                <a href="mailto:kerenhatzedakah@gmail.com" style="color: #007bff;">kerenhatzedakah@gmail.com</a><br />
+                <a href="mailto:ozerdalimlakewood@gmail.com" style="color: #007bff;">ozerdalimlakewood@gmail.com</a>
+              </span>
             </li>
+
 
             <li style="margin-bottom: 15px;">
               <strong>Cheques</strong> - על ידי צ'ק<br>
