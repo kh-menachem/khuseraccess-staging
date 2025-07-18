@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
         <div style="text-align: center; margin-bottom: 30px;">
           <img src="https://6301926.com/images/logo-new.png" alt="Keren Hatzedakah Logo" width="200" style="margin-bottom: 20px;" />
           <h2 style="color: #20B2AA; margin: 0;">Keren Hatzedakah</h2>
-          <p style="color: #666; margin: 10px 0;">Donation Instructions for ${name}</p>
-          <p style="color: #666; font-size: 14px;">Fund: ${accountNumber}</p>
+          <p style="color: #666; margin: 10px 0;">Donation Instructions for</p>
+          <p style="color: #666; font-size: 14px;">Fund: ${accountNumber} -  ${name}</p>
         </div>
 
         <h3 style="color: #20B2AA; border-bottom: 2px solid #20B2AA; padding-bottom: 10px;">
