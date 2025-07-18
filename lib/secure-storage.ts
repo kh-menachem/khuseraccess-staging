@@ -1,58 +1,79 @@
-// Secure client-side storage utilities
+// Simple secure storage implementation for browser
 export class SecureStorage {
-  private static readonly ENCRYPTION_KEY = "kh-portal-key"
+  private static readonly PREFIX = "kh_secure_"
+  private static readonly KEY = "kh_app_key_2024" // Simple key for basic encryption
 
-  // Simple encryption for client-side storage (not cryptographically secure, but better than plain text)
-  private static encrypt(data: string): string {
+  // Simple XOR encryption (for basic obfuscation)
+  private static encrypt(text: string): string {
+    const key = this.KEY
+    let result = ""
+    for (let i = 0; i < text.length; i++) {
+      result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length))
+    }
+    return btoa(result) // Base64 encode
+  }
+
+  private static decrypt(encryptedText: string): string {
     try {
-      return btoa(encodeURIComponent(data))
-    } catch {
-      return data
+      const text = atob(encryptedText) // Base64 decode
+      const key = this.KEY
+      let result = ""
+      for (let i = 0; i < text.length; i++) {
+        result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length))
+      }
+      return result
+    } catch (error) {
+      console.error("Decryption failed:", error)
+      return ""
     }
   }
 
-  private static decrypt(data: string): string {
-    try {
-      return decodeURIComponent(atob(data))
-    } catch {
-      return data
-    }
-  }
-
-  static setItem(key: string, value: any): void {
+  static setItem<T>(key: string, value: T): void {
     try {
       const serialized = JSON.stringify(value)
       const encrypted = this.encrypt(serialized)
-      localStorage.setItem(`${this.ENCRYPTION_KEY}_${key}`, encrypted)
+      localStorage.setItem(this.PREFIX + key, encrypted)
     } catch (error) {
-      console.error("Failed to store data securely:", error)
+      console.error("SecureStorage setItem failed:", error)
+      // Fallback to regular localStorage
+      localStorage.setItem(this.PREFIX + key, JSON.stringify(value))
     }
   }
 
   static getItem<T>(key: string): T | null {
     try {
-      const encrypted = localStorage.getItem(`${this.ENCRYPTION_KEY}_${key}`)
+      const encrypted = localStorage.getItem(this.PREFIX + key)
       if (!encrypted) return null
 
+      // Try to decrypt first
       const decrypted = this.decrypt(encrypted)
-      return JSON.parse(decrypted) as T
+      if (decrypted) {
+        return JSON.parse(decrypted) as T
+      }
+
+      // Fallback: try to parse as regular JSON (for backward compatibility)
+      return JSON.parse(encrypted) as T
     } catch (error) {
-      console.error("Failed to retrieve data securely:", error)
+      console.error("SecureStorage getItem failed:", error)
       return null
     }
   }
 
   static removeItem(key: string): void {
-    localStorage.removeItem(`${this.ENCRYPTION_KEY}_${key}`)
+    localStorage.removeItem(this.PREFIX + key)
   }
 
   static clear(): void {
-    // Remove all app-specific items
+    // Remove all items with our prefix
     const keys = Object.keys(localStorage)
     keys.forEach((key) => {
-      if (key.startsWith(this.ENCRYPTION_KEY)) {
+      if (key.startsWith(this.PREFIX)) {
         localStorage.removeItem(key)
       }
     })
+  }
+
+  static hasItem(key: string): boolean {
+    return localStorage.getItem(this.PREFIX + key) !== null
   }
 }

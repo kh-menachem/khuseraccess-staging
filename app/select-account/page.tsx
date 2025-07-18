@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/components/ui/use-toast"
 import { User, ArrowRight, Languages } from "lucide-react"
 import Image from "next/image"
+import { SecureStorage } from "@/lib/secure-storage"
 
 interface Account {
   userId: string
@@ -55,26 +56,24 @@ export default function SelectAccountPage() {
   const isRTL = language === "he"
 
   useEffect(() => {
-    // Check if we have user data with multiple accounts
-    const storedUser = localStorage.getItem("user")
+    // Check if we have user data with multiple accounts using SecureStorage
+    const storedUser = SecureStorage.getItem<StoredUser>("user")
     if (!storedUser) {
       router.push("/login")
       return
     }
 
     try {
-      const parsedUser = JSON.parse(storedUser) as StoredUser
-
-      if (!parsedUser.needsAccountSelection || !parsedUser.accounts || parsedUser.accounts.length <= 1) {
+      if (!storedUser.needsAccountSelection || !storedUser.accounts || storedUser.accounts.length <= 1) {
         router.push("/login")
         return
       }
 
-      setUser(parsedUser)
+      setUser(storedUser)
 
       // Set language from stored user preference
-      if (parsedUser.language) {
-        setLanguage(parsedUser.language)
+      if (storedUser.language) {
+        setLanguage(storedUser.language)
       }
     } catch (error) {
       console.error("Error parsing stored user:", error)
@@ -85,7 +84,7 @@ export default function SelectAccountPage() {
   const handleAccountSelect = async (account: Account) => {
     setIsLoading(true)
     try {
-      // Store selected account info
+      // Store selected account info using SecureStorage
       const selectedUser = {
         id: account.userId,
         name: account.name,
@@ -95,16 +94,20 @@ export default function SelectAccountPage() {
         email: user!.email,
         accounts: user!.accounts, // Keep all accounts for switching later
         language: language,
+        needsAccountSelection: false, // Important: set this to false
       }
 
-      localStorage.setItem("user", JSON.stringify(selectedUser))
+      SecureStorage.setItem("user", selectedUser)
 
       toast({
         title: "Account selected",
         description: "Redirecting to your dashboard...",
       })
 
-      router.push("/dashboard")
+      // Small delay to show the toast
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 500)
     } catch (error) {
       console.error("Error selecting account:", error)
       toast({
@@ -120,16 +123,16 @@ export default function SelectAccountPage() {
   const handleLanguageChange = (newLanguage: "en" | "he") => {
     setLanguage(newLanguage)
 
-    // Update localStorage with new language preference
+    // Update SecureStorage with new language preference
     if (user) {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
-      localStorage.setItem("user", JSON.stringify(updatedUser))
+      SecureStorage.setItem("user", updatedUser)
     }
   }
 
   const handleBackToLogin = () => {
-    localStorage.removeItem("user")
+    SecureStorage.clear()
     router.push("/login")
   }
 
@@ -213,7 +216,7 @@ export default function SelectAccountPage() {
                         disabled={isLoading}
                       >
                         {t.continue}
-                        <ArrowRight className="w-4 h-4 ml-2" />
+                        <ArrowRight className="w-4 w-4 ml-2" />
                       </Button>
                     </div>
                   </CardContent>

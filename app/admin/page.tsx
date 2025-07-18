@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
+import { ApiClient } from "@/lib/api-client"
 
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
@@ -44,7 +45,7 @@ export default function AdminPage() {
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false)
 
   // Account selection states
-  const [accounts, setAccounts] = useState<Array<{ accountNumber: string; firstName: string; lastName: string }>>([])
+  const [accounts, setAccounts] = useState<Array<{ value: string; label: string }>>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState("")
 
@@ -78,16 +79,19 @@ export default function AdminPage() {
   const loadAccounts = async () => {
     setIsLoadingAccounts(true)
     try {
-      const response = await fetch("/api/admin/get-accounts", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ requestorEmail: firebaseUser?.email }),
+      const result = await ApiClient.post<{
+        success: boolean
+        accounts: Array<{ accountNumber: string; firstName: string; lastName: string }>
+      }>("/api/admin/get-accounts", {
+        requestorEmail: firebaseUser?.email,
       })
-      const result = await response.json()
+
       if (result.success) {
-        setAccounts(result.accounts || [])
+        const formattedAccounts = result.accounts.map((account) => ({
+          value: `${account.accountNumber} - ${account.firstName} ${account.lastName}`,
+          label: `${account.accountNumber} - ${account.firstName} ${account.lastName}`,
+        }))
+        setAccounts(formattedAccounts)
       }
     } catch (error) {
       console.error("Error loading accounts:", error)
@@ -99,14 +103,13 @@ export default function AdminPage() {
   const loadAdmins = async () => {
     setIsLoadingAdmins(true)
     try {
-      const response = await fetch("/api/admin/list-admins", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ requestorEmail: firebaseUser?.email }),
+      const result = await ApiClient.post<{
+        success: boolean
+        admins: Array<{ id: number; email: string; name: string }>
+      }>("/api/admin/list-admins", {
+        requestorEmail: firebaseUser?.email,
       })
-      const result = await response.json()
+
       if (result.success) {
         setAdmins(result.admins || [])
       }
@@ -123,15 +126,19 @@ export default function AdminPage() {
         setIsAuthorized(false)
         return
       }
+
       try {
-        const response = await fetch("/api/admin/verify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        console.log("Checking admin access for:", firebaseUser.email)
+
+        const result = await ApiClient.post<{ success: boolean; isAdmin: boolean; adminUser?: any }>(
+          "/api/admin/verify",
+          {
+            email: firebaseUser.email,
           },
-          body: JSON.stringify({ email: firebaseUser.email }),
-        })
-        const result = await response.json()
+        )
+
+        console.log("Admin verification result:", result)
+
         if (result.success && result.isAdmin) {
           setIsAuthorized(true)
           setAdminUser(result.adminUser)
@@ -145,7 +152,11 @@ export default function AdminPage() {
         setIsAuthorized(false)
       }
     }
-    checkAdminAccess()
+
+    // Add a small delay to ensure Firebase user is fully loaded
+    if (firebaseUser) {
+      setTimeout(checkAdminAccess, 1000)
+    }
   }, [firebaseUser])
 
   useEffect(() => {
@@ -182,18 +193,10 @@ export default function AdminPage() {
       // Extract just the account number from the input string
       const accountOnly = selectedAccount.split(" - ")[0].trim()
 
-      const response = await fetch("/api/admin/add-user-access", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountNumber: accountOnly, // clean account number
-          userEmail,
-        }),
+      const result = await ApiClient.post<{ success: boolean; error?: string }>("/api/admin/add-user-access", {
+        accountNumber: accountOnly,
+        userEmail,
       })
-
-      const result = await response.json()
 
       if (result.success) {
         setAddAccessSuccess("User access added successfully.")
@@ -217,12 +220,11 @@ export default function AdminPage() {
         setAddAccessError(result.error || "Failed to add user access")
       }
     } catch (error) {
-      setAddAccessError("Error adding user access")
+      setAddAccessError(error instanceof Error ? error.message : "Error adding user access")
     } finally {
       setIsAddingAccess(false)
     }
   }
-
 
   const handleCreateNewUser = async (e?: React.FormEvent, emailOverride?: string, passwordOverride?: string) => {
     if (e) e.preventDefault()
@@ -241,18 +243,10 @@ export default function AdminPage() {
     }
 
     try {
-      const response = await fetch("/api/admin/create-user-simple", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+      const result = await ApiClient.post<{ success: boolean; error?: string }>("/api/admin/create-user-simple", {
+        email,
+        password,
       })
-
-      const result = await response.json()
 
       if (result.success) {
         setCreateUserSuccess("User created successfully")
@@ -263,7 +257,7 @@ export default function AdminPage() {
         setCreateUserError(result.error || "Failed to create user")
       }
     } catch (error) {
-      setCreateUserError("Error creating user")
+      setCreateUserError(error instanceof Error ? error.message : "Error creating user")
     } finally {
       setIsCreatingUser(false)
     }
@@ -275,18 +269,12 @@ export default function AdminPage() {
     setAddAdminError(null)
 
     try {
-      const response = await fetch("/api/admin/add-admin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          adminEmail,
-          adminName,
-          requestorEmail: firebaseUser?.email,
-        }),
+      const result = await ApiClient.post<{ success: boolean; error?: string }>("/api/admin/add-admin", {
+        adminEmail,
+        adminName,
+        requestorEmail: firebaseUser?.email,
       })
-      const result = await response.json()
+
       if (result.success) {
         setAdminEmail("")
         setAdminName("")
@@ -295,7 +283,7 @@ export default function AdminPage() {
         setAddAdminError(result.error || "Failed to add admin")
       }
     } catch (error) {
-      setAddAdminError("Error adding admin")
+      setAddAdminError(error instanceof Error ? error.message : "Error adding admin")
     } finally {
       setIsAddingAdmin(false)
     }
@@ -303,17 +291,11 @@ export default function AdminPage() {
 
   const handleRemoveAdmin = async (admin: { id: number; email: string; name: string }) => {
     try {
-      const response = await fetch("/api/admin/remove-admin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          adminEmail: admin.email,
-          requestorEmail: firebaseUser?.email,
-        }),
+      const result = await ApiClient.post<{ success: boolean; error?: string }>("/api/admin/remove-admin", {
+        adminEmail: admin.email,
+        requestorEmail: firebaseUser?.email,
       })
-      const result = await response.json()
+
       if (result.success) {
         loadAdmins() // Reload the admins list
       } else {
@@ -501,7 +483,6 @@ export default function AdminPage() {
                               <option key={account.value} value={account.label} />
                             ))}
                           </datalist>
-
                         </div>
                       )}
                     </div>

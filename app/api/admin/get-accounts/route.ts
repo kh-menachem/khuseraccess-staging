@@ -1,44 +1,70 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
-import { writeFileSync, unlinkSync } from "fs"
+import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
+import { requireAdmin } from "@/lib/auth-middleware"
 
-export async function POST(request: Request) {
-  let tempFilePath: string | null = null
+export async function POST(request: NextRequest) {
+  // 🔒 SECURITY: Verify admin authentication
+  const authResult = await requireAdmin(request)
+
+  if ("error" in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status })
+  }
+
+  console.log("Get accounts API route called by admin:", authResult.user.email)
 
   try {
     const { requestorEmail } = await request.json()
 
-    if (!requestorEmail) {
-      return NextResponse.json({ success: false, error: "Requestor email is required" }, { status: 400 })
+    // 🔒 SECURITY: Verify the authenticated user matches the requestor
+    if (authResult.user.email !== requestorEmail) {
+      return NextResponse.json({ success: false, error: "Unauthorized: Email mismatch" }, { status: 403 })
     }
 
-    // First verify the requestor is an admin
-    const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/admin/verify`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email: requestorEmail }),
-    })
+    console.log("Requestor email:", requestorEmail)
 
-    const verifyResult = await verifyResponse.json()
-    if (!verifyResult.success || !verifyResult.isAdmin) {
-      return NextResponse.json({ success: false, error: "Only admins can view accounts" }, { status: 403 })
+    if (!requestorEmail) {
+      console.log("No requestor email provided")
+      return NextResponse.json({ success: false, error: "Requestor email is required" }, { status: 400 })
     }
 
     // Get the credentials from the environment variable
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    console.log("Credentials available:", !!credentials)
+
     if (!credentials) {
-      return NextResponse.json({ success: false, error: "Google credentials not found" }, { status: 500 })
+      console.log("No credentials found in environment variables")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Google credentials not found",
+        },
+        { status: 500 },
+      )
     }
 
     // Create a temporary file with the credentials
-    tempFilePath = join(os.tmpdir(), `google-credentials-accounts-${Date.now()}.json`)
-    writeFileSync(tempFilePath, credentials)
+    const tempFilePath = join(os.tmpdir(), "google-credentials-get-accounts.json")
+    console.log("Writing credentials to temp file:", tempFilePath)
+
+    try {
+      writeFileSync(tempFilePath, credentials)
+      console.log("Credentials written successfully")
+    } catch (writeError) {
+      console.error("Error writing credentials file:", writeError)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to write credentials file",
+        },
+        { status: 500 },
+      )
+    }
 
     // Initialize the Sheets API client
+    console.log("Initializing Google Auth for get accounts")
     const auth = new google.auth.GoogleAuth({
       keyFile: tempFilePath,
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -46,88 +72,137 @@ export async function POST(request: Request) {
 
     const sheets = google.sheets({ version: "v4", auth })
     const spreadsheetId = process.env.SPREADSHEET_ID
+    console.log("Spreadsheet ID:", spreadsheetId)
 
-    // Get People sheet data - columns B (Last Name), C (First Name), and U (Unique Number/Account Number)
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "People!A:AN", // full columns so we never get trimmed rows
-    })
+    if (!spreadsheetId) {
+      console.log("No spreadsheet ID found in environment variables")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Spreadsheet ID not found",
+        },
+        { status: 500 },
+      )
+    }
 
-    const data = response.data.values || []
+    try {
+      // Fetch the People sheet to get all accounts
+      console.log("Fetching People sheet for accounts")
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "People!A:Z", // Get all columns to be safe
+      })
 
-    if (data.length <= 1) {
+      const rows = response.data.values || []
+      console.log("People rows fetched:", rows.length)
+
+      if (rows.length === 0) {
+        console.log("No data found in People sheet")
+        return NextResponse.json({ success: false, error: "No data found in People sheet" }, { status: 404 })
+      }
+
+      const headerRow = rows[0]
+      console.log("People header row:", headerRow)
+
+      // Find the required columns in People sheet
+      const accountNumberIndex = headerRow.findIndex(
+        (header: string) =>
+          header?.toLowerCase().trim() === "account number" ||
+          header?.toLowerCase().trim() === "accountnumber" ||
+          header?.toLowerCase().trim() === "account" ||
+          header?.toLowerCase().trim() === "uniqueid",
+      )
+
+      const firstNameIndex = headerRow.findIndex(
+        (header: string) =>
+          header?.toLowerCase().trim() === "first name" ||
+          header?.toLowerCase().trim() === "firstname" ||
+          header?.toLowerCase().trim() === "first",
+      )
+
+      const lastNameIndex = headerRow.findIndex(
+        (header: string) =>
+          header?.toLowerCase().trim() === "last name" ||
+          header?.toLowerCase().trim() === "lastname" ||
+          header?.toLowerCase().trim() === "last",
+      )
+
+      console.log("Column indices - Account:", accountNumberIndex, "First:", firstNameIndex, "Last:", lastNameIndex)
+
+      if (accountNumberIndex === -1) {
+        console.log("Account number column not found in People sheet")
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Account number column not found in People sheet",
+            availableColumns: headerRow,
+          },
+          { status: 500 },
+        )
+      }
+
+      if (firstNameIndex === -1 || lastNameIndex === -1) {
+        console.log("First name or last name column not found in People sheet")
+        return NextResponse.json(
+          {
+            success: false,
+            error: "First name or last name column not found in People sheet",
+            availableColumns: headerRow,
+          },
+          { status: 500 },
+        )
+      }
+
+      // Process all accounts from People sheet
+      const accounts = []
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i]
+        if (row[accountNumberIndex] && row[firstNameIndex] && row[lastNameIndex]) {
+          const accountNumber = row[accountNumberIndex].toString().trim()
+          const firstName = row[firstNameIndex].toString().trim()
+          const lastName = row[lastNameIndex].toString().trim()
+
+          accounts.push({
+            accountNumber,
+            firstName,
+            lastName,
+          })
+        }
+      }
+
+      console.log(`Found ${accounts.length} accounts in People sheet`)
+
+      // Sort accounts by account number
+      accounts.sort((a, b) => {
+        const aNum = Number.parseInt(a.accountNumber) || 0
+        const bNum = Number.parseInt(b.accountNumber) || 0
+        return aNum - bNum
+      })
+
       return NextResponse.json({
         success: true,
-        accounts: [],
-        message: "No accounts found",
+        accounts: accounts,
       })
+    } catch (error) {
+      console.error("Spreadsheet access error:", error)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to access spreadsheet",
+          details: error instanceof Error ? error.message : String(error),
+        },
+        { status: 500 },
+      )
     }
-
-    const headerRow = data[0]
-
-    // Dynamically get index for "Unique Number", "First Name", and "Last Name"
-    const accountNumberIndex = headerRow.findIndex((h: string) => h?.trim() === "Unique Number")
-    const firstNameIndex = headerRow.findIndex((h: string) => h?.trim() === "First Name")
-    const lastNameIndex = headerRow.findIndex((h: string) => h?.trim() === "Last Name")
-
-    console.log("Column indexes:", {
-      accountNumberIndex,
-      firstNameIndex,
-      lastNameIndex,
-    })
-
-    // Process accounts data
-    const accounts = []
-
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i]
-
-      const accountNumber = row[accountNumberIndex]?.toString().trim() || ""
-      const firstName = row[firstNameIndex]?.toString().trim() || ""
-      const lastName = row[lastNameIndex]?.toString().trim() || ""
-
-      // Only include rows that have an account number
-      if (accountNumber) {
-        accounts.push({
-          value: accountNumber,
-          label: `${accountNumber} - ${firstName} ${lastName}`.trim(),
-        })
-      }
-    }
-
-    // Sort accounts by account number
-    accounts.sort((a, b) => {
-      const numA = Number.parseInt(a.value) || 0
-      const numB = Number.parseInt(b.value) || 0
-      return numA - numB
-    })
-
-    console.log(`Found ${accounts.length} accounts`)
-    console.log("Sample accounts:", accounts.slice(0, 5))
-
-    return NextResponse.json({
-      success: true,
-      accounts: accounts,
-      total: accounts.length,
-    })
   } catch (error) {
-    console.error("Error fetching accounts:", error instanceof Error ? error.message : error)
+    console.error("Get accounts error:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch accounts",
+        error: "An error occurred while fetching accounts",
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 },
     )
-  } finally {
-    // Clean up temporary file
-    if (tempFilePath) {
-      try {
-        unlinkSync(tempFilePath)
-      } catch (e) {
-        console.error("Error cleaning up temp file:", e)
-      }
-    }
   }
 }
