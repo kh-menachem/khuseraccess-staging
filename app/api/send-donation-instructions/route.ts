@@ -50,10 +50,10 @@ export async function POST(req: NextRequest) {
     const html = `
       <div style="font-family: Arial, sans-serif; color: #000; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <img src="${qrCodeUrl}" alt="QR Code" width="200" style="margin-bottom: 20px;" />
+          <img src="https://6301926.com/images/logo-new.png" alt="Keren Hatzedakah Logo" width="200" style="margin-bottom: 20px;" />
           <h2 style="color: #20B2AA; margin: 0;">Keren Hatzedakah</h2>
           <p style="color: #666; margin: 10px 0;">Donation Instructions for ${name}</p>
-          <p style="color: #666; font-size: 14px;">Account: ${accountNumber}</p>
+          <p style="color: #666; font-size: 14px;">Fund: ${accountNumber}</p>
         </div>
 
         <h3 style="color: #20B2AA; border-bottom: 2px solid #20B2AA; padding-bottom: 10px;">
@@ -95,9 +95,13 @@ export async function POST(req: NextRequest) {
             <li style="margin-bottom: 15px;">
               <strong>Credit Card Donations</strong> - אשראי<br>
               <a href="${donationURL}" 
-                 style="background:#e60000;color:white;padding:12px 24px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:10px;font-weight:bold;">
+                style="background:#e60000;color:white;padding:12px 24px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:10px;font-weight:bold;">
                 💳 Donate Here →
               </a>
+              <p style="margin-top: 8px; font-size: 13px; color: #555;">
+                Or copy this link: <br>
+                <a href="${donationURL}" style="color: #007bff; word-break: break-all;">${donationURL}</a>
+              </p>
             </li>
 
             <li style="margin-bottom: 15px;">
