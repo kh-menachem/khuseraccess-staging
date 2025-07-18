@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DollarSign, LogOut, Search, Languages, AlertTriangle, Calendar, ChevronDown } from "lucide-react"
+import { DollarSign, LogOut, Search, Languages, AlertTriangle, Calendar, ChevronDown, Mail, Send } from "lucide-react"
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import Image from "next/image"
 import React from "react"
 
@@ -94,6 +102,15 @@ const translations = {
     applyDateRange: "Apply",
     clearDateRange: "Clear",
     switchAccount: "Switch Account",
+    sendDonationInstructions: "Send Donation Instructions",
+    sendingEmail: "Sending Email...",
+    confirmSendEmail: "Send Donation Instructions?",
+    confirmSendEmailDescription:
+      "This will send donation instructions with QR code and payment methods to your email address.",
+    cancel: "Cancel",
+    send: "Send",
+    emailSentSuccess: "Email sent successfully!",
+    emailSentError: "Failed to send email. Please try again.",
     types: {
       check: "Check",
       "credit card": "Credit Card",
@@ -164,6 +181,14 @@ const translations = {
     applyDateRange: "החל",
     clearDateRange: "נקה",
     switchAccount: "החלף חשבון",
+    sendDonationInstructions: "שלח הוראות תרומה",
+    sendingEmail: "שולח אימייל...",
+    confirmSendEmail: "לשלוח הוראות תרומה?",
+    confirmSendEmailDescription: "זה ישלח הוראות תרומה עם QR קוד ושיטות תשלום לכתובת האימייל שלך.",
+    cancel: "ביטול",
+    send: "שלח",
+    emailSentSuccess: "האימייל נשלח בהצלחה!",
+    emailSentError: "שליחת האימייל נכשלה. אנא נסה שוב.",
     types: {
       check: "צ'ק",
       "credit card": "כרטיס אשראי",
@@ -243,6 +268,9 @@ export default function Dashboard() {
   const [customDateFrom, setCustomDateFrom] = useState("")
   const [customDateTo, setCustomDateTo] = useState("")
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false)
+  const [showEmailConfirmDialog, setShowEmailConfirmDialog] = useState(false)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const { user: firebaseUser, logout } = useAuth()
   const router = useRouter()
 
@@ -356,6 +384,46 @@ export default function Dashboard() {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
       localStorage.setItem("user", JSON.stringify(updatedUser))
+    }
+  }
+
+  const handleSendDonationInstructions = async () => {
+    if (!user) return
+
+    setIsSendingEmail(true)
+    setEmailStatus(null)
+
+    try {
+      const response = await fetch("/api/send-donation-instructions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name,
+          accountNumber: user.accountNumber || user.id,
+          email: user.email,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setEmailStatus({ type: "success", message: t.emailSentSuccess })
+      } else {
+        setEmailStatus({ type: "error", message: t.emailSentError })
+      }
+    } catch (error) {
+      console.error("Error sending email:", error)
+      setEmailStatus({ type: "error", message: t.emailSentError })
+    } finally {
+      setIsSendingEmail(false)
+      setShowEmailConfirmDialog(false)
+
+      // Clear status after 5 seconds
+      setTimeout(() => {
+        setEmailStatus(null)
+      }, 5000)
     }
   }
 
@@ -716,7 +784,37 @@ export default function Dashboard() {
                 ({user?.email})
               </p>
             </div>
+
+            {/* Send Donation Instructions Button */}
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowEmailConfirmDialog(true)}
+                disabled={isSendingEmail}
+                className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
+              >
+                {isSendingEmail ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    {t.sendingEmail}
+                  </>
+                ) : (
+                  <>
+                    <Mail className="h-4 w-4 mr-2" />
+                    {t.sendDonationInstructions}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
+
+          {/* Email Status Message */}
+          {emailStatus && (
+            <div
+              className={`p-4 rounded-md ${emailStatus.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+            >
+              {emailStatus.message}
+            </div>
+          )}
 
           {/* Yellow Box */}
           <div className="w-full flex justify-center">
@@ -1025,6 +1123,34 @@ export default function Dashboard() {
           </Card>
         </div>
       </main>
+
+      {/* Email Confirmation Dialog */}
+      <Dialog open={showEmailConfirmDialog} onOpenChange={setShowEmailConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.confirmSendEmail}</DialogTitle>
+            <DialogDescription>{t.confirmSendEmailDescription}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEmailConfirmDialog(false)}>
+              {t.cancel}
+            </Button>
+            <Button onClick={handleSendDonationInstructions} disabled={isSendingEmail}>
+              {isSendingEmail ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {t.sendingEmail}
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  {t.send}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <footer
         className="py-6"
