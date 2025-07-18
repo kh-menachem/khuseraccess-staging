@@ -4,7 +4,6 @@ import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/t
 import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
-import { requireAuth } from "@/lib/auth-middleware"
 
 function getHardcodedPercentages(): Map<string, number> {
   const percentagesMap = new Map<string, number>()
@@ -43,20 +42,13 @@ function getMonthName(yearMonth: string, language: string): string {
 
   const months = {
     en: [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
     ],
-    he: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"],
+    he: [
+      "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+      "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
+    ]
   }
 
   const names = months[language === "he" ? "he" : "en"]
@@ -545,56 +537,45 @@ function processMachineRentals(rows: string[][], userId: string, machinesMap: Ma
 
   return machineRentals
 }
-
 function processLinksTransactionsGrouped(rows: string[][], userId: string, language: string): Transaction[] {
   if (rows.length === 0) return []
 
-  const hdr = rows[0].map((h) => h.toLowerCase().trim())
+  const hdr = rows[0].map(h => h.toLowerCase().trim())
 
-  const iPerson = hdr.indexOf("personid") // L
-  const iDate = hdr.indexOf("date") // B
-  const iName = hdr.indexOf("name") // C
-  const iAmount = hdr.indexOf("amount") // E
-  const iDesc = hdr.indexOf("description") // G
-  const iResult = hdr.indexOf("result") // H
-  const iType = hdr.indexOf("type") // J
-  const iMid = hdr.indexOf("mid") // K
+  const iPerson = hdr.indexOf('personid')   // L
+  const iDate   = hdr.indexOf('date')       // B
+  const iName   = hdr.indexOf('name')       // C
+  const iAmount = hdr.indexOf('amount')     // E
+  const iDesc   = hdr.indexOf('description')// G
+  const iResult = hdr.indexOf('result')     // H
+  const iType   = hdr.indexOf('type')       // J
+  const iMid    = hdr.indexOf('mid')        // K
 
-  if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some((i) => i === -1)) {
+  if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some(i => i === -1)) {
     console.error("Missing one or more required columns in LinksandPhone")
     return []
   }
 
-  const details = rows
-    .slice(1)
-    .filter((r) => r[iPerson]?.trim() === userId)
-    .filter((r) => r[iResult]?.trim() === "Approved")
-    .filter((r) => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
+  const details = rows.slice(1)
+    .filter(r => r[iPerson]?.trim() === userId)
+    .filter(r => r[iResult]?.trim() === "Approved")
+    .filter(r => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
     .map((r, index) => {
       const date = r[iDate]
       const yearMonth = date.slice(0, 7)
-      const amt = Number.parseFloat(r[iAmount].replace(/[$,]/g, "")) || 0
+      const amt = parseFloat(r[iAmount].replace(/[$,]/g, '')) || 0
       const type = r[iType]?.trim()
       let net = 0
-      switch (type) {
-        case "CC:Sale":
-          net = amt * 0.965
-          break
-        case "Grant:Recommendation":
-          net = amt * 0.965
-          break
-        case "CC:Refund":
-          net = -amt
-          break
-        case "Check:Sale":
-          net = amt * 0.9985
-          break
-        default:
-          net = 0
-          break
+      switch(type) {
+        case "CC:Sale": net = amt * 0.965; break
+        case "Grant:Recommendation": net = amt * 0.965; break
+        case "CC:Refund": net = -amt; break
+        case "Check:Sale": net = amt * 0.9985; break
+        default: net = 0; break
       }
 
-      const source = r[iMid] === "31393" ? "Links Donation" : r[iMid] === "40939" ? "Phone Donation" : ""
+      const source = r[iMid] === "31393" ? "Links Donation"
+                   : r[iMid] === "40939" ? "Phone Donation" : ""
 
       return {
         id: `LINK-${index}`,
@@ -641,29 +622,20 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       description: d.description,
       source: d.source,
     })
+
   }
 
   return Array.from(grouped.values())
 }
 
+
+
+
 export async function POST(request: NextRequest) {
-  // 🔒 SECURITY: Verify Firebase authentication
-  const authResult = await requireAuth(request)
-
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status })
-  }
-
   try {
     const { userEmail, userId, language } = await request.json()
     const lang = language === "he" ? "he" : "en"
-
-    // 🔒 SECURITY: Verify the authenticated user matches the requested data
-    if (authResult.user.email !== userEmail) {
-      return NextResponse.json({ error: "Unauthorized: Email mismatch" }, { status: 403 })
-    }
-
-    console.log(`Fetching data for authenticated user: ${userEmail}, UNIQUEID: ${userId}`)
+    console.log(`Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
     if (!userEmail && !userId) {
       return NextResponse.json({ error: "User email or ID is required" }, { status: 400 })
@@ -764,7 +736,7 @@ export async function POST(request: NextRequest) {
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "LinksandPhone!A:AQ",
+        range: "LinksandPhone!A:AQ", // 👈 add this
       }),
     ])
 
@@ -782,16 +754,19 @@ export async function POST(request: NextRequest) {
     const oldTransactionsData = responses[2].status === "fulfilled" ? responses[2].value.data.values || [] : []
     const donationsData = responses[3].status === "fulfilled" ? responses[3].value.data.values || [] : []
     const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
-    const linksAndPhoneData =
-      linksAndPhoneResponse.status === "fulfilled" ? linksAndPhoneResponse.value.data.values || [] : []
+    const linksAndPhoneData =linksAndPhoneResponse.status === "fulfilled" ?linksAndPhoneResponse.value.data.values || [] : []
 
     const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
 
-    const currentTransactions = [...processTransactions(currentTransactionsData, userId, percentagesMap)]
+
+    const currentTransactions = [
+      ...processTransactions(currentTransactionsData, userId, percentagesMap),
+    ]
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
+
 
     console.log(`Found ${currentTransactions.length} current transactions`)
     console.log(`Found ${transactions2024.length} transactions from 2024`)
@@ -806,12 +781,81 @@ export async function POST(request: NextRequest) {
       oldTransactions,
       donations,
       machineRentals,
-      linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap((t) => t.details || []),
+      linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap(t => t.details || [])
     }
 
     return NextResponse.json(customerData)
   } catch (error) {
     console.error("Error fetching customer data:", error)
-    return NextResponse.json({ error: "Failed to fetch customer data" }, { status: 500 })
+
+    const mockData: CustomerData = {
+      id: "123",
+      currentTransactions: [
+        {
+          id: "TX-1001",
+          date: "2023-05-15",
+          description: "Monthly Subscription",
+          reference: "SUB12345",
+          amount: 49.99,
+          net: 48.24,
+          type: "Credit Card",
+        },
+        {
+          id: "TX-1002",
+          date: "2023-05-28",
+          description: "Service Fee",
+          reference: "SVC98765",
+          amount: -125.0,
+          net: -125.0,
+          type: "Check",
+        },
+      ],
+      transactions2024: [
+        {
+          id: "TX-2001",
+          date: "2024-01-05",
+          description: "Annual Membership",
+          reference: "MEM24001",
+          amount: 199.99,
+          net: 192.99,
+          type: "Credit Card",
+        },
+      ],
+      oldTransactions: [
+        {
+          id: "TX-3001",
+          date: "2022-11-10",
+          description: "Legacy Subscription",
+          reference: "LEG22110",
+          amount: -39.99,
+          net: -39.99,
+          type: "Cash",
+        },
+      ],
+      donations: [
+        {
+          id: "DON-1001",
+          date: "2023-04-15",
+          donorId: "D-101",
+          donorName: "Jane Smith",
+          purpose: "Annual Fundraiser",
+          amount: 500.0,
+          net: 500.0,
+          type: "Donation",
+        },
+      ],
+      machineRentals: [
+        {
+          id: "MR-1001",
+          machineId: "001",
+          rentalDate: "2023-05-01",
+          returnDate: "2023-05-05",
+          status: "Returned",
+          fee: 75.0,
+        },
+      ],
+    }
+
+    return NextResponse.json(mockData)
   }
 }

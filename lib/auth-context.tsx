@@ -1,20 +1,41 @@
 "use client"
 
 import type React from "react"
+
 import { createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth"
+import {
+  type User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+} from "firebase/auth"
 import { auth } from "./firebase"
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<void>
-  logout: () => Promise<void>
   loading: boolean
+  signUp: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<void>
+  logout: () => Promise<void>
+  resetPassword: (email: string) => Promise<void>
+  setLanguage: (language: string) => void
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  signUp: async () => {},
+  signIn: async () => {},
+  logout: async () => {},
+  resetPassword: async () => {},
+  setLanguage: () => {},
+})
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const useAuth = () => useContext(AuthContext)
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -27,7 +48,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe()
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string) => {
+    await createUserWithEmailAndPassword(auth, email, password)
+  }
+
+  const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password)
   }
 
@@ -37,20 +62,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth)
   }
 
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email)
+  }
+
+  const setLanguage = (language: string) => {
+    // Set the language code for Firebase Auth
+    const languageCode = language === "he" ? "he" : "en"
+    auth.languageCode = languageCode
+  }
+
   const value = {
     user,
-    login,
-    logout,
     loading,
+    signUp,
+    signIn,
+    logout,
+    resetPassword,
+    setLanguage,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>
 }

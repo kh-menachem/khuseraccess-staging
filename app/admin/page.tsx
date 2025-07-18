@@ -44,7 +44,7 @@ export default function AdminPage() {
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false)
 
   // Account selection states
-  const [accounts, setAccounts] = useState<Array<{ value: string; label: string }>>([])
+  const [accounts, setAccounts] = useState<Array<{ accountNumber: string; firstName: string; lastName: string }>>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState("")
 
@@ -87,11 +87,7 @@ export default function AdminPage() {
       })
       const result = await response.json()
       if (result.success) {
-        const formattedAccounts = result.accounts.map((account: any) => ({
-          value: `${account.accountNumber} - ${account.firstName} ${account.lastName}`,
-          label: `${account.accountNumber} - ${account.firstName} ${account.lastName}`,
-        }))
-        setAccounts(formattedAccounts)
+        setAccounts(result.accounts || [])
       }
     } catch (error) {
       console.error("Error loading accounts:", error)
@@ -223,24 +219,26 @@ export default function AdminPage() {
     } catch (error) {
       setAddAccessError("Error adding user access")
     } finally {
-      setIsAddingAccess(false) // Corrected variable name
+      setIsAddingAccess(false)
     }
   }
+
 
   const handleCreateNewUser = async (e?: React.FormEvent, emailOverride?: string, passwordOverride?: string) => {
     if (e) e.preventDefault()
 
-    const email = emailOverride || newUserEmail
-    const password = passwordOverride || newUserPassword
-
-    if (password !== confirmPassword && !passwordOverride) {
-      setCreateUserError("Passwords do not match")
-      return
-    }
+    const email = emailOverride ?? newUserEmail
+    const password = passwordOverride ?? newUserPassword
 
     setIsCreatingUser(true)
     setCreateUserError(null)
     setCreateUserSuccess(null)
+
+    if (password.length < 8 || !/\d/.test(password)) {
+      setCreateUserError("Password must be at least 8 characters and include a number")
+      setIsCreatingUser(false)
+      return
+    }
 
     try {
       const response = await fetch("/api/admin/create-user-simple", {
@@ -251,17 +249,16 @@ export default function AdminPage() {
         body: JSON.stringify({
           email,
           password,
-          requestorEmail: firebaseUser?.email,
         }),
       })
 
       const result = await response.json()
 
       if (result.success) {
-        setCreateUserSuccess(`User created successfully! Email: ${email}, Password: ${password}`)
+        setCreateUserSuccess("User created successfully")
         setNewUserEmail("")
         setNewUserPassword(generateRandomPassword())
-        setConfirmPassword("")
+        setActiveTab("add-access")
       } else {
         setCreateUserError(result.error || "Failed to create user")
       }
@@ -284,18 +281,16 @@ export default function AdminPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: adminEmail,
-          name: adminName,
+          adminEmail,
+          adminName,
           requestorEmail: firebaseUser?.email,
         }),
       })
-
       const result = await response.json()
-
       if (result.success) {
         setAdminEmail("")
         setAdminName("")
-        loadAdmins() // Reload the admin list
+        loadAdmins() // Reload the admins list
       } else {
         setAddAdminError(result.error || "Failed to add admin")
       }
@@ -306,9 +301,7 @@ export default function AdminPage() {
     }
   }
 
-  const handleRemoveAdmin = async (adminId: number) => {
-    if (!confirm("Are you sure you want to remove this admin?")) return
-
+  const handleRemoveAdmin = async (admin: { id: number; email: string; name: string }) => {
     try {
       const response = await fetch("/api/admin/remove-admin", {
         method: "POST",
@@ -316,57 +309,62 @@ export default function AdminPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          adminId,
+          adminEmail: admin.email,
           requestorEmail: firebaseUser?.email,
         }),
       })
-
       const result = await response.json()
-
       if (result.success) {
-        loadAdmins() // Reload the admin list
+        loadAdmins() // Reload the admins list
       } else {
-        alert(result.error || "Failed to remove admin")
+        console.error("Failed to remove admin:", result.error)
       }
     } catch (error) {
-      alert("Error removing admin")
+      console.error("Error removing admin:", error)
     }
   }
 
   const handleLogout = async () => {
     try {
       await logout()
-      router.push("/admin/login")
+      router.push("/")
     } catch (error) {
       console.error("Error logging out:", error)
     }
   }
 
+  // Loading state
   if (isAuthorized === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{
+          background: "linear-gradient(135deg, #DC2626 0%, #EF4444 50%, #F87171 100%)",
+        }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying admin access...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+          <p className="mt-4 text-white font-medium">Checking admin access...</p>
         </div>
       </div>
     )
   }
 
+  // Access denied
   if (!isAuthorized) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8fafc" }}>
+        <Card className="w-full max-w-md mx-4">
           <CardHeader className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 relative">
-              <Image src="/images/kh-hand-logo.png" alt="Keren Hatzedakah Logo" fill className="object-contain" />
+            <div className="flex justify-center mb-4">
+              <Shield className="h-16 w-16 text-red-500" />
             </div>
-            <CardTitle className="text-2xl text-red-600">Access Denied</CardTitle>
-            <CardDescription>You are not authorized to access the admin panel.</CardDescription>
+            <CardTitle className="text-2xl font-bold text-red-600">Access Denied</CardTitle>
+            <CardDescription>Admin access required to view this page</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={() => router.push("/")} className="w-full">
-              Return to Home
+            <Button onClick={() => router.push("/admin/login")} className="w-full bg-red-600 hover:bg-red-700">
+              Back to Login
             </Button>
           </CardContent>
         </Card>
@@ -375,312 +373,370 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="flex min-h-screen flex-col">
+      <header
+        className="border-b shadow-sm"
+        style={{
+          background: "linear-gradient(135deg, #DC2626 0%, #EF4444 100%)",
+        }}
+      >
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10">
-              <Image src="/images/kh-hand-logo.png" alt="Keren Hatzedakah Logo" fill className="object-contain" />
+              <Image
+                src="/images/kh-hand-logo.png"
+                alt="Keren Hatzedakah Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
-              <p className="text-sm text-gray-600">Keren Hatzedakah</p>
-            </div>
+            <h1 className="text-xl font-bold text-white">Admin Panel</h1>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
-              Welcome, <span className="font-medium">{adminUser?.name || firebaseUser?.email}</span>
-              {isSuperAdmin && <Badge className="ml-2 bg-purple-100 text-purple-800">Super Admin</Badge>}
-            </div>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="border-white text-white hover:text-red-600 hover:bg-white transition-colors min-w-[90px] h-10 bg-red-400 hover:bg-white"
+            >
+              <LogOut className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="whitespace-nowrap font-medium">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="add-access">Add User Access</TabsTrigger>
-            <TabsTrigger value="create-user">Create User</TabsTrigger>
-            {isSuperAdmin && <TabsTrigger value="manage-admins">Manage Admins</TabsTrigger>}
-            <TabsTrigger value="debug">Debug</TabsTrigger>
-          </TabsList>
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-800 mb-2">Admin Panel</h2>
+            <p className="text-gray-600">Welcome, {adminUser?.name || firebaseUser?.email}</p>
+          </div>
 
-          <TabsContent value="add-access">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5" />
-                  Add User Access to Account
-                </CardTitle>
-                <CardDescription>Grant a user access to a specific account in the system.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleAddUserAccess} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="account-select">Select Account</Label>
-                    <select
-                      id="account-select"
-                      value={selectedAccount}
-                      onChange={(e) => setSelectedAccount(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                      required
-                      disabled={isLoadingAccounts}
-                    >
-                      <option value="">{isLoadingAccounts ? "Loading accounts..." : "Select an account..."}</option>
-                      {accounts.map((account) => (
-                        <option key={account.value} value={account.value}>
-                          {account.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              setActiveTab(val)
+              if (val === "create-user") {
+                setNewUserPassword(generateRandomPassword())
+              }
+            }}
+            className="space-y-6"
+          >
+            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-3" : "grid-cols-2"} bg-red-50`}>
+              <TabsTrigger
+                value="add-access"
+                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+              >
+                <UserPlus className="h-4 w-4" />
+                Add User Access
+              </TabsTrigger>
+              <TabsTrigger
+                value="create-user"
+                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+              >
+                <Mail className="h-4 w-4" />
+                Create New User
+              </TabsTrigger>
+              {isSuperAdmin && (
+                <TabsTrigger
+                  value="manage-admins"
+                  className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                >
+                  <Users className="h-4 w-4" />
+                  Manage Admins
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="user-email">User Email</Label>
-                    <Input
-                      id="user-email"
-                      type="email"
-                      value={userEmail}
-                      onChange={(e) => setUserEmail(e.target.value)}
-                      placeholder="user@example.com"
-                      required
-                    />
-                  </div>
+            <TabsContent value="add-access">
+              <Card className="border-red-200">
+                <CardHeader className="bg-red-50">
+                  <CardTitle className="flex items-center gap-2 text-red-800">
+                    <UserPlus className="h-5 w-5" />
+                    Add User Access
+                  </CardTitle>
+                  <CardDescription>Grant existing account access to a user by adding their email</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <form onSubmit={handleAddUserAccess} className="space-y-4">
+                    {addAccessError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{addAccessError}</AlertDescription>
+                      </Alert>
+                    )}
 
-                  {addAccessError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Error</AlertTitle>
-                      <AlertDescription>{addAccessError}</AlertDescription>
-                    </Alert>
-                  )}
+                    {addAccessSuccess && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <AlertCircle className="h-4 w-4 text-green-600" />
+                        <AlertTitle className="text-green-800">Success</AlertTitle>
+                        <AlertDescription className="text-green-700">{addAccessSuccess}</AlertDescription>
+                      </Alert>
+                    )}
 
-                  {addAccessSuccess && (
-                    <Alert className="border-green-200 bg-green-50">
-                      <AlertCircle className="h-4 w-4 text-green-600" />
-                      <AlertTitle className="text-green-800">Success</AlertTitle>
-                      <AlertDescription className="text-green-700">{addAccessSuccess}</AlertDescription>
-                    </Alert>
-                  )}
+                    <div className="space-y-2">
+                      <Label htmlFor="accountSelect">Select Account</Label>
+                      {isLoadingAccounts ? (
+                        <div className="flex items-center justify-center p-4 border rounded-md">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
+                          <span className="ml-2 text-gray-600">Loading accounts...</span>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <Input
+                            id="accountSelect"
+                            type="text"
+                            placeholder="Type account number or select from dropdown..."
+                            value={selectedAccount}
+                            onChange={(e) => setSelectedAccount(e.target.value)}
+                            required
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                            list="accounts-list"
+                          />
+                          <datalist id="accounts-list">
+                            {accounts.map((account) => (
+                              <option key={account.value} value={account.label} />
+                            ))}
+                          </datalist>
 
-                  <Button type="submit" disabled={isAddingAccess} className="w-full">
-                    {isAddingAccess ? "Adding Access..." : "Add User Access"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                        </div>
+                      )}
+                    </div>
 
-          <TabsContent value="create-user">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Create New User
-                </CardTitle>
-                <CardDescription>Create a new Firebase user account with email and password.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCreateNewUser} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-user-email">Email</Label>
-                    <Input
-                      id="new-user-email"
-                      type="email"
-                      value={newUserEmail}
-                      onChange={(e) => setNewUserEmail(e.target.value)}
-                      placeholder="user@example.com"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="new-user-password">Password</Label>
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="userEmail">User Email</Label>
                       <Input
-                        id="new-user-password"
-                        type="text"
+                        id="userEmail"
+                        type="email"
+                        placeholder="Enter user email address"
+                        value={userEmail}
+                        onChange={(e) => setUserEmail(e.target.value)}
+                        required
+                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                      />
+                    </div>
+
+                    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAccess}>
+                      {isAddingAccess ? "Adding..." : "Add Access"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="create-user">
+              <Card className="border-red-200">
+                <CardHeader className="bg-red-50">
+                  <CardTitle className="flex items-center gap-2 text-red-800">
+                    <Mail className="h-5 w-5" />
+                    Create New User Account
+                  </CardTitle>
+                  <CardDescription>Create a new user account with email and password</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <form onSubmit={handleCreateNewUser} className="space-y-4">
+                    {createUserError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{createUserError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {createUserSuccess && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <AlertCircle className="h-4 w-4 text-green-600" />
+                        <AlertTitle className="text-green-800">Success</AlertTitle>
+                        <AlertDescription className="text-green-700">{createUserSuccess}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="newUserEmail">User Email</Label>
+                      <Input
+                        id="newUserEmail"
+                        type="email"
+                        placeholder="Enter user email address"
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        required
+                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="newUserPassword">Password</Label>
+                      <Input
+                        id="newUserPassword"
+                        type="password"
+                        placeholder="Enter password (minimum 8 characters)"
                         value={newUserPassword}
                         onChange={(e) => setNewUserPassword(e.target.value)}
-                        placeholder="Password"
                         required
+                        minLength={8}
+                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setNewUserPassword(generateRandomPassword())}
-                      >
-                        Generate
-                      </Button>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm password"
-                      required
-                    />
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="Confirm password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                      />
+                    </div>
 
-                  {createUserError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Error</AlertTitle>
-                      <AlertDescription>{createUserError}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {createUserSuccess && (
-                    <Alert className="border-green-200 bg-green-50">
-                      <AlertCircle className="h-4 w-4 text-green-600" />
-                      <AlertTitle className="text-green-800">Success</AlertTitle>
-                      <AlertDescription className="text-green-700 whitespace-pre-line">
-                        {createUserSuccess}
+                    <Alert className="border-red-200 bg-red-50">
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                      <AlertDescription className="text-red-800">
+                        User will be able to login immediately with the provided email and password
                       </AlertDescription>
                     </Alert>
-                  )}
 
-                  <Button type="submit" disabled={isCreatingUser} className="w-full">
-                    {isCreatingUser ? "Creating User..." : "Create User"}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isCreatingUser}>
+                      {isCreatingUser ? "Creating..." : "Create User Account"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {isSuperAdmin && (
-            <TabsContent value="manage-admins">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      Add New Admin
-                    </CardTitle>
-                    <CardDescription>Add a new admin to the system.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleAddAdmin} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+            {isSuperAdmin && (
+              <TabsContent value="manage-admins">
+                <div className="space-y-6">
+                  <Card className="border-red-200">
+                    <CardHeader className="bg-red-50">
+                      <CardTitle className="flex items-center gap-2 text-red-800">
+                        <UserPlus className="h-5 w-5" />
+                        Add Admin
+                      </CardTitle>
+                      <CardDescription>Add or remove admin users who can access this admin panel</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <form onSubmit={handleAddAdmin} className="space-y-4">
+                        {addAdminError && (
+                          <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{addAdminError}</AlertDescription>
+                          </Alert>
+                        )}
+
                         <div className="space-y-2">
-                          <Label htmlFor="admin-email">Admin Email</Label>
+                          <Label htmlFor="adminEmail">Admin Email</Label>
                           <Input
-                            id="admin-email"
+                            id="adminEmail"
                             type="email"
+                            placeholder="Enter admin email address"
                             value={adminEmail}
                             onChange={(e) => setAdminEmail(e.target.value)}
-                            placeholder="admin@example.com"
                             required
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
                           />
                         </div>
+
                         <div className="space-y-2">
-                          <Label htmlFor="admin-name">Admin Name</Label>
+                          <Label htmlFor="adminName">Admin Name</Label>
                           <Input
-                            id="admin-name"
+                            id="adminName"
                             type="text"
+                            placeholder="Enter admin full name"
                             value={adminName}
                             onChange={(e) => setAdminName(e.target.value)}
-                            placeholder="Admin Name"
                             required
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
                           />
                         </div>
-                      </div>
 
-                      {addAdminError && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Error</AlertTitle>
-                          <AlertDescription>{addAdminError}</AlertDescription>
-                        </Alert>
-                      )}
+                        <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAdmin}>
+                          {isAddingAdmin ? "Adding Admin..." : "Add Admin"}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
 
-                      <Button type="submit" disabled={isAddingAdmin}>
-                        {isAddingAdmin ? "Adding Admin..." : "Add Admin"}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Current Admins
-                    </CardTitle>
-                    <CardDescription>Manage existing admin accounts.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoadingAdmins ? (
-                      <div className="text-center py-4">Loading admins...</div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {admins.map((admin) => (
-                            <TableRow key={admin.id}>
-                              <TableCell>{admin.name}</TableCell>
-                              <TableCell>{admin.email}</TableCell>
-                              <TableCell>
-                                <Button variant="destructive" size="sm" onClick={() => handleRemoveAdmin(admin.id)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
+                  <Card className="border-red-200">
+                    <CardHeader className="bg-red-50">
+                      <CardTitle className="flex items-center gap-2 text-red-800">
+                        <Users className="h-5 w-5" />
+                        Current Admins
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      {isLoadingAdmins ? (
+                        <div className="text-center py-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+                        </div>
+                      ) : admins.length === 0 ? (
+                        <p className="text-gray-500 text-center py-4">No admins found</p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Actions</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          )}
-
-          <TabsContent value="debug">
-            <Card>
-              <CardHeader>
-                <CardTitle>Debug Information</CardTitle>
-                <CardDescription>System information and debugging tools.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Current User</Label>
-                    <p className="text-sm text-gray-600">{firebaseUser?.email}</p>
-                  </div>
-                  <div>
-                    <Label>Admin Status</Label>
-                    <p className="text-sm text-gray-600">{isAuthorized ? "Authorized" : "Not Authorized"}</p>
-                  </div>
-                  <div>
-                    <Label>Super Admin</Label>
-                    <p className="text-sm text-gray-600">{isSuperAdmin ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <Label>Total Accounts</Label>
-                    <p className="text-sm text-gray-600">{accounts.length}</p>
-                  </div>
+                          </TableHeader>
+                          <TableBody>
+                            {admins.map((admin) => (
+                              <TableRow key={admin.id}>
+                                <TableCell className="font-medium">{admin.name}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {admin.email}
+                                    {admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase() && (
+                                      <Badge variant="secondary" className="bg-red-100 text-red-800">
+                                        You
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRemoveAdmin(admin)}
+                                    disabled={admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase()}
+                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-200"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    Remove
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
       </main>
+
+      <footer
+        className="py-6"
+        style={{
+          background: "linear-gradient(135deg, #DC2626 0%, #EF4444 100%)",
+        }}
+      >
+        <div className="container mx-auto px-4 text-center text-sm text-white">
+          &copy; {new Date().getFullYear()} Keren Hatzedakah. All rights reserved.
+        </div>
+      </footer>
     </div>
   )
 }

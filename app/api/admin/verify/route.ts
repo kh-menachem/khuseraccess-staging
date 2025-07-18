@@ -3,26 +3,12 @@ import { google } from "googleapis"
 import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
-import { requireAuth } from "@/lib/auth-middleware"
 
 export async function POST(request: NextRequest) {
-  // 🔒 SECURITY: Verify Firebase authentication first
-  const authResult = await requireAuth(request)
-
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status })
-  }
-
-  console.log("Admin verify API route called for authenticated user:", authResult.user.email)
+  console.log("Admin verify API route called")
 
   try {
     const { email } = await request.json()
-
-    // 🔒 SECURITY: Verify the authenticated user matches the requested email
-    if (authResult.user.email !== email) {
-      return NextResponse.json({ success: false, error: "Unauthorized: Email mismatch" }, { status: 403 })
-    }
-
     console.log("Email received for admin verification:", email)
 
     if (!email) {

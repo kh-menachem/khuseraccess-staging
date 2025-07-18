@@ -261,7 +261,7 @@ export default function Dashboard() {
       return
     }
 
-    // Get user data from localStorage
+    // Check if we have the user data in localStorage
     const storedUser = localStorage.getItem("user")
     if (!storedUser) {
       router.push("/login")
@@ -299,8 +299,6 @@ export default function Dashboard() {
           setCustomerData(data)
         } catch (error) {
           console.error("Error loading customer data:", error)
-          // If there's an error, redirect to login
-          router.push("/login")
         } finally {
           setIsLoading(false)
         }
@@ -315,8 +313,7 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try {
-      await logout()
-      localStorage.removeItem("user")
+      await logout() // This will clear localStorage automatically
       router.push("/")
     } catch (error) {
       console.error("Error logging out:", error)
@@ -337,6 +334,8 @@ export default function Dashboard() {
       }
 
       setUser(updatedUser)
+
+      // Update localStorage
       localStorage.setItem("user", JSON.stringify(updatedUser))
 
       // Fetch data for the new account
