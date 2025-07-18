@@ -1,0 +1,12 @@
+{
+  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm run build",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "PNPM_FLAGS": "--no-frozen-lockfile"
+  }
+}
