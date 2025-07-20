@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
               <span style="display: block; margin-top: 8px; font-size: 14px;">
                 Send to one of the following email addresses:
                 <br />
-                <a href="mailto:kerenhatzedaka@gmail.com" style="color: #007bff;">kerenhatzedaka@gmail.com</a><br />
-                <a href="mailto:kerenhatzedakah@gmail.com" style="color: #007bff;">kerenhatzedakah@gmail.com</a><br />
+                <a  style="color: #007bff;">kerenhatzedaka@gmail.com</a><br />
+                <a  style="color: #007bff;">kerenhatzedakah@gmail.com</a><br />
                 <a  style="color: #007bff;">ozerdalimlakewood@gmail.com</a>
               </span>
             </li>
