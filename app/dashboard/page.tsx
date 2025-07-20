@@ -183,7 +183,7 @@ const translations = {
     switchAccount: "החלף חשבון",
     sendDonationInstructions: "שלח הוראות תרומה",
     sendingEmail: "שולח אימייל...",
-    confirmSendEmail: "לשלוח הוראות תרומה?",
+    confirmSendEmail: "?לשלוח הוראות תרומה",
     confirmSendEmailDescription: "זה ישלח הוראות תרומה עם QR קוד ושיטות תשלום לכתובת האימייל שלך.",
     cancel: "ביטול",
     send: "שלח",
