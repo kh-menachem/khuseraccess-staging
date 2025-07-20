@@ -1129,7 +1129,9 @@ export default function Dashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.confirmSendEmail}</DialogTitle>
-            <DialogDescription>{t.confirmSendEmailDescription}</DialogDescription>
+            <DialogDescription dir="rtl">
+              {t.confirmSendEmailDescription}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEmailConfirmDialog(false)}>
