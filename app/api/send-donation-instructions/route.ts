@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
                 <br />
                 <a href="mailto:kerenhatzedaka@gmail.com" style="color: #007bff;">kerenhatzedaka@gmail.com</a><br />
                 <a href="mailto:kerenhatzedakah@gmail.com" style="color: #007bff;">kerenhatzedakah@gmail.com</a><br />
-                <a href="mailto:ozerdalimlakewood@gmail.com" style="color: #007bff;">ozerdalimlakewood@gmail.com</a>
+                <a  style="color: #007bff;">ozerdalimlakewood@gmail.com</a>
               </span>
             </li>
 
