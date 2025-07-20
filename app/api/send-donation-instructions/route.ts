@@ -89,14 +89,15 @@ export async function POST(req: NextRequest) {
 
 
             <li style="margin-bottom: 15px;">
-              <strong>Cheques</strong> - על ידי צ'ק<br>
+              <strong>Checks</strong> - על ידי צ'ק<br>
               Written out to Congregation Tiferes Yaakov<br>
               422 Monmouth Ave, Lakewood NJ 08701<br>
               <em style="color: #d63384;">You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong></em>
             </li>
 
             <li style="margin-bottom: 15px;">
-              <strong>OJC, Fidelity, The Donors Fund</strong> - Tax ID# 83-4411630 דרך חברת דונורס<br>
+              <strong>The Donors Fund, OJC, Pledger, Fidelity</strong> -  דרך חברת דונורס<br>
+              Tax ID# 83-4411630 <br>
               Congregation Tiferes Yaakov<br>
               6 Shoshana Dr Lakewood, NJ 08701<br>
               <em style="color: #d63384;">You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong></em>
@@ -209,7 +210,7 @@ Here's How To Donate:
 1. Chase Quickpay / Zelle: kerenhatzedaka@gmail.com
    You MUST note it's in honor of ${name} / ${accountNumber}
 
-2. Cheques: Written out to Congregation Tiferes Yaakov
+2. Checks: Written out to Congregation Tiferes Yaakov
    422 Monmouth Ave, Lakewood NJ 08701
    You MUST note it's in honor of ${name} / ${accountNumber}
 
