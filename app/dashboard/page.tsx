@@ -187,7 +187,7 @@ const translations = {
     confirmSendEmailDescription: "זה ישלח הוראות תרומה עם QR קוד ושיטות תשלום לכתובת האימייל שלך.",
     cancel: "ביטול",
     send: "שלח",
-    emailSentSuccess: "האימייל נשלח בהצלחה!",
+    emailSentSuccess: "!האימייל נשלח בהצלחה",
     emailSentError: "שליחת האימייל נכשלה. אנא נסה שוב.",
     types: {
       check: "צ'ק",
