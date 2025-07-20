@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
               <p style="margin-top: 8px; font-size: 13px; color: #555;">
                 Or copy this link:<br>
                 <a href="${donationURL}" style="color: #007bff; word-break: break-all;">
-                  {donationURL}
+                  ${donationURL}
                 </a>
               </p>
             </li>
