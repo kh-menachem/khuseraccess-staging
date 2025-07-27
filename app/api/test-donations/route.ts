@@ -6,8 +6,7 @@ import * as os from "os"
 
 export async function GET() {
   try {
-    // Use the specific spreadsheet ID directly
-    const spreadsheetId = "1X_YEt73_oZEJoU1pITVqZZ8AHGxj3Ic2QuNRb8zVbGo"
+    const spreadsheetId = process.env.SPREADSHEET_ID
 
     // Get the credentials from the environment variable
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
