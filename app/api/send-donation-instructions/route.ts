@@ -54,109 +54,82 @@ export async function POST(req: NextRequest) {
     })
 
     const html = `
-      <div style="font-family: Arial, sans-serif; color: #000; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://6301926.com/images/logo-new.png" alt="Keren Hatzedakah Logo" width="200" style="margin-bottom: 20px;" />
-          <h2 style="color: #20B2AA; margin: 0;">Keren Hatzedakah</h2>
-          <p style="color: #666; margin: 10px 0;">Donation Instructions for</p>
-          <p style="color: #666; font-size: 14px;">Fund: ${accountNumber} -  ${name}</p>
-        </div>
+    <div style="font-family: Arial, sans-serif; color: #000; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #fffbe6;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="https://6301926.com/images/logo-new.png" alt="Keren Hatzedakah Logo" width="130" style="margin-bottom: 10px;" />
+        <h2 style="color: #000; margin: 0; text-transform: uppercase;">KEREN HATZEDAKAH</h2>
+        <p style="color: #000; font-size: 16px; font-weight: bold;">Donation Instructions for Fund: ${accountNumber} - ${name}</p>
+      </div>
 
-        <h3 style="color: #20B2AA; border-bottom: 2px solid #20B2AA; padding-bottom: 10px;">
-          Here's How To Donate: איך לתרום
-        </h3>
+      <p style="color: red; font-size: 14px; font-weight: bold; margin-top: -10px; margin-bottom: 20px; text-align: center;">
+        IMPORTANT: Please include the note "<em>In honor of ${name} / ${accountNumber}</em>" with your donation. Without this, we cannot guarantee it will be credited to the correct fund.
+      </p>
 
-        <div style="margin: 20px 0;">
-          <ol style="line-height: 1.8; padding-left: 20px;">
-            <li style="margin-bottom: 15px;">
-              <strong>Chase Quickpay / Zelle</strong> - 
-              זעל קוויק פאי<br>
+      <ol style="padding-left: 20px; font-size: 14px; line-height: 1.8;">
 
-              <!-- Donation reference note -->
-              <em style="color: #d63384;">
-                You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong>
-              </em><br>
+        <li>
+          <strong>Zelle / Chase QuickPay - זל</strong><br>
+          Email: <a href="mailto:kerenhatzedaka@gmail.com" style="color: #000;">kerenhatzedaka@gmail.com</a>
+        </li>
 
-              <!-- Emails listed separately -->
-              <span style="display: block; margin-top: 8px; font-size: 14px;">
-                Send to one of the following email addresses:
-                <br />
-                <a  style="color: #007bff;">kerenhatzedaka@gmail.com</a><br />
-                <a  style="color: #007bff;">kerenhatzedakah@gmail.com</a><br />
-                <a  style="color: #007bff;">ozerdalimlakewood@gmail.com</a>
-              </span>
-            </li>
+        <li>
+          <strong>By Check - צ׳ק</strong><br>
+          Make checks payable to:<br>
+          Congregation Tiferes Yaakov<br>
+          422 Monmouth Ave, Lakewood, NJ 08701
+        </li>
 
+        <li>
+          <strong>Donor-Advised Funds (DAF) - חברת דונורס</strong><br>
+          Accepted via: The Donors Fund, OJC, Pledger, Fidelity<br>
+          Tax ID: 83-4411630<br>
+          Address: Congregation Tiferes Yaakov, 6 Shoshana Dr, Lakewood, NJ
+        </li>
 
-            <li style="margin-bottom: 15px;">
-              <strong>Checks</strong> - על ידי צ'ק<br>
-              Written out to Congregation Tiferes Yaakov<br>
-              422 Monmouth Ave, Lakewood NJ 08701<br>
-              <em style="color: #d63384;">You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong></em>
-            </li>
+        <li>
+          <strong>Bank Wire Transfer - העברה בנקאית</strong><br>
+          Congregation Tiferes Yaakov<br>
+          Account #: 4392635765<br>
+          Fedwire #: 031201360<br>
+          Memo: ${name} / ${accountNumber}
+        </li>
 
-            <li style="margin-bottom: 15px;">
-              <strong>The Donors Fund, OJC, Pledger, Fidelity</strong> -  דרך חברת דונורס<br>
-              Tax ID# 83-4411630 <br>
-              Congregation Tiferes Yaakov<br>
-              6 Shoshana Dr Lakewood, NJ 08701<br>
-              <em style="color: #d63384;">You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong></em>
-            </li>
+        <li>
+          <strong>Credit Card Donation - אשראי</strong><br>
+          Donate online:<br>
+          <a href="${donationURL}" style="color: #0000EE;">${donationURL}</a>
+        </li>
 
-            <li style="margin-bottom: 15px;">
-              <strong>Bank Wires</strong> - העברת בנק<br>
-              Congregation Tiferes Yaakov<br>
-              6 Shoshana Dr Lakewood NJ 08701<br>
-              Account # 4392635765<br>
-              Fedwire # 031201360<br>
-              <em style="color: #d63384;">You MUST note it's in honor of <strong>${name} / ${accountNumber}</strong></em>
-            </li>
+        <li>
+          <strong>Donation Hotline - דרך הטלפון</strong><br>
+          Call: 732-800-9840<br>
+          Use Campaign ID: ${accountNumber}
+        </li>
 
-            <li style="margin-bottom: 15px;">
-              <strong>Credit Card Donations</strong> - אשראי<br>
+        <li>
+          <strong>SMS (Text Message) Donation - SMS דרך</strong><br>
+          Text: 5540/amount to 732-800-9840
+        </li>
 
-              <!-- Button with full link -->
-              <a href="${donationURL}" 
-                style="background:#e60000;color:white;padding:12px 24px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:10px;font-weight:bold;">
-                💳 Donate Here →
-              </a>
+      </ol>
 
-              <!-- Display a short version below -->
-              <p style="margin-top: 8px; font-size: 13px; color: #555;">
-                Or copy this link:<br>
-                <a href="${donationURL}" style="color: #007bff; word-break: break-all;">
-                  ${donationURL}
-                </a>
-              </p>
-            </li>
+      <div style="text-align: center; margin-top: 30px;">
+        <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #20B2AA;">📱 Scan QR to Donate</p>
+        <img src="${qrCodeUrl}" alt="QR Code" width="180" style="border: 2px solid #20B2AA; border-radius: 8px;" />
+        <p style="margin: 10px 0 0 0; font-size: 12px; color: #555;">Point your phone camera at this code</p>
+      </div>
 
+      <div style="margin-top: 30px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; font-size: 13px;">
+        <strong>⚠️ Note:</strong> Please include the correct name and campaign ID in the memo.<br>
+        Without it, funds may be distributed at the discretion of Keren Hatzedakah.
+      </div>
 
-            <li style="margin-bottom: 15px;">
-              <strong>Donation Hotline</strong> - Call 
-              <a href="tel:7328009840" style="color: #20B2AA; font-weight: bold;">732-800-9840</a> 
-              and enter campaign ID <strong>${accountNumber}</strong> דרך הטלפון
-            </li>
+      <p style="margin-top: 25px; text-align: center; color: #007bff; font-size: 14px;">
+        Tizku L'Mitzvos! Your support helps bring comfort and strength to those in need.
+      </p>
+    </div>
+    `
 
-            <li style="margin-bottom: 15px;">
-              <strong>Donate by SMS</strong> - Text 
-              <a href="sms:7328009840" style="color: #20B2AA; font-weight: bold;">732-800-9840</a> 
-              with: <strong>${accountNumber}/amount</strong> דרך SMS
-            </li>
-          </ol>
-        </div>
-
-        <div style="text-align: center; margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border: 2px dashed #20B2AA;">
-          <p style="margin: 0 0 15px 0; font-size: 18px; font-weight: bold; color: #20B2AA;">📱 Scan QR to Donate:</p>
-          <img src="${qrCodeUrl}" width="180" alt="QR Code for Donations" style="border: 2px solid #20B2AA; border-radius: 8px;" />
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">Point your phone camera at this code</p>
-        </div>
-
-        <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0; color: #856404; font-size: 14px;">
-            <strong>⚠️ Important:</strong> Please ensure to include the correct campaign name and ID in your memo. 
-            If missing, funds will be distributed at the discretion of Keren Hatzedakah.
-          </p>
-        </div>
 
         
       </div>
