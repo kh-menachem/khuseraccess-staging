@@ -132,8 +132,7 @@ export async function POST(req: NextRequest) {
 
 
         
-      </div>
-    `
+    
 
     console.log("🔧 Creating SMTP transporter...")
 
