@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Too many requests to Google Sheets. Please wait a moment and try again.",
+          error: "Please wait a moment and try again.",
         },
         { status: 429 },
       )
