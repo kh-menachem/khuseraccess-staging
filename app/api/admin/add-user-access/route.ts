@@ -98,7 +98,31 @@ export async function POST(request: Request) {
       updatedRow: targetRowIndex,
     })
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+    const defaultError = { success: false, error: "An unexpected error occurred" }
+
+    // Handle Google Sheets quota exceeded error
+    if (
+      err?.response?.data?.error?.code === 429 ||
+      err?.response?.data?.error?.status === "RESOURCE_EXHAUSTED" ||
+      /quota|Rate Limit Exceeded/i.test(err?.message || "")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Too many requests to Google Sheets. Please wait a moment and try again.",
+        },
+        { status: 429 },
+      )
+    }
+
+    // Fall back to default error
+    return NextResponse.json(
+      {
+        success: false,
+        error: err?.message || defaultError.error,
+      },
+      { status: 500 },
+    )
   } finally {
     if (tempFilePath) {
       try {
