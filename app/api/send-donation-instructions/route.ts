@@ -61,32 +61,32 @@ export async function POST(req: NextRequest) {
         <p style="color: #000; font-size: 16px; font-weight: bold;">Donation Instructions for Fund: ${accountNumber} - ${name}</p>
       </div>
 
-      <p style="color: red; font-size: 14px; font-weight: bold; margin-top: -10px; margin-bottom: 20px; text-align: center;">
+      <p style="color: red; font-size: 14px; font-weight: bold; margin-top: -10px; margin-bottom: 30px; text-align: center;">
         IMPORTANT: Please include the note "<em>In honor of ${name} / ${accountNumber}</em>" with your donation. Without this, we cannot guarantee it will be credited to the correct fund.
       </p>
 
-      <ol style="padding-left: 20px; font-size: 14px; line-height: 1.8;">
+      <ol style="padding-left: 20px; font-size: 14px; line-height: 2;">
 
-        <li>
+        <li style="margin-bottom: 25px;">
           <strong>Zelle / Chase QuickPay - זל</strong><br>
           Email: <a href="mailto:kerenhatzedaka@gmail.com" style="color: #000;">kerenhatzedaka@gmail.com</a>
         </li>
 
-        <li>
+        <li style="margin-bottom: 25px;">
           <strong>By Check - צ׳ק</strong><br>
           Make checks payable to:<br>
           Congregation Tiferes Yaakov<br>
           422 Monmouth Ave, Lakewood, NJ 08701
         </li>
 
-        <li>
+        <li style="margin-bottom: 25px;">
           <strong>Donor-Advised Funds (DAF) - חברת דונורס</strong><br>
           Accepted via: The Donors Fund, OJC, Pledger, Fidelity<br>
           Tax ID: 83-4411630<br>
           Address: Congregation Tiferes Yaakov, 6 Shoshana Dr, Lakewood, NJ
         </li>
 
-        <li>
+        <li style="margin-bottom: 25px;">
           <strong>Bank Wire Transfer - העברה בנקאית</strong><br>
           Congregation Tiferes Yaakov<br>
           Account #: 4392635765<br>
@@ -94,19 +94,27 @@ export async function POST(req: NextRequest) {
           Memo: ${name} / ${accountNumber}
         </li>
 
-        <li>
+        <li style="margin-bottom: 25px;">
           <strong>Credit Card Donation - אשראי</strong><br>
-          Donate online:<br>
-          <a href="${donationURL}" style="color: #0000EE;">${donationURL}</a>
+          <a href="${donationURL}" 
+            style="background:#e60000;color:white;padding:12px 24px;border-radius:5px;text-decoration:none;display:inline-block;margin-top:10px;font-weight:bold;">
+            💳 Donate Here
+          </a>
+          <p style="margin-top: 8px; font-size: 13px; color: #555;">
+            Or copy this link:<br>
+            <a href="${donationURL}" style="color: #007bff; word-break: break-all;">
+              ${donationURL}
+            </a>
+          </p>
         </li>
 
-        <li>
+        <li style="margin-bottom: 25px;">
           <strong>Donation Hotline - דרך הטלפון</strong><br>
           Call: 732-800-9840<br>
           Use Campaign ID: ${accountNumber}
         </li>
 
-        <li>
+        <li style="margin-bottom: 25px;">
           <strong>SMS (Text Message) Donation - SMS דרך</strong><br>
           Text: 5540/amount to 732-800-9840
         </li>
@@ -115,11 +123,11 @@ export async function POST(req: NextRequest) {
 
       <div style="text-align: center; margin-top: 30px;">
         <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #20B2AA;">📱 Scan QR to Donate</p>
-        <img src="${qrCodeUrl}" alt="QR Code" width="180" style="border: 2px solid #20B2AA; border-radius: 8px;" />
+        <img src="${qrCodeUrl}" alt="QR Code" width="130" style="border: 2px solid #20B2AA; border-radius: 8px;" />
         <p style="margin: 10px 0 0 0; font-size: 12px; color: #555;">Point your phone camera at this code</p>
       </div>
 
-      <div style="margin-top: 30px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; font-size: 13px;">
+      <div style="margin: 30px auto 0 auto; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; font-size: 13px; text-align: center; max-width: 550px;">
         <strong>⚠️ Note:</strong> Please include the correct name and campaign ID in the memo.<br>
         Without it, funds may be distributed at the discretion of Keren Hatzedakah.
       </div>
@@ -129,6 +137,7 @@ export async function POST(req: NextRequest) {
       </p>
     </div>
     `
+
 
 
         
