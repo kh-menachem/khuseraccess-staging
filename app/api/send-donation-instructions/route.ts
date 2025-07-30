@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
     Important: Please ensure to include the correct campaign name and ID in your memo.
       `,
       
-      ],
+
     })
 
 

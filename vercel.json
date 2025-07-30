@@ -8,7 +8,6 @@
   },
   "env": {
     "PNPM_FLAGS": "--no-frozen-lockfile",
-    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
   },
   "installCommand": "pnpm install --no-frozen-lockfile"
 }
