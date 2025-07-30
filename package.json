@@ -32,6 +32,7 @@
     "nodemailer": "latest",
     "os": "latest",
     "path": "latest",
+    "puppeteer": "latest",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^2.5.5"

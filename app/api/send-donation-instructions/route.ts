@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
+import { generatePDFfromHTML } from "@/lib/generatePDF" // Adjust path if needed
 
 export async function POST(req: NextRequest) {
   try {
@@ -170,6 +171,8 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("📤 Sending email...")
+  
+    const pdfBuffer = await generatePDFfromHTML(html)
 
     // Send email
     const info = await transporter.sendMail({
@@ -177,28 +180,35 @@ export async function POST(req: NextRequest) {
       to: email,
       subject: subject,
       html: html,
-      // Add text version as fallback
       text: `
-Donation Instructions for ${name} (Account: ${accountNumber})
+    Donation Instructions for ${name} (Account: ${accountNumber})
 
-Here's How To Donate:
+    Here's How To Donate:
 
-1. Chase Quickpay / Zelle: kerenhatzedaka@gmail.com
-   You MUST note it's in honor of ${name} / ${accountNumber}
+    1. Chase Quickpay / Zelle: kerenhatzedaka@gmail.com
+      You MUST note it's in honor of ${name} / ${accountNumber}
 
-2. Checks: Written out to Congregation Tiferes Yaakov
-   422 Monmouth Ave, Lakewood NJ 08701
-   You MUST note it's in honor of ${name} / ${accountNumber}
+    2. Checks: Written out to Congregation Tiferes Yaakov
+      422 Monmouth Ave, Lakewood NJ 08701
+      You MUST note it's in honor of ${name} / ${accountNumber}
 
-3. Credit Card: ${donationURL}
+    3. Credit Card: ${donationURL}
 
-4. Donation Hotline: Call 732-800-9840 and enter campaign ID ${accountNumber}
+    4. Donation Hotline: Call 732-800-9840 and enter campaign ID ${accountNumber}
 
-5. SMS: Text 732-800-9840 with: ${accountNumber}/amount
+    5. SMS: Text 732-800-9840 with: ${accountNumber}/amount
 
-Important: Please ensure to include the correct campaign name and ID in your memo.
+    Important: Please ensure to include the correct campaign name and ID in your memo.
       `,
+      attachments: [
+        {
+          filename: `Donation_Instructions_${accountNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
     })
+
 
     console.log("✅ Email sent successfully!")
     console.log("📧 Message ID:", info.messageId)
