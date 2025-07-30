@@ -200,13 +200,7 @@ export async function POST(req: NextRequest) {
 
     Important: Please ensure to include the correct campaign name and ID in your memo.
       `,
-      attachments: [
-        {
-          filename: `Donation_Instructions_${accountNumber}.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
-      ],
+      
     })
 
 
