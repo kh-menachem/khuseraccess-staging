@@ -8,12 +8,10 @@ export async function generatePDFfromHTML(html: string): Promise<Buffer> {
   const puppeteer = isDev ? require("puppeteer") : require("puppeteer-core")
 
   const browser = await puppeteer.launch({
-    args: isDev ? [] : chromium.args,
-    executablePath: isDev
-      ? undefined
-      : await chromium.executablePath || "/usr/bin/chromium-browser",
-    headless: true,
-    ignoreHTTPSErrors: true,
+  args: chromium.args,
+  defaultViewport: chromium.defaultViewport,
+  executablePath: await chromium.executablePath || '/usr/bin/chromium-browser',
+  headless: chromium.headless,
   })
 
   const page = await browser.newPage()
