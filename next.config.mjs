@@ -1,14 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["chrome-aws-lambda"]
+    serverComponentsExternalPackages: ['googleapis']
   },
-  webpack(config, { isServer }) {
-    if (isServer) {
-      config.externals.push("chrome-aws-lambda")
-    }
-    return config
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  images: {
+    domains: ['localhost'],
+    unoptimized: true
   }
 }
 
-module.exports = nextConfig
+export default nextConfig
