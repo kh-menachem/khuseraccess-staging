@@ -172,7 +172,6 @@ export async function POST(req: NextRequest) {
 
     console.log("📤 Sending email...")
   
-    const pdfBuffer = await generatePDFfromHTML(html)
 
     // Send email
     const info = await transporter.sendMail({
@@ -200,12 +199,7 @@ export async function POST(req: NextRequest) {
 
     Important: Please ensure to include the correct campaign name and ID in your memo.
       `,
-      attachments: [
-        {
-          filename: `Donation_Instructions_${accountNumber}.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
+      
       ],
     })
 
