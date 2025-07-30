@@ -4,9 +4,11 @@ import chromium from "chrome-aws-lambda"
 import { Browser } from "puppeteer-core"
 
 export async function generatePDFfromHTML(html: string): Promise<Buffer> {
-  const browser: Browser = await chromium.puppeteer.launch({
+  const chromium = require("chrome-aws-lambda")
+  const puppeteer = require("puppeteer-core")
+
+  const browser = await puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath,
     headless: chromium.headless,
   })
