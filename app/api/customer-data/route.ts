@@ -660,7 +660,7 @@ export async function POST(request: NextRequest) {
     try {
       const percentagesResponse = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Percentages!A:AQ",
+        range: "Percentages!A:D",
       })
 
       const percentagesData = percentagesResponse.data.values || []
@@ -678,7 +678,7 @@ export async function POST(request: NextRequest) {
     try {
       const machinesResponse = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Machines!A:AQ",
+        range: "Machines!A:G",
       })
 
       const machinesData = machinesResponse.data.values || []
@@ -695,7 +695,7 @@ export async function POST(request: NextRequest) {
     try {
       const donorsResponse = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Donors!A:AQ",
+        range: "Donors!A:F",
       })
 
       const donorsData = donorsResponse.data.values || []
@@ -716,27 +716,27 @@ export async function POST(request: NextRequest) {
     ] = await Promise.allSettled([
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Money!A:AQ",
+        range: "Money!A:M",
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Money_2024!A:AQ",
+        range: "Money_2024!A:M",
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Money_Old!A:AQ",
+        range: "Money_Old!A:M",
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Donations!A:AQ",
+        range: "Donations!A:F",
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Machine Records!A:AQ",
+        range: "Machine Records!A:G",
       }),
       sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "LinksandPhone!A:AQ", // 👈 add this
+        range: "LinksandPhone!A:N", // 👈 add this
       }),
     ])
 
