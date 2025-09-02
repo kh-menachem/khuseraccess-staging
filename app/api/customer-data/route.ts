@@ -569,7 +569,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       switch(type) {
         case "CC:Sale": net = amt * 0.965; break
         case "Grant:Recommendation": net = amt * 0.965; break
-        case "CC:Refund": net = -amt; break
+        case "CC:Refund": net = amt; break
         case "Check:Sale": net = amt * 0.9985; break
         default: net = 0; break
       }

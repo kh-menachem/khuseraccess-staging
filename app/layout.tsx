@@ -13,5 +13,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 
 export const metadata = {
-      generator: 'v0.dev'
+      generator: 'v0.app'
     };
