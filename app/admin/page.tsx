@@ -223,7 +223,6 @@ export default function AdminPage() {
     }
   }
 
-
   const handleCreateNewUser = async (e?: React.FormEvent, emailOverride?: string, passwordOverride?: string) => {
     if (e) e.preventDefault()
 
@@ -256,6 +255,23 @@ export default function AdminPage() {
 
       if (result.success) {
         setCreateUserSuccess("User created successfully")
+
+        // Send welcome email with login instructions
+        try {
+          await fetch("/api/send-welcome-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              temporaryPassword: password,
+              accountNumber: selectedAccount.split(" - ")[0],
+              name: selectedAccount.split(" - ")[1],
+            }),
+          })
+        } catch (error) {
+          console.error("Failed to send welcome email:", error)
+        }
+
         setNewUserEmail("")
         setNewUserPassword(generateRandomPassword())
         setActiveTab("add-access")
@@ -498,10 +514,12 @@ export default function AdminPage() {
                           />
                           <datalist id="accounts-list">
                             {accounts.map((account) => (
-                              <option key={account.value} value={account.label} />
+                              <option
+                                key={account.accountNumber}
+                                value={`${account.accountNumber} - ${account.firstName} ${account.lastName}`}
+                              />
                             ))}
                           </datalist>
-
                         </div>
                       )}
                     </div>
