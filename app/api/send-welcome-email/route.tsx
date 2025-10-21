@@ -89,7 +89,7 @@ export async function POST(req: Request) {
         <!-- Footer -->
         <div style="text-align: center; font-size: 13px; color: #555;">
           <p style="margin: 0;">Keren Hatzedakah | Congregation Tiferes Yaakov</p>
-          <p style="margin: 0;">422 Monmouth Ave, Lakewood, NJ 08701</p>
+          <p style="margin: 0;">🏢 422 Monmouth Ave, Lakewood, NJ 08701</p>
           <p style="margin: 0;">📞 USA: <a href="tel:7326301924" style="color:#20B2AA;">732-630-1924</a> | 🇮🇱 Israel: <a href="tel:0543530084" style="color:#20B2AA;">054-353-0084</a></p>
           <p style="margin: 0;">🌐 <a href="${siteUrl}" style="color:#20B2AA;">6301926.com</a></p>
           <p style="margin-top: 10px; font-size: 12px; color: #888;">
