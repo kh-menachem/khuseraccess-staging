@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     <div style="font-family: Arial, sans-serif; color: #000; max-width: 650px; margin: 0 auto; background-color: #fff;">
       <div style="text-align: center; margin-top: 20px;">
         <a href="https://6301926.com" target="_blank" style="text-decoration: none;">
-          <img src="/images/design-mode/logo-new(1).png" alt="Keren Hatzedakah Logo"
+          <img src="/images/design-mode/logo-new(2).png" alt="Keren Hatzedakah Logo"
             style="max-width: 180px; height: auto; margin-bottom: 5px;" />
         </a>
       </div>
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
               </button>
             </div>
             <p style="margin-top:20px;">
-              Login at: <a href="https://6301926.com/login" style="color:#20B2AA;">https://6301926.com/login</a>
+              Login at: <a href="https://6301926.com/login" style="color:#20B2AA;">https://6301926.com</a>
             </p>
             <p>Change your password immediately after first login.</p>
             <p>Do not share your password with anyone.</p>
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
               </button>
             </div>
             <p style="margin-top:20px;">היכנס למערכת בכתובת: 
-              <a href="https://6301926.com/login" style="color:#20B2AA;">https://6301926.com/login</a>
+              <a href="https://6301926.com/login" style="color:#20B2AA;">https://6301926.com</a>
             </p>
             <p>שנה את הסיסמה מיד לאחר הכניסה הראשונה.</p>
             <p>אל תשתף את הסיסמה עם אף אחד.</p>
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
       <div style="text-align: center; font-size: 13px; color: #555;">
         <p style="margin: 0;">Keren Hatzedakah | Congregation Tiferes Yaakov</p>
-        <p style="margin: 0;">422 Monmouth Ave, Lakewood, NJ 08701</p>
+        <p style="margin: 0;">🏢 422 Monmouth Ave, Lakewood, NJ 08701</p>
         <p style="margin: 0;">📞 USA: <a href="tel:7326301924" style="color:#20B2AA;">732-630-1924</a> | 🇮🇱 Israel: <a href="tel:0543530084" style="color:#20B2AA;">054-353-0084</a></p>
         <p style="margin: 0;">🌐 <a href="https://6301926.com" style="color:#20B2AA;">6301926.com</a></p>
         <p style="margin-top: 10px; font-size: 12px; color: #888;">
