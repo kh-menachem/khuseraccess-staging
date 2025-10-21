@@ -48,7 +48,7 @@ export async function POST(req: Request) {
           <p><strong>Temporary Password:</strong>
             <code style="background: #fff; padding: 5px 10px; border-radius: 4px;">${temporaryPassword}</code>
           </p>
-          <p style="direction: rtl; text-align: right;"><strong>סיסמה זמנית:</strong>
+          <p style="direction: ltr; text-align: right;"><strong>סיסמה זמנית:</strong>
             <code style="background: #fff; padding: 5px 10px; border-radius: 4px;">${temporaryPassword}</code>
           </p>
 
