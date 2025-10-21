@@ -13,17 +13,17 @@ export async function POST(req: Request) {
       },
     })
 
-    // Logo path (adjust if hosted elsewhere)
-    const logoUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/logo.png`
+    // ✅ Real live URLs
     const siteUrl = "https://6301926.com"
+    const logoUrl = "https://www.6301926.com/images/logo-new.png"
 
     const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; direction: ltr;">
-        
+      <div style="font-family: Arial, sans-serif; color: #000; max-width: 650px; margin: 0 auto; background-color: #fff; direction: ltr;">
+
         <!-- Clickable Logo -->
         <div style="text-align: center; margin-top: 20px;">
           <a href="${siteUrl}" target="_blank" style="text-decoration: none;">
-            <img src="${logoUrl}" alt="Keren Hatzedakah Logo" style="max-width: 180px; height: auto;" />
+            <img src="${logoUrl}" alt="Keren Hatzedakah Logo" style="max-width: 180px; height: auto; margin-bottom: 5px;" />
           </a>
         </div>
 
@@ -51,18 +51,32 @@ export async function POST(req: Request) {
           <p style="direction: rtl; text-align: right;"><strong>סיסמה זמנית:</strong>
             <code style="background: #fff; padding: 5px 10px; border-radius: 4px;">${temporaryPassword}</code>
           </p>
+
+          <!-- Login Buttons -->
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="${siteUrl}/login" 
+              style="background-color: #20B2AA; color: #fff; padding: 10px 25px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+              Login Now
+            </a>
+          </div>
+          <div style="text-align: center; margin-top: 10px; direction: rtl;">
+            <a href="${siteUrl}/login" 
+              style="background-color: #20B2AA; color: #fff; padding: 10px 25px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+              התחבר עכשיו
+            </a>
+          </div>
         </div>
 
         <!-- Security Steps -->
         <p><strong>⚠️ Important Security Steps:</strong></p>
         <p style="direction: rtl; text-align: right;"><strong>⚠️ צעדים חשובים לשמירה על אבטחה:</strong></p>
         <ol>
-          <li>Login at: <a href="${siteUrl}" style="color:#20B2AA;">${siteUrl}</a></li>
+          <li>Login at: <a href="${siteUrl}/login" style="color:#20B2AA;">${siteUrl}</a></li>
           <li>Change your password immediately after first login</li>
           <li>Do not share your password with anyone</li>
         </ol>
         <ol style="direction: rtl; text-align: right;">
-          <li>היכנס למערכת בכתובת: <a href="${siteUrl}" style="color:#20B2AA;">${siteUrl}</a></li>
+          <li>היכנס למערכת בכתובת: <a href="${siteUrl}/login" style="color:#20B2AA;">${siteUrl}</a></li>
           <li>שנה את הסיסמה מיד לאחר הכניסה הראשונה</li>
           <li>אל תשתף את הסיסמה עם אף אחד</li>
         </ol>
@@ -75,7 +89,7 @@ export async function POST(req: Request) {
         <!-- Footer -->
         <div style="text-align: center; font-size: 13px; color: #555;">
           <p style="margin: 0;">Keren Hatzedakah | Congregation Tiferes Yaakov</p>
-          <p style="margin: 0;">🏢 422 Monmouth Ave, Lakewood, NJ 08701</p>
+          <p style="margin: 0;">422 Monmouth Ave, Lakewood, NJ 08701</p>
           <p style="margin: 0;">📞 USA: <a href="tel:7326301924" style="color:#20B2AA;">732-630-1924</a> | 🇮🇱 Israel: <a href="tel:0543530084" style="color:#20B2AA;">054-353-0084</a></p>
           <p style="margin: 0;">🌐 <a href="${siteUrl}" style="color:#20B2AA;">6301926.com</a></p>
           <p style="margin-top: 10px; font-size: 12px; color: #888;">
