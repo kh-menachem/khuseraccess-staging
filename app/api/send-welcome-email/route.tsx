@@ -56,7 +56,7 @@ export async function POST(req: Request) {
           <div style="text-align: center; margin-top: 20px;">
             <a href="${siteUrl}/login" 
               style="background-color: #20B2AA; color: #fff; padding: 10px 25px; border-radius: 6px; text-decoration: none; font-weight: bold;">
-              Login Now התחבר עכשיו
+              Login Now | התחבר עכשיו
             </a>
           </div>
         </div>
