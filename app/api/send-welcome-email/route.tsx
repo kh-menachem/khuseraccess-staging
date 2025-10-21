@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     <div style="font-family: Arial, sans-serif; color: #000; max-width: 650px; margin: 0 auto; background-color: #fff;">
       <div style="text-align: center; margin-top: 20px;">
         <a href="https://6301926.com" target="_blank" style="text-decoration: none;">
-          <img src="/images/design-mode/logo-new(2).png" alt="Keren Hatzedakah Logo"
+          <img src="/images/design-mode/logo-new(3).png" alt="Keren Hatzedakah Logo"
             style="max-width: 180px; height: auto; margin-bottom: 5px;" />
         </a>
       </div>
