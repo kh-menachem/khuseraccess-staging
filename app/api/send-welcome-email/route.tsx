@@ -43,9 +43,21 @@ export async function POST(req: Request) {
               <p>Your account has been created for <strong>${name}</strong> (Account #${accountNumber}).</p>
               <p><strong>Email:</strong> ${email}</p>
               <p><strong>Temporary Password:</strong></p>
-              <input value="${temporaryPassword}" readonly
-                style="width:100%;max-width:360px;background:#fff;border:1px solid #ccc;border-radius:6px;padding:10px 12px;
-                       font-family:monospace;font-size:16px;letter-spacing:.5px;"
+              <input
+                value="${temporaryPassword}"
+                readonly
+                style="
+                  width: auto;
+                  display: inline-block;
+                  background: #f9f9f9;
+                  border: 1px solid #ccc;
+                  border-radius: 4px;
+                  padding: 4px 6px;
+                  font-family: Arial, sans-serif;
+                  font-size: 14px;
+                  color: #000;
+                  text-align: center;
+                "
                 aria-label="Temporary Password"
               />
               <p style="margin-top:20px;">
@@ -59,9 +71,21 @@ export async function POST(req: Request) {
               <p>החשבון שלך נוצר עבור <strong>${name}</strong> (מספר חשבון ${accountNumber})</p>
               <p><strong>אימייל:</strong> ${email}</p>
               <p><strong>סיסמה זמנית:</strong></p>
-              <input value="${temporaryPassword}" readonly
-                style="width:100%;max-width:360px;background:#fff;border:1px solid #ccc;border-radius:6px;padding:10px 12px;
-                       font-family:monospace;font-size:16px;letter-spacing:.5px;text-align:left;"
+              <input
+                value="${temporaryPassword}"
+                readonly
+                style="
+                  width: auto;
+                  display: inline-block;
+                  background: #f9f9f9;
+                  border: 1px solid #ccc;
+                  border-radius: 4px;
+                  padding: 4px 6px;
+                  font-family: Arial, sans-serif;
+                  font-size: 14px;
+                  color: #000;
+                  text-align: center;
+                "
                 aria-label="סיסמה זמנית"
               />
               <p style="margin-top:20px;">היכנס למערכת בכתובת:
