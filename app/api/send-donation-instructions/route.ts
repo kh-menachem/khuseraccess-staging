@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     const html = `
     <div style="font-family: Arial, sans-serif; color: #000; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #fffbe6;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="https://6301926.com/images/logo-new.png" alt="Keren Hatzedakah Logo" width="130" style="margin-bottom: 10px;" />
+        <img src="/images/design-mode/logo-new.png" alt="Keren Hatzedakah Logo" width="130" style="margin-bottom: 10px;" />
         <h2 style="color: #000; margin: 0; text-transform: uppercase;">KEREN HATZEDAKAH</h2>
         <p style="color: #000; font-size: 16px; font-weight: bold;">Donation Instructions for Fund: ${accountNumber} - ${name}</p>
       </div>
