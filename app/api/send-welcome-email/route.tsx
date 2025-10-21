@@ -57,12 +57,12 @@ export async function POST(req: Request) {
         <p><strong>⚠️ Important Security Steps:</strong></p>
         <p style="direction: rtl; text-align: right;"><strong>⚠️ צעדים חשובים לשמירה על אבטחה:</strong></p>
         <ol>
-          <li>Login at: <a href="${siteUrl}/login" style="color:#20B2AA;">${siteUrl}/login</a></li>
+          <li>Login at: <a href="${siteUrl}" style="color:#20B2AA;">${siteUrl}</a></li>
           <li>Change your password immediately after first login</li>
           <li>Do not share your password with anyone</li>
         </ol>
         <ol style="direction: rtl; text-align: right;">
-          <li>היכנס למערכת בכתובת: <a href="${siteUrl}/login" style="color:#20B2AA;">${siteUrl}/login</a></li>
+          <li>היכנס למערכת בכתובת: <a href="${siteUrl}" style="color:#20B2AA;">${siteUrl}</a></li>
           <li>שנה את הסיסמה מיד לאחר הכניסה הראשונה</li>
           <li>אל תשתף את הסיסמה עם אף אחד</li>
         </ol>
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
         <!-- Footer -->
         <div style="text-align: center; font-size: 13px; color: #555;">
           <p style="margin: 0;">Keren Hatzedakah | Congregation Tiferes Yaakov</p>
-          <p style="margin: 0;">422 Monmouth Ave, Lakewood, NJ 08701</p>
+          <p style="margin: 0;">🏢 422 Monmouth Ave, Lakewood, NJ 08701</p>
           <p style="margin: 0;">📞 USA: <a href="tel:7326301924" style="color:#20B2AA;">732-630-1924</a> | 🇮🇱 Israel: <a href="tel:0543530084" style="color:#20B2AA;">054-353-0084</a></p>
           <p style="margin: 0;">🌐 <a href="${siteUrl}" style="color:#20B2AA;">6301926.com</a></p>
           <p style="margin-top: 10px; font-size: 12px; color: #888;">
