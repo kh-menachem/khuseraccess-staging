@@ -258,6 +258,7 @@ export default function Dashboard() {
   } | null>(null)
   const [customerData, setCustomerData] = useState<CustomerData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [dateFilter, setDateFilter] = useState("30") // Default to last 30 days
   const [typeFilter, setTypeFilter] = useState("all") // Default to all transaction types
@@ -283,38 +284,51 @@ export default function Dashboard() {
   const t = translations[language]
 
   useEffect(() => {
-    // Check if user is logged in with Firebase
-    if (!firebaseUser) {
-      router.push("/login")
-      return
-    }
+    const initializeDashboard = async () => {
+      try {
+        // Check if user is logged in with Firebase
+        if (!firebaseUser) {
+          console.log("[v0] No Firebase user, redirecting to login")
+          router.push("/login")
+          return
+        }
 
-    // Check if we have the user data in localStorage
-    const storedUser = localStorage.getItem("user")
-    if (!storedUser) {
-      router.push("/login")
-      return
-    }
+        // Check if we have the user data in localStorage
+        const storedUser = localStorage.getItem("user")
+        if (!storedUser) {
+          console.log("[v0] No stored user data, redirecting to login")
+          router.push("/login")
+          return
+        }
 
-    try {
-      const parsedUser = JSON.parse(storedUser)
+        let parsedUser
+        try {
+          parsedUser = JSON.parse(storedUser)
+        } catch (parseError) {
+          console.error("[v0] Failed to parse stored user data:", parseError)
+          localStorage.removeItem("user")
+          router.push("/login")
+          return
+        }
 
-      // Check if user needs to select an account first
-      if (parsedUser.needsAccountSelection) {
-        router.push("/select-account")
-        return
-      }
+        // Check if user needs to select an account first
+        if (parsedUser.needsAccountSelection) {
+          console.log("[v0] User needs account selection")
+          router.push("/select-account")
+          return
+        }
 
-      // Check if user has a selected account
-      if (!parsedUser.id) {
-        router.push("/select-account")
-        return
-      }
+        // Check if user has a selected account
+        if (!parsedUser.id) {
+          console.log("[v0] No user ID found, redirecting to account selection")
+          router.push("/select-account")
+          return
+        }
 
-      // Fetch customer data
-      const loadData = async () => {
+        // Fetch customer data
         try {
           setIsLoading(true)
+          setError(null) // Clear any previous errors
           setUser(parsedUser)
 
           // Set language from stored user preference
@@ -322,35 +336,52 @@ export default function Dashboard() {
             setLanguage(parsedUser.language)
           }
 
+          console.log("[v0] Fetching customer data for:", parsedUser.email, parsedUser.id)
           // Pass both email and userId to fetchCustomerData
           const data = await fetchCustomerData(parsedUser.email, parsedUser.id)
-          setCustomerData(data)
-        } catch (error) {
-          console.error("Error loading customer data:", error)
-        } finally {
-          setIsLoading(false)
-        }
-      }
 
-      loadData()
-    } catch (error) {
-      console.error("Error parsing stored user:", error)
-      router.push("/login")
+          if (!data) {
+            throw new Error("No data received from server")
+          }
+
+          console.log("[v0] Successfully loaded customer data")
+          setCustomerData(data)
+        } catch (fetchError) {
+          console.error("[v0] Error loading customer data:", fetchError)
+          const errorMessage = fetchError instanceof Error ? fetchError.message : "Failed to load customer data"
+          setError(errorMessage)
+
+          // User can retry without losing their session
+        }
+      } catch (error) {
+        console.error("[v0] Error in dashboard initialization:", error)
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+        setError(errorMessage)
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    initializeDashboard()
   }, [router, firebaseUser])
 
   const handleLogout = async () => {
     try {
+      console.log("[v0] Logging out user")
       await logout() // This will clear localStorage automatically
       router.push("/")
     } catch (error) {
-      console.error("Error logging out:", error)
+      console.error("[v0] Error logging out:", error)
+      localStorage.removeItem("user")
+      router.push("/")
     }
   }
 
   const handleAccountSwitch = async (account: Account) => {
     setIsLoading(true)
+    setError(null) // Clear errors when switching accounts
     try {
+      console.log("[v0] Switching to account:", account.userId)
       // Update user info with selected account
       const updatedUser = {
         ...user!,
@@ -368,9 +399,17 @@ export default function Dashboard() {
 
       // Fetch data for the new account
       const data = await fetchCustomerData(user!.email, account.userId)
+
+      if (!data) {
+        throw new Error("No data received for selected account")
+      }
+
       setCustomerData(data)
+      console.log("[v0] Successfully switched accounts")
     } catch (error) {
-      console.error("Error switching account:", error)
+      console.error("[v0] Error switching account:", error)
+      const errorMessage = error instanceof Error ? error.message : "Failed to switch accounts"
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -394,6 +433,7 @@ export default function Dashboard() {
     setEmailStatus(null)
 
     try {
+      console.log("[v0] Sending donation instructions email")
       const response = await fetch("/api/send-donation-instructions", {
         method: "POST",
         headers: {
@@ -406,15 +446,21 @@ export default function Dashboard() {
         }),
       })
 
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`)
+      }
+
       const result = await response.json()
 
       if (result.success) {
         setEmailStatus({ type: "success", message: t.emailSentSuccess })
+        console.log("[v0] Email sent successfully")
       } else {
         setEmailStatus({ type: "error", message: t.emailSentError })
+        console.error("[v0] Email send failed:", result.error)
       }
     } catch (error) {
-      console.error("Error sending email:", error)
+      console.error("[v0] Error sending email:", error)
       setEmailStatus({ type: "error", message: t.emailSentError })
     } finally {
       setIsSendingEmail(false)
@@ -431,56 +477,61 @@ export default function Dashboard() {
   const allMoneyTransactions = useMemo(() => {
     if (!customerData) return []
 
-    const combined: CombinedTransaction[] = [
-      // Current transactions
-      ...customerData.currentTransactions.map((tx) => ({
-        ...tx,
-        net: tx.net,
-        source: "Current",
-      })),
-      // 2024 transactions
-      ...customerData.transactions2024.map((tx) => ({
-        ...tx,
-        net: tx.net,
-        source: "2024",
-      })),
-      // Old transactions
-      ...customerData.oldTransactions.map((tx) => ({
-        ...tx,
-        net: tx.net,
-        source: "Historical",
-      })),
-      // Donations (amount is net, show donor name in notes)
-      ...customerData.donations.map((donation) => ({
-        id: donation.id,
-        date: donation.date,
-        description: donation.donorName, // Show donor name in notes column
-        reference: donation.donorId,
-        amount: donation.amount,
-        net: donation.net,
-        type: donation.type,
-        source: "Donations",
-        donorName: donation.donorName,
-        purpose: donation.purpose,
-        notCleared: "", // Donations don't have not cleared status
-        cardknox: "", // Donations don't have cardknox
-      })),
-      // Add LinksandPhone transactions if they exist
-      ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
-        id: tx.id || `LINK-${Math.random()}`,
-        date: tx.date,
-        description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
-        reference: tx.name,
-        amount: tx.amount,
-        net: tx.net,
-        type: "Links/Phone",
-        source: tx.source || "LinksandPhone",
-        notCleared: "",
-        cardknox: "",
-      })),
-    ]
+    try {
+      const combined: CombinedTransaction[] = [
+        // Current transactions
+        ...(customerData.currentTransactions || []).map((tx) => ({
+          ...tx,
+          net: tx.net,
+          source: "Current",
+        })),
+        // 2024 transactions
+        ...(customerData.transactions2024 || []).map((tx) => ({
+          ...tx,
+          net: tx.net,
+          source: "2024",
+        })),
+        // Old transactions
+        ...(customerData.oldTransactions || []).map((tx) => ({
+          ...tx,
+          net: tx.net,
+          source: "Historical",
+        })),
+        // Donations (amount is net, show donor name in notes)
+        ...(customerData.donations || []).map((donation) => ({
+          id: donation.id,
+          date: donation.date,
+          description: donation.donorName, // Show donor name in notes column
+          reference: donation.donorId,
+          amount: donation.amount,
+          net: donation.net,
+          type: donation.type,
+          source: "Donations",
+          donorName: donation.donorName,
+          purpose: donation.purpose,
+          notCleared: "", // Donations don't have not cleared status
+          cardknox: "", // Donations don't have cardknox
+        })),
+        // Add LinksandPhone transactions if they exist
+        ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
+          id: tx.id || `LINK-${Math.random()}`,
+          date: tx.date,
+          description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
+          reference: tx.name,
+          amount: tx.amount,
+          net: tx.net,
+          type: "Links/Phone",
+          source: tx.source || "LinksandPhone",
+          notCleared: "",
+          cardknox: "",
+        })),
+      ]
 
-    return combined
+      return combined
+    } catch (error) {
+      console.error("[v0] Error processing transactions:", error)
+      return []
+    }
   }, [customerData])
 
   // Calculate not cleared total
@@ -625,6 +676,44 @@ export default function Dashboard() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
           <p className="mt-4 text-white font-medium">Loading your dashboard...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center p-4"
+        style={{
+          background: "linear-gradient(135deg, #20B2AA 0%, #48D1CC 50%, #40E0D0 100%)",
+        }}
+      >
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+              <CardTitle>Error Loading Dashboard</CardTitle>
+            </div>
+            <CardDescription>We encountered an error while loading your data.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-gray-600 bg-red-50 p-3 rounded-md border border-red-200">{error}</div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setError(null)
+                  window.location.reload()
+                }}
+                className="flex-1"
+              >
+                Retry
+              </Button>
+              <Button variant="outline" onClick={handleLogout} className="flex-1 bg-transparent">
+                Logout
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -1129,9 +1218,7 @@ export default function Dashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.confirmSendEmail}</DialogTitle>
-            <DialogDescription dir="rtl">
-              {t.confirmSendEmailDescription}
-            </DialogDescription>
+            <DialogDescription dir="rtl">{t.confirmSendEmailDescription}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEmailConfirmDialog(false)}>
