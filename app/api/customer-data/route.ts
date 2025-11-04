@@ -7,6 +7,10 @@ import * as os from "os"
 
 const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
 
+function roundToTwo(num: number): number {
+  return Math.round(num * 100) / 100
+}
+
 interface TransactionLimit {
   enabled: boolean
   limitType: "years" | "date"
@@ -348,10 +352,10 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       const lowerCaseType = transactionType.toLowerCase()
       if (percentagesMap.has(lowerCaseType)) {
         const multiplier = percentagesMap.get(lowerCaseType) || 1
-        netAmount = originalAmount * multiplier
+        netAmount = roundToTwo(originalAmount * multiplier)
 
         console.log(
-          `Applied multiplier ${multiplier} to amount for type ${transactionType}: ${originalAmount} -> ${netAmount.toFixed(2)}`,
+          `Applied multiplier ${multiplier} to amount for type ${transactionType}: ${originalAmount} -> ${netAmount}`,
         )
       } else {
         console.log(`No multiplier found for type: ${transactionType}, using 1.0`)
@@ -369,7 +373,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
     return {
       id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
-      description, // 👈 use modified description
+      description,
       reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
       amount: originalAmount,
       net: netAmount,
@@ -632,16 +636,16 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       let net = 0
       switch (type) {
         case "CC:Sale":
-          net = amt * 0.965
+          net = roundToTwo(amt * 0.965)
           break
         case "Grant:Recommendation":
-          net = amt * 0.965
+          net = roundToTwo(amt * 0.965)
           break
         case "CC:Refund":
-          net = amt
+          net = roundToTwo(amt)
           break
         case "Check:Sale":
-          net = amt * 0.9985
+          net = roundToTwo(amt * 0.9985)
           break
         default:
           net = 0
@@ -670,7 +674,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
     if (!grouped.has(key)) {
       grouped.set(key, {
         id: `LINKS-${key}`,
-        date: `${key}-01`, // default to first of month
+        date: `${key}-01`,
         description: getMonthName(key, language),
         reference: `LINKS-${key}`,
         amount: 0,
@@ -684,8 +688,8 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
 
     const tx = grouped.get(key)!
     tx.amount += d.amount
-    tx.net += d.net
-    if (!tx.date || d.date < tx.date) tx.date = d.date // keep earliest real date
+    tx.net = roundToTwo(tx.net + d.net)
+    if (!tx.date || d.date < tx.date) tx.date = d.date
 
     tx.details!.push({
       date: d.date,
