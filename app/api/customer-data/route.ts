@@ -860,6 +860,12 @@ export async function POST(request: NextRequest) {
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
 
+    console.log(`Found ${currentTransactions.length} current transactions (total)`)
+    console.log(`Found ${transactions2024.length} transactions from 2024 (total)`)
+    console.log(`Found ${oldTransactions.length} old transactions (total)`)
+    console.log(`Found ${donations.length} donations (total)`)
+    console.log(`Found ${machineRentals.length} machine rentals (total)`)
+
     const filteredCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
     const filteredTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
     const filteredOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
@@ -869,20 +875,27 @@ export async function POST(request: NextRequest) {
       cutoffDate,
     ).map(({ date, ...rest }) => ({ ...rest, rentalDate: date }))
 
-    console.log(`Found ${filteredCurrentTransactions.length} current transactions (after filtering)`)
-    console.log(`Found ${filteredTransactions2024.length} transactions from 2024 (after filtering)`)
-    console.log(`Found ${filteredOldTransactions.length} old transactions (after filtering)`)
-    console.log(`Found ${filteredDonations.length} donations (after filtering)`)
-    console.log(`Found ${filteredMachineRentals.length} machine rentals (after filtering)`)
+    console.log(`Displaying ${filteredCurrentTransactions.length} current transactions (after filtering)`)
+    console.log(`Displaying ${filteredTransactions2024.length} transactions from 2024 (after filtering)`)
+    console.log(`Displaying ${filteredOldTransactions.length} old transactions (after filtering)`)
+    console.log(`Displaying ${filteredDonations.length} donations (after filtering)`)
+    console.log(`Displaying ${filteredMachineRentals.length} machine rentals (after filtering)`)
 
     const customerData: CustomerData = {
       id: userId,
-      currentTransactions: filteredCurrentTransactions,
-      transactions2024: filteredTransactions2024,
-      oldTransactions: filteredOldTransactions,
-      donations: filteredDonations,
-      machineRentals: filteredMachineRentals,
+      // Full data for total calculations
+      currentTransactions: currentTransactions,
+      transactions2024: transactions2024,
+      oldTransactions: oldTransactions,
+      donations: donations,
+      machineRentals: machineRentals,
       linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap((t) => t.details || []),
+      // Filtered data for display
+      displayCurrentTransactions: filteredCurrentTransactions,
+      displayTransactions2024: filteredTransactions2024,
+      displayOldTransactions: filteredOldTransactions,
+      displayDonations: filteredDonations,
+      displayMachineRentals: filteredMachineRentals,
     }
 
     return NextResponse.json(customerData)

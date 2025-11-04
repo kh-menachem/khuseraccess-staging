@@ -480,26 +480,26 @@ export default function Dashboard() {
 
     try {
       const combined: CombinedTransaction[] = [
-        // Current transactions
-        ...(customerData.currentTransactions || []).map((tx) => ({
+        // Current transactions - use display data if available
+        ...(customerData.displayCurrentTransactions || customerData.currentTransactions || []).map((tx) => ({
           ...tx,
           net: tx.net,
           source: "Current",
         })),
-        // 2024 transactions
-        ...(customerData.transactions2024 || []).map((tx) => ({
+        // 2024 transactions - use display data if available
+        ...(customerData.displayTransactions2024 || customerData.transactions2024 || []).map((tx) => ({
           ...tx,
           net: tx.net,
           source: "2024",
         })),
-        // Old transactions
-        ...(customerData.oldTransactions || []).map((tx) => ({
+        // Old transactions - use display data if available
+        ...(customerData.displayOldTransactions || customerData.oldTransactions || []).map((tx) => ({
           ...tx,
           net: tx.net,
           source: "Historical",
         })),
-        // Donations (amount is net, show donor name in notes)
-        ...(customerData.donations || []).map((donation) => ({
+        // Donations - use display data if available
+        ...(customerData.displayDonations || customerData.donations || []).map((donation) => ({
           id: donation.id,
           date: donation.date,
           description: donation.donorName, // Show donor name in notes column
@@ -535,15 +535,71 @@ export default function Dashboard() {
     }
   }, [customerData])
 
-  // Calculate not cleared total
+  const allMoneyTransactionsForTotals = useMemo(() => {
+    if (!customerData) return []
+
+    try {
+      const combined: CombinedTransaction[] = [
+        // Use full data for totals
+        ...(customerData.currentTransactions || []).map((tx) => ({
+          ...tx,
+          net: tx.net,
+          source: "Current",
+        })),
+        ...(customerData.transactions2024 || []).map((tx) => ({
+          ...tx,
+          net: tx.net,
+          source: "2024",
+        })),
+        ...(customerData.oldTransactions || []).map((tx) => ({
+          ...tx,
+          net: tx.net,
+          source: "Historical",
+        })),
+        ...(customerData.donations || []).map((donation) => ({
+          id: donation.id,
+          date: donation.date,
+          description: donation.donorName,
+          reference: donation.donorId,
+          amount: donation.amount,
+          net: donation.net,
+          type: donation.type,
+          source: "Donations",
+          donorName: donation.donorName,
+          purpose: donation.purpose,
+          notCleared: "",
+          cardknox: "",
+        })),
+        ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
+          id: tx.id || `LINK-${Math.random()}`,
+          date: tx.date,
+          description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
+          reference: tx.name,
+          amount: tx.amount,
+          net: tx.net,
+          type: "Links/Phone",
+          source: tx.source || "LinksandPhone",
+          notCleared: "",
+          cardknox: "",
+        })),
+      ]
+
+      return combined
+    } catch (error) {
+      console.error("[v0] Error processing transactions for totals:", error)
+      return []
+    }
+  }, [customerData])
+
+  // Calculate not cleared total from FULL data
   const notClearedTotal = useMemo(() => {
-    return allMoneyTransactions
+    return allMoneyTransactionsForTotals
       .filter((tx) => {
         const notCleared = tx.notCleared?.toLowerCase().trim()
         return notCleared === "true" || notCleared === "yes" || notCleared === "1"
       })
       .reduce((sum, tx) => sum + tx.net, 0)
-  }, [allMoneyTransactions])
+  }, [allMoneyTransactionsForTotals])
 
   // Apply filters to transactions
   const filteredTransactions = useMemo(() => {
@@ -654,16 +710,16 @@ export default function Dashboard() {
     return Array.from(types).sort()
   }, [allMoneyTransactions])
 
-  // Calculate available balance (all money transactions including donations)
+  // Calculate available balance from FULL data (all money transactions including donations)
   const availableBalance = useMemo(() => {
-    return allMoneyTransactions
+    return allMoneyTransactionsForTotals
       .filter((tx) => {
         const notCleared = tx.notCleared?.toLowerCase().trim()
         // Exclude transactions where notCleared is "true", "yes", or "1"
         return !(notCleared === "true" || notCleared === "yes" || notCleared === "1")
       })
       .reduce((sum, tx) => sum + tx.net, 0)
-  }, [allMoneyTransactions])
+  }, [allMoneyTransactionsForTotals])
 
   if (isLoading) {
     return (
@@ -934,7 +990,7 @@ export default function Dashboard() {
                   ${formatNumber(availableBalance)}
                 </div>
                 <p className="text-xs text-gray-500">
-                  {allMoneyTransactions.length} {t.totalTransactions}
+                  {allMoneyTransactionsForTotals.length} {t.totalTransactions}
                 </p>
               </CardContent>
             </Card>

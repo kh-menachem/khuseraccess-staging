@@ -6,6 +6,11 @@ export interface CustomerData {
   donations: Donation[]
   machineRentals: MachineRental[]
   linksAndPhoneTransactions?: TransactionDetail[]
+  displayCurrentTransactions?: Transaction[]
+  displayTransactions2024?: Transaction[]
+  displayOldTransactions?: Transaction[]
+  displayDonations?: Donation[]
+  displayMachineRentals?: MachineRental[]
 }
 
 export interface Transaction {
