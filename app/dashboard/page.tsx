@@ -28,6 +28,10 @@ import Image from "next/image"
 import React from "react"
 import { SystemMessageBanner } from "@/components/system-message-banner"
 
+const roundToTwo = (num: number): number => {
+  return Math.round(num * 100) / 100
+}
+
 // Function to format numbers with commas
 const formatNumber = (num: number): string => {
   return new Intl.NumberFormat("en-US", {
@@ -483,19 +487,19 @@ export default function Dashboard() {
         // Current transactions - use display data if available
         ...(customerData.displayCurrentTransactions || customerData.currentTransactions || []).map((tx) => ({
           ...tx,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           source: "Current",
         })),
         // 2024 transactions - use display data if available
         ...(customerData.displayTransactions2024 || customerData.transactions2024 || []).map((tx) => ({
           ...tx,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           source: "2024",
         })),
         // Old transactions - use display data if available
         ...(customerData.displayOldTransactions || customerData.oldTransactions || []).map((tx) => ({
           ...tx,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           source: "Historical",
         })),
         // Donations - use display data if available
@@ -505,7 +509,7 @@ export default function Dashboard() {
           description: donation.donorName, // Show donor name in notes column
           reference: donation.donorId,
           amount: donation.amount,
-          net: donation.net,
+          net: roundToTwo(donation.net), // Round net to 2 decimals
           type: donation.type,
           source: "Donations",
           donorName: donation.donorName,
@@ -520,7 +524,7 @@ export default function Dashboard() {
           description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
           reference: tx.name,
           amount: tx.amount,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           type: "Links/Phone",
           source: tx.source || "LinksandPhone",
           notCleared: "",
@@ -543,17 +547,17 @@ export default function Dashboard() {
         // Use full data for totals
         ...(customerData.currentTransactions || []).map((tx) => ({
           ...tx,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           source: "Current",
         })),
         ...(customerData.transactions2024 || []).map((tx) => ({
           ...tx,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           source: "2024",
         })),
         ...(customerData.oldTransactions || []).map((tx) => ({
           ...tx,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           source: "Historical",
         })),
         ...(customerData.donations || []).map((donation) => ({
@@ -562,7 +566,7 @@ export default function Dashboard() {
           description: donation.donorName,
           reference: donation.donorId,
           amount: donation.amount,
-          net: donation.net,
+          net: roundToTwo(donation.net), // Round net to 2 decimals
           type: donation.type,
           source: "Donations",
           donorName: donation.donorName,
@@ -576,7 +580,7 @@ export default function Dashboard() {
           description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
           reference: tx.name,
           amount: tx.amount,
-          net: tx.net,
+          net: roundToTwo(tx.net), // Round net to 2 decimals
           type: "Links/Phone",
           source: tx.source || "LinksandPhone",
           notCleared: "",
@@ -593,12 +597,13 @@ export default function Dashboard() {
 
   // Calculate not cleared total from FULL data
   const notClearedTotal = useMemo(() => {
-    return allMoneyTransactionsForTotals
+    const total = allMoneyTransactionsForTotals
       .filter((tx) => {
         const notCleared = tx.notCleared?.toLowerCase().trim()
         return notCleared === "true" || notCleared === "yes" || notCleared === "1"
       })
       .reduce((sum, tx) => sum + tx.net, 0)
+    return roundToTwo(total)
   }, [allMoneyTransactionsForTotals])
 
   // Apply filters to transactions
@@ -712,13 +717,14 @@ export default function Dashboard() {
 
   // Calculate available balance from FULL data (all money transactions including donations)
   const availableBalance = useMemo(() => {
-    return allMoneyTransactionsForTotals
+    const total = allMoneyTransactionsForTotals
       .filter((tx) => {
         const notCleared = tx.notCleared?.toLowerCase().trim()
         // Exclude transactions where notCleared is "true", "yes", or "1"
         return !(notCleared === "true" || notCleared === "yes" || notCleared === "1")
       })
       .reduce((sum, tx) => sum + tx.net, 0)
+    return roundToTwo(total)
   }, [allMoneyTransactionsForTotals])
 
   if (isLoading) {
