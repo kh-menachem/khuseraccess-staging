@@ -10,11 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, UserPlus, Mail, Shield, LogOut, Users, Trash2 } from "lucide-react"
+import { AlertCircle, UserPlus, Mail, Shield, LogOut, Users, Trash2, MessageSquare } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
@@ -47,6 +49,14 @@ export default function AdminPage() {
   const [accounts, setAccounts] = useState<Array<{ accountNumber: string; firstName: string; lastName: string }>>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState("")
+
+  const [systemMessageEnabled, setSystemMessageEnabled] = useState(false)
+  const [systemMessage, setSystemMessage] = useState("")
+  const [showOnDashboard, setShowOnDashboard] = useState(true)
+  const [showOnLogin, setShowOnLogin] = useState(true)
+  const [isSavingMessage, setIsSavingMessage] = useState(false)
+  const [messageSuccess, setMessageSuccess] = useState<string | null>(null)
+  const [messageError, setMessageError] = useState<string | null>(null)
 
   const { user: firebaseUser, logout } = useAuth()
   const isSuperAdmin = firebaseUser?.email === "kh.menachem@gmail.com"
@@ -117,6 +127,21 @@ export default function AdminPage() {
     }
   }
 
+  const loadSystemMessage = async () => {
+    try {
+      const response = await fetch("/api/admin/system-message")
+      const result = await response.json()
+      if (result.success) {
+        setSystemMessageEnabled(result.data.enabled)
+        setSystemMessage(result.data.message)
+        setShowOnDashboard(result.data.showOnDashboard)
+        setShowOnLogin(result.data.showOnLogin)
+      }
+    } catch (error) {
+      console.error("Error loading system message:", error)
+    }
+  }
+
   useEffect(() => {
     const checkAdminAccess = async () => {
       if (!firebaseUser) {
@@ -137,6 +162,7 @@ export default function AdminPage() {
           setAdminUser(result.adminUser)
           loadAccounts()
           loadAdmins()
+          loadSystemMessage() // Load system message on mount
         } else {
           setIsAuthorized(false)
         }
@@ -340,6 +366,41 @@ export default function AdminPage() {
     }
   }
 
+  const handleSaveSystemMessage = async () => {
+    setIsSavingMessage(true)
+    setMessageSuccess(null)
+    setMessageError(null)
+
+    try {
+      const response = await fetch("/api/admin/system-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestorEmail: firebaseUser?.email,
+          enabled: systemMessageEnabled,
+          message: systemMessage,
+          showOnDashboard,
+          showOnLogin,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setMessageSuccess("System message updated successfully")
+        setTimeout(() => setMessageSuccess(null), 3000)
+      } else {
+        setMessageError(result.error || "Failed to update system message")
+      }
+    } catch (error) {
+      setMessageError("Error updating system message")
+    } finally {
+      setIsSavingMessage(false)
+    }
+  }
+
   const handleLogout = async () => {
     try {
       await logout()
@@ -440,7 +501,7 @@ export default function AdminPage() {
             }}
             className="space-y-6"
           >
-            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-3" : "grid-cols-2"} bg-red-50`}>
+            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-4" : "grid-cols-3"} bg-red-50`}>
               <TabsTrigger
                 value="add-access"
                 className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
@@ -454,6 +515,13 @@ export default function AdminPage() {
               >
                 <Mail className="h-4 w-4" />
                 Create New User
+              </TabsTrigger>
+              <TabsTrigger
+                value="system-message"
+                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+              >
+                <MessageSquare className="h-4 w-4" />
+                System Message
               </TabsTrigger>
               {isSuperAdmin && (
                 <TabsTrigger
@@ -515,7 +583,9 @@ export default function AdminPage() {
                           <datalist id="accounts-list">
                             {accounts.map((account) => (
                               <option
-                                key={account.value} value={account.label} />
+                                key={account.accountNumber}
+                                value={`${account.accountNumber} - ${account.firstName} ${account.lastName}`}
+                              />
                             ))}
                           </datalist>
                         </div>
@@ -622,6 +692,128 @@ export default function AdminPage() {
                       {isCreatingUser ? "Creating..." : "Create User Account"}
                     </Button>
                   </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="system-message">
+              <Card className="border-red-200">
+                <CardHeader className="bg-red-50">
+                  <CardTitle className="flex items-center gap-2 text-red-800">
+                    <MessageSquare className="h-5 w-5" />
+                    System Message Banner
+                  </CardTitle>
+                  <CardDescription>
+                    Display a custom message banner on the customer dashboard and/or login page
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-6">
+                    {messageSuccess && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <AlertCircle className="h-4 w-4 text-green-600" />
+                        <AlertTitle className="text-green-800">Success</AlertTitle>
+                        <AlertDescription className="text-green-700">{messageSuccess}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {messageError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{messageError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Enable/Disable Toggle */}
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50 border-yellow-200">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="message-enabled" className="text-base font-medium">
+                          Enable System Message
+                        </Label>
+                        <p className="text-sm text-gray-600">Show the message banner to users</p>
+                      </div>
+                      <Switch
+                        id="message-enabled"
+                        checked={systemMessageEnabled}
+                        onCheckedChange={setSystemMessageEnabled}
+                      />
+                    </div>
+
+                    {/* Message Text */}
+                    <div className="space-y-2">
+                      <Label htmlFor="system-message">Message Text</Label>
+                      <Textarea
+                        id="system-message"
+                        placeholder="Enter the message to display to users..."
+                        value={systemMessage}
+                        onChange={(e) => setSystemMessage(e.target.value)}
+                        rows={4}
+                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                      />
+                      <p className="text-xs text-gray-500">
+                        This message will appear as a yellow banner at the top of the selected pages
+                      </p>
+                    </div>
+
+                    {/* Display Location Options */}
+                    <div className="space-y-4">
+                      <Label className="text-base font-medium">Display On</Label>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="show-dashboard" className="font-normal">
+                            Customer Dashboard
+                          </Label>
+                          <p className="text-xs text-gray-500">Show banner on the customer dashboard page</p>
+                        </div>
+                        <Switch
+                          id="show-dashboard"
+                          checked={showOnDashboard}
+                          onCheckedChange={setShowOnDashboard}
+                          disabled={!systemMessageEnabled}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="show-login" className="font-normal">
+                            Login Page
+                          </Label>
+                          <p className="text-xs text-gray-500">Show banner on the login page</p>
+                        </div>
+                        <Switch
+                          id="show-login"
+                          checked={showOnLogin}
+                          onCheckedChange={setShowOnLogin}
+                          disabled={!systemMessageEnabled}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview */}
+                    {systemMessageEnabled && systemMessage && (
+                      <div className="space-y-2">
+                        <Label className="text-base font-medium">Preview</Label>
+                        <div className="border rounded-lg overflow-hidden">
+                          <div className="bg-yellow-400 border-b-2 border-yellow-500 p-3">
+                            <p className="text-sm md:text-base font-medium text-gray-900 text-center">
+                              {systemMessage}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Save Button */}
+                    <Button
+                      onClick={handleSaveSystemMessage}
+                      className="w-full bg-red-600 hover:bg-red-700"
+                      disabled={isSavingMessage}
+                    >
+                      {isSavingMessage ? "Saving..." : "Save System Message"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

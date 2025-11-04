@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog"
 import Image from "next/image"
 import React from "react"
+import { SystemMessageBanner } from "@/components/system-message-banner"
 
 // Function to format numbers with commas
 const formatNumber = (num: number): string => {
@@ -762,6 +763,8 @@ export default function Dashboard() {
 
   return (
     <div className={`flex min-h-screen flex-col ${language === "he" ? "rtl" : "ltr"}`}>
+      <SystemMessageBanner location="dashboard" />
+
       <header
         className="border-b shadow-sm"
         style={{
