@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
   const [adminUser, setAdminUser] = useState<any>(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [activeTab, setActiveTab] = useState("add-access")
 
   // Add User Access states
@@ -67,7 +68,6 @@ export default function AdminPage() {
   const [limitError, setLimitError] = useState<string | null>(null)
 
   const { user: firebaseUser, logout } = useAuth()
-  const isSuperAdmin = firebaseUser?.email === "kh.menachem@gmail.com"
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
@@ -182,6 +182,7 @@ export default function AdminPage() {
         if (result.success && result.isAdmin) {
           setIsAuthorized(true)
           setAdminUser(result.adminUser)
+          setIsSuperAdmin(result.role === "superadmin")
           loadAccounts()
           loadAdmins()
           loadSystemMessage() // Load system message on mount
@@ -558,7 +559,7 @@ export default function AdminPage() {
             }}
             className="space-y-6"
           >
-            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-5" : "grid-cols-4"} bg-red-50`}>
+            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-5" : "grid-cols-3"} bg-red-50`}>
               <TabsTrigger
                 value="add-access"
                 className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
@@ -573,20 +574,24 @@ export default function AdminPage() {
                 <Mail className="h-4 w-4" />
                 Create New User
               </TabsTrigger>
-              <TabsTrigger
-                value="system-message"
-                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
-              >
-                <MessageSquare className="h-4 w-4" />
-                System Message
-              </TabsTrigger>
-              <TabsTrigger
-                value="transaction-limit"
-                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
-              >
-                <Calendar className="h-4 w-4" />
-                Transaction Limit
-              </TabsTrigger>
+              {isSuperAdmin && (
+                <>
+                  <TabsTrigger
+                    value="system-message"
+                    className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    System Message
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="transaction-limit"
+                    className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Transaction Limit
+                  </TabsTrigger>
+                </>
+              )}
               {isSuperAdmin && (
                 <TabsTrigger
                   value="manage-admins"
@@ -760,247 +765,253 @@ export default function AdminPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="system-message">
-              <Card className="border-red-200">
-                <CardHeader className="bg-red-50">
-                  <CardTitle className="flex items-center gap-2 text-red-800">
-                    <MessageSquare className="h-5 w-5" />
-                    System Message Banner
-                  </CardTitle>
-                  <CardDescription>
-                    Display a custom message banner on the customer dashboard and/or login page
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-6">
-                    {messageSuccess && (
-                      <Alert className="border-green-200 bg-green-50">
-                        <AlertCircle className="h-4 w-4 text-green-600" />
-                        <AlertTitle className="text-green-800">Success</AlertTitle>
-                        <AlertDescription className="text-green-700">{messageSuccess}</AlertDescription>
-                      </Alert>
-                    )}
+            {isSuperAdmin && (
+              <TabsContent value="system-message">
+                <Card className="border-red-200">
+                  <CardHeader className="bg-red-50">
+                    <CardTitle className="flex items-center gap-2 text-red-800">
+                      <MessageSquare className="h-5 w-5" />
+                      System Message Banner
+                    </CardTitle>
+                    <CardDescription>
+                      Display a custom message banner on the customer dashboard and/or login page
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-6">
+                      {messageSuccess && (
+                        <Alert className="border-green-200 bg-green-50">
+                          <AlertCircle className="h-4 w-4 text-green-600" />
+                          <AlertTitle className="text-green-800">Success</AlertTitle>
+                          <AlertDescription className="text-green-700">{messageSuccess}</AlertDescription>
+                        </Alert>
+                      )}
 
-                    {messageError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{messageError}</AlertDescription>
-                      </Alert>
-                    )}
+                      {messageError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Error</AlertTitle>
+                          <AlertDescription>{messageError}</AlertDescription>
+                        </Alert>
+                      )}
 
-                    {/* Enable/Disable Toggle */}
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50 border-yellow-200">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="message-enabled" className="text-base font-medium">
-                          Enable System Message
-                        </Label>
-                        <p className="text-sm text-gray-600">Show the message banner to users</p>
-                      </div>
-                      <Switch
-                        id="message-enabled"
-                        checked={systemMessageEnabled}
-                        onCheckedChange={setSystemMessageEnabled}
-                      />
-                    </div>
-
-                    {/* Message Text */}
-                    <div className="space-y-2">
-                      <Label htmlFor="system-message">Message Text</Label>
-                      <Textarea
-                        id="system-message"
-                        placeholder="Enter the message to display to users..."
-                        value={systemMessage}
-                        onChange={(e) => setSystemMessage(e.target.value)}
-                        rows={4}
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                      <p className="text-xs text-gray-500">
-                        This message will appear as a yellow banner at the top of the selected pages
-                      </p>
-                    </div>
-
-                    {/* Display Location Options */}
-                    <div className="space-y-4">
-                      <Label className="text-base font-medium">Display On</Label>
-
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                      {/* Enable/Disable Toggle */}
+                      <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50 border-yellow-200">
                         <div className="space-y-0.5">
-                          <Label htmlFor="show-dashboard" className="font-normal">
-                            Customer Dashboard
+                          <Label htmlFor="message-enabled" className="text-base font-medium">
+                            Enable System Message
                           </Label>
-                          <p className="text-xs text-gray-500">Show banner on the customer dashboard page</p>
+                          <p className="text-sm text-gray-600">Show the message banner to users</p>
                         </div>
                         <Switch
-                          id="show-dashboard"
-                          checked={showOnDashboard}
-                          onCheckedChange={setShowOnDashboard}
-                          disabled={!systemMessageEnabled}
+                          id="message-enabled"
+                          checked={systemMessageEnabled}
+                          onCheckedChange={setSystemMessageEnabled}
                         />
                       </div>
 
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="show-login" className="font-normal">
-                            Login Page
-                          </Label>
-                          <p className="text-xs text-gray-500">Show banner on the login page</p>
-                        </div>
-                        <Switch
-                          id="show-login"
-                          checked={showOnLogin}
-                          onCheckedChange={setShowOnLogin}
-                          disabled={!systemMessageEnabled}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Preview */}
-                    {systemMessageEnabled && systemMessage && (
+                      {/* Message Text */}
                       <div className="space-y-2">
-                        <Label className="text-base font-medium">Preview</Label>
-                        <div className="border rounded-lg overflow-hidden">
-                          <div className="bg-yellow-400 border-b-2 border-yellow-500 p-3">
-                            <p className="text-sm md:text-base font-medium text-gray-900 text-center">
-                              {systemMessage}
+                        <Label htmlFor="system-message">Message Text</Label>
+                        <Textarea
+                          id="system-message"
+                          placeholder="Enter the message to display to users..."
+                          value={systemMessage}
+                          onChange={(e) => setSystemMessage(e.target.value)}
+                          rows={4}
+                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                        />
+                        <p className="text-xs text-gray-500">
+                          This message will appear as a yellow banner at the top of the selected pages
+                        </p>
+                      </div>
+
+                      {/* Display Location Options */}
+                      <div className="space-y-4">
+                        <Label className="text-base font-medium">Display On</Label>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="show-dashboard" className="font-normal">
+                              Customer Dashboard
+                            </Label>
+                            <p className="text-xs text-gray-500">Show banner on the customer dashboard page</p>
+                          </div>
+                          <Switch
+                            id="show-dashboard"
+                            checked={showOnDashboard}
+                            onCheckedChange={setShowOnDashboard}
+                            disabled={!systemMessageEnabled}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="show-login" className="font-normal">
+                              Login Page
+                            </Label>
+                            <p className="text-xs text-gray-500">Show banner on the login page</p>
+                          </div>
+                          <Switch
+                            id="show-login"
+                            checked={showOnLogin}
+                            onCheckedChange={setShowOnLogin}
+                            disabled={!systemMessageEnabled}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Preview */}
+                      {systemMessageEnabled && systemMessage && (
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">Preview</Label>
+                          <div className="border rounded-lg overflow-hidden">
+                            <div className="bg-yellow-400 border-b-2 border-yellow-500 p-3">
+                              <p className="text-sm md:text-base font-medium text-gray-900 text-center">
+                                {systemMessage}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Save Button */}
+                      <Button
+                        onClick={handleSaveSystemMessage}
+                        className="w-full bg-red-600 hover:bg-red-700"
+                        disabled={isSavingMessage}
+                      >
+                        {isSavingMessage ? "Saving..." : "Save System Message"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {isSuperAdmin && (
+              <TabsContent value="transaction-limit">
+                <Card className="border-red-200">
+                  <CardHeader className="bg-red-50">
+                    <CardTitle className="flex items-center gap-2 text-red-800">
+                      <Calendar className="h-5 w-5" />
+                      Transaction Date Limit
+                    </CardTitle>
+                    <CardDescription>Limit how far back customers can view their transaction history</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-6">
+                      {limitSuccess && (
+                        <Alert className="border-green-200 bg-green-50">
+                          <AlertCircle className="h-4 w-4 text-green-600" />
+                          <AlertTitle className="text-green-800">Success</AlertTitle>
+                          <AlertDescription className="text-green-700">{limitSuccess}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      {limitError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Error</AlertTitle>
+                          <AlertDescription>{limitError}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Enable/Disable Toggle */}
+                      <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="limit-enabled" className="text-base font-medium">
+                            Enable Transaction Limit
+                          </Label>
+                          <p className="text-sm text-gray-600">Restrict customer transaction history visibility</p>
+                        </div>
+                        <Switch
+                          id="limit-enabled"
+                          checked={transactionLimitEnabled}
+                          onCheckedChange={setTransactionLimitEnabled}
+                        />
+                      </div>
+
+                      {/* Limit Type Selection */}
+                      <div className="space-y-2">
+                        <Label htmlFor="limit-type">Limit Type</Label>
+                        <Select
+                          value={limitType}
+                          onValueChange={(value: "years" | "date") => setLimitType(value)}
+                          disabled={!transactionLimitEnabled}
+                        >
+                          <SelectTrigger id="limit-type" className="border-red-200 focus:border-red-500">
+                            <SelectValue placeholder="Select limit type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="years">Years Back</SelectItem>
+                            <SelectItem value="date">Not Earlier Than Year</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500">
+                          Choose whether to limit by number of years back or a specific year
+                        </p>
+                      </div>
+
+                      {/* Limit Value Input */}
+                      <div className="space-y-2">
+                        <Label htmlFor="limit-value">
+                          {limitType === "years" ? "Number of Years" : "Earliest Year"}
+                        </Label>
+                        <Input
+                          id="limit-value"
+                          type="number"
+                          min={limitType === "years" ? "1" : "2000"}
+                          max={limitType === "years" ? "10" : new Date().getFullYear().toString()}
+                          placeholder={limitType === "years" ? "e.g., 1" : "e.g., 2024"}
+                          value={limitValue}
+                          onChange={(e) => setLimitValue(e.target.value)}
+                          disabled={!transactionLimitEnabled}
+                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                        />
+                        <p className="text-xs text-gray-500">
+                          {limitType === "years"
+                            ? "Customers can view transactions from the last X years"
+                            : "Customers cannot view transactions earlier than this year"}
+                        </p>
+                      </div>
+
+                      {/* Preview */}
+                      {transactionLimitEnabled && limitValue && (
+                        <div className="space-y-2">
+                          <Label className="text-base font-medium">Preview</Label>
+                          <div className="border rounded-lg p-4 bg-gray-50">
+                            <p className="text-sm text-gray-700">
+                              {limitType === "years" ? (
+                                <>
+                                  Customers will only see transactions from the last{" "}
+                                  <span className="font-semibold">{limitValue}</span>{" "}
+                                  {Number.parseInt(limitValue) === 1 ? "year" : "years"}.
+                                </>
+                              ) : (
+                                <>
+                                  Customers will not see any transactions earlier than{" "}
+                                  <span className="font-semibold">January 1, {limitValue}</span>.
+                                </>
+                              )}
                             </p>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Save Button */}
-                    <Button
-                      onClick={handleSaveSystemMessage}
-                      className="w-full bg-red-600 hover:bg-red-700"
-                      disabled={isSavingMessage}
-                    >
-                      {isSavingMessage ? "Saving..." : "Save System Message"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="transaction-limit">
-              <Card className="border-red-200">
-                <CardHeader className="bg-red-50">
-                  <CardTitle className="flex items-center gap-2 text-red-800">
-                    <Calendar className="h-5 w-5" />
-                    Transaction Date Limit
-                  </CardTitle>
-                  <CardDescription>Limit how far back customers can view their transaction history</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-6">
-                    {limitSuccess && (
-                      <Alert className="border-green-200 bg-green-50">
-                        <AlertCircle className="h-4 w-4 text-green-600" />
-                        <AlertTitle className="text-green-800">Success</AlertTitle>
-                        <AlertDescription className="text-green-700">{limitSuccess}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {limitError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{limitError}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {/* Enable/Disable Toggle */}
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="limit-enabled" className="text-base font-medium">
-                          Enable Transaction Limit
-                        </Label>
-                        <p className="text-sm text-gray-600">Restrict customer transaction history visibility</p>
-                      </div>
-                      <Switch
-                        id="limit-enabled"
-                        checked={transactionLimitEnabled}
-                        onCheckedChange={setTransactionLimitEnabled}
-                      />
-                    </div>
-
-                    {/* Limit Type Selection */}
-                    <div className="space-y-2">
-                      <Label htmlFor="limit-type">Limit Type</Label>
-                      <Select
-                        value={limitType}
-                        onValueChange={(value: "years" | "date") => setLimitType(value)}
-                        disabled={!transactionLimitEnabled}
+                      {/* Save Button */}
+                      <Button
+                        onClick={handleSaveTransactionLimit}
+                        className="w-full bg-red-600 hover:bg-red-700"
+                        disabled={isSavingLimit || (transactionLimitEnabled && !limitValue)}
                       >
-                        <SelectTrigger id="limit-type" className="border-red-200 focus:border-red-500">
-                          <SelectValue placeholder="Select limit type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="years">Years Back</SelectItem>
-                          <SelectItem value="date">Not Earlier Than Year</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-gray-500">
-                        Choose whether to limit by number of years back or a specific year
-                      </p>
+                        {isSavingLimit ? "Saving..." : "Save Transaction Limit"}
+                      </Button>
                     </div>
-
-                    {/* Limit Value Input */}
-                    <div className="space-y-2">
-                      <Label htmlFor="limit-value">{limitType === "years" ? "Number of Years" : "Earliest Year"}</Label>
-                      <Input
-                        id="limit-value"
-                        type="number"
-                        min={limitType === "years" ? "1" : "2000"}
-                        max={limitType === "years" ? "10" : new Date().getFullYear().toString()}
-                        placeholder={limitType === "years" ? "e.g., 1" : "e.g., 2024"}
-                        value={limitValue}
-                        onChange={(e) => setLimitValue(e.target.value)}
-                        disabled={!transactionLimitEnabled}
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                      <p className="text-xs text-gray-500">
-                        {limitType === "years"
-                          ? "Customers can view transactions from the last X years"
-                          : "Customers cannot view transactions earlier than this year"}
-                      </p>
-                    </div>
-
-                    {/* Preview */}
-                    {transactionLimitEnabled && limitValue && (
-                      <div className="space-y-2">
-                        <Label className="text-base font-medium">Preview</Label>
-                        <div className="border rounded-lg p-4 bg-gray-50">
-                          <p className="text-sm text-gray-700">
-                            {limitType === "years" ? (
-                              <>
-                                Customers will only see transactions from the last{" "}
-                                <span className="font-semibold">{limitValue}</span>{" "}
-                                {Number.parseInt(limitValue) === 1 ? "year" : "years"}.
-                              </>
-                            ) : (
-                              <>
-                                Customers will not see any transactions earlier than{" "}
-                                <span className="font-semibold">January 1, {limitValue}</span>.
-                              </>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Save Button */}
-                    <Button
-                      onClick={handleSaveTransactionLimit}
-                      className="w-full bg-red-600 hover:bg-red-700"
-                      disabled={isSavingLimit || (transactionLimitEnabled && !limitValue)}
-                    >
-                      {isSavingLimit ? "Saving..." : "Save Transaction Limit"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
             {isSuperAdmin && (
               <TabsContent value="manage-admins">

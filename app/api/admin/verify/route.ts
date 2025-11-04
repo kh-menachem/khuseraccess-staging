@@ -112,14 +112,17 @@ export async function POST(request: NextRequest) {
       const headerRow = rows[0]
       console.log("Admin header row:", headerRow)
 
-      // Find the email column in Admin sheet
       const emailIndex = headerRow.findIndex(
         (header: string) =>
           header?.toLowerCase().trim() === "email" ||
           header?.toLowerCase().trim() === "admin email" ||
           header?.toLowerCase().trim() === "user email",
       )
+
+      const roleIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "role")
+
       console.log("Email column index in Admin sheet:", emailIndex)
+      console.log("Role column index in Admin sheet:", roleIndex)
 
       if (emailIndex === -1) {
         console.log("Email column not found in Admin sheet")
@@ -142,11 +145,14 @@ export async function POST(request: NextRequest) {
       })
 
       if (adminRow) {
-        console.log("Admin found:", email)
+        const role = roleIndex !== -1 && adminRow[roleIndex] ? adminRow[roleIndex].toLowerCase().trim() : "user"
+
+        console.log("Admin found:", email, "with role:", role)
         return NextResponse.json({
           success: true,
           isAdmin: true,
           email: email,
+          role: role, // Return the role
         })
       } else {
         console.log("Admin not found:", email)
