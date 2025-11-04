@@ -1,9 +1,64 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
 import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/types"
-import { writeFileSync } from "fs"
+import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
+
+const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
+
+interface TransactionLimit {
+  enabled: boolean
+  limitType: "years" | "date"
+  limitValue: string
+}
+
+function getTransactionLimit(): TransactionLimit {
+  try {
+    if (existsSync(TRANSACTION_LIMIT_FILE)) {
+      const data = readFileSync(TRANSACTION_LIMIT_FILE, "utf-8")
+      return JSON.parse(data)
+    }
+  } catch (error) {
+    console.error("Error reading transaction limit file:", error)
+  }
+  return { enabled: false, limitType: "years", limitValue: "1" }
+}
+
+function getCutoffDate(limit: TransactionLimit): Date | null {
+  if (!limit.enabled) return null
+
+  const now = new Date()
+
+  if (limit.limitType === "years") {
+    const years = Number.parseInt(limit.limitValue) || 1
+    const cutoff = new Date(now)
+    cutoff.setFullYear(cutoff.getFullYear() - years)
+    return cutoff
+  } else if (limit.limitType === "date") {
+    // limitValue is a year like "2024"
+    const year = Number.parseInt(limit.limitValue)
+    if (!Number.isNaN(year)) {
+      return new Date(year, 0, 1) // January 1st of that year
+    }
+  }
+
+  return null
+}
+
+function filterTransactionsByDate<T extends { date: string }>(transactions: T[], cutoffDate: Date | null): T[] {
+  if (!cutoffDate) return transactions
+
+  return transactions.filter((tx) => {
+    try {
+      const txDate = new Date(tx.date)
+      return txDate >= cutoffDate
+    } catch (error) {
+      console.error("Error parsing transaction date:", tx.date, error)
+      return false
+    }
+  })
+}
 
 function getHardcodedPercentages(): Map<string, number> {
   const percentagesMap = new Map<string, number>()
@@ -660,6 +715,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
+    const transactionLimit = getTransactionLimit()
+    const cutoffDate = getCutoffDate(transactionLimit)
+
+    if (cutoffDate) {
+      console.log(`[v0] Transaction limit enabled: ${transactionLimit.limitType} = ${transactionLimit.limitValue}`)
+      console.log(`[v0] Cutoff date: ${cutoffDate.toISOString()}`)
+    }
+
     if (!userEmail && !userId) {
       return NextResponse.json({ error: "User email or ID is required" }, { status: 400 })
     }
@@ -797,19 +860,28 @@ export async function POST(request: NextRequest) {
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
 
-    console.log(`Found ${currentTransactions.length} current transactions`)
-    console.log(`Found ${transactions2024.length} transactions from 2024`)
-    console.log(`Found ${oldTransactions.length} old transactions`)
-    console.log(`Found ${donations.length} donations`)
-    console.log(`Found ${machineRentals.length} machine rentals`)
+    const filteredCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
+    const filteredTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
+    const filteredOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
+    const filteredDonations = filterTransactionsByDate(donations, cutoffDate)
+    const filteredMachineRentals = filterTransactionsByDate(
+      machineRentals.map((mr) => ({ ...mr, date: mr.rentalDate })),
+      cutoffDate,
+    ).map(({ date, ...rest }) => ({ ...rest, rentalDate: date }))
+
+    console.log(`Found ${filteredCurrentTransactions.length} current transactions (after filtering)`)
+    console.log(`Found ${filteredTransactions2024.length} transactions from 2024 (after filtering)`)
+    console.log(`Found ${filteredOldTransactions.length} old transactions (after filtering)`)
+    console.log(`Found ${filteredDonations.length} donations (after filtering)`)
+    console.log(`Found ${filteredMachineRentals.length} machine rentals (after filtering)`)
 
     const customerData: CustomerData = {
       id: userId,
-      currentTransactions,
-      transactions2024,
-      oldTransactions,
-      donations,
-      machineRentals,
+      currentTransactions: filteredCurrentTransactions,
+      transactions2024: filteredTransactions2024,
+      oldTransactions: filteredOldTransactions,
+      donations: filteredDonations,
+      machineRentals: filteredMachineRentals,
       linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap((t) => t.details || []),
     }
 

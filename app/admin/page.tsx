@@ -10,13 +10,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, UserPlus, Mail, Shield, LogOut, Users, Trash2, MessageSquare } from "lucide-react"
+import { AlertCircle, UserPlus, Mail, Shield, LogOut, Users, Trash2, MessageSquare, Calendar } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function AdminPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
@@ -57,6 +58,13 @@ export default function AdminPage() {
   const [isSavingMessage, setIsSavingMessage] = useState(false)
   const [messageSuccess, setMessageSuccess] = useState<string | null>(null)
   const [messageError, setMessageError] = useState<string | null>(null)
+
+  const [transactionLimitEnabled, setTransactionLimitEnabled] = useState(false)
+  const [limitType, setLimitType] = useState<"years" | "date">("years")
+  const [limitValue, setLimitValue] = useState("1")
+  const [isSavingLimit, setIsSavingLimit] = useState(false)
+  const [limitSuccess, setLimitSuccess] = useState<string | null>(null)
+  const [limitError, setLimitError] = useState<string | null>(null)
 
   const { user: firebaseUser, logout } = useAuth()
   const isSuperAdmin = firebaseUser?.email === "kh.menachem@gmail.com"
@@ -142,6 +150,20 @@ export default function AdminPage() {
     }
   }
 
+  const loadTransactionLimit = async () => {
+    try {
+      const response = await fetch("/api/admin/transaction-limit")
+      const result = await response.json()
+      if (result.success) {
+        setTransactionLimitEnabled(result.data.enabled)
+        setLimitType(result.data.limitType)
+        setLimitValue(result.data.limitValue)
+      }
+    } catch (error) {
+      console.error("Error loading transaction limit:", error)
+    }
+  }
+
   useEffect(() => {
     const checkAdminAccess = async () => {
       if (!firebaseUser) {
@@ -163,6 +185,7 @@ export default function AdminPage() {
           loadAccounts()
           loadAdmins()
           loadSystemMessage() // Load system message on mount
+          loadTransactionLimit() // Load transaction limit settings
         } else {
           setIsAuthorized(false)
         }
@@ -401,6 +424,40 @@ export default function AdminPage() {
     }
   }
 
+  const handleSaveTransactionLimit = async () => {
+    setIsSavingLimit(true)
+    setLimitSuccess(null)
+    setLimitError(null)
+
+    try {
+      const response = await fetch("/api/admin/transaction-limit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestorEmail: firebaseUser?.email,
+          enabled: transactionLimitEnabled,
+          limitType,
+          limitValue,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setLimitSuccess("Transaction limit updated successfully")
+        setTimeout(() => setLimitSuccess(null), 3000)
+      } else {
+        setLimitError(result.error || "Failed to update transaction limit")
+      }
+    } catch (error) {
+      setLimitError("Error updating transaction limit")
+    } finally {
+      setIsSavingLimit(false)
+    }
+  }
+
   const handleLogout = async () => {
     try {
       await logout()
@@ -501,7 +558,7 @@ export default function AdminPage() {
             }}
             className="space-y-6"
           >
-            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-4" : "grid-cols-3"} bg-red-50`}>
+            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-5" : "grid-cols-4"} bg-red-50`}>
               <TabsTrigger
                 value="add-access"
                 className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
@@ -522,6 +579,13 @@ export default function AdminPage() {
               >
                 <MessageSquare className="h-4 w-4" />
                 System Message
+              </TabsTrigger>
+              <TabsTrigger
+                value="transaction-limit"
+                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+              >
+                <Calendar className="h-4 w-4" />
+                Transaction Limit
               </TabsTrigger>
               {isSuperAdmin && (
                 <TabsTrigger
@@ -812,6 +876,126 @@ export default function AdminPage() {
                       disabled={isSavingMessage}
                     >
                       {isSavingMessage ? "Saving..." : "Save System Message"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="transaction-limit">
+              <Card className="border-red-200">
+                <CardHeader className="bg-red-50">
+                  <CardTitle className="flex items-center gap-2 text-red-800">
+                    <Calendar className="h-5 w-5" />
+                    Transaction Date Limit
+                  </CardTitle>
+                  <CardDescription>Limit how far back customers can view their transaction history</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-6">
+                    {limitSuccess && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <AlertCircle className="h-4 w-4 text-green-600" />
+                        <AlertTitle className="text-green-800">Success</AlertTitle>
+                        <AlertDescription className="text-green-700">{limitSuccess}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {limitError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{limitError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Enable/Disable Toggle */}
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="limit-enabled" className="text-base font-medium">
+                          Enable Transaction Limit
+                        </Label>
+                        <p className="text-sm text-gray-600">Restrict customer transaction history visibility</p>
+                      </div>
+                      <Switch
+                        id="limit-enabled"
+                        checked={transactionLimitEnabled}
+                        onCheckedChange={setTransactionLimitEnabled}
+                      />
+                    </div>
+
+                    {/* Limit Type Selection */}
+                    <div className="space-y-2">
+                      <Label htmlFor="limit-type">Limit Type</Label>
+                      <Select
+                        value={limitType}
+                        onValueChange={(value: "years" | "date") => setLimitType(value)}
+                        disabled={!transactionLimitEnabled}
+                      >
+                        <SelectTrigger id="limit-type" className="border-red-200 focus:border-red-500">
+                          <SelectValue placeholder="Select limit type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="years">Years Back</SelectItem>
+                          <SelectItem value="date">Not Earlier Than Year</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500">
+                        Choose whether to limit by number of years back or a specific year
+                      </p>
+                    </div>
+
+                    {/* Limit Value Input */}
+                    <div className="space-y-2">
+                      <Label htmlFor="limit-value">{limitType === "years" ? "Number of Years" : "Earliest Year"}</Label>
+                      <Input
+                        id="limit-value"
+                        type="number"
+                        min={limitType === "years" ? "1" : "2000"}
+                        max={limitType === "years" ? "10" : new Date().getFullYear().toString()}
+                        placeholder={limitType === "years" ? "e.g., 1" : "e.g., 2024"}
+                        value={limitValue}
+                        onChange={(e) => setLimitValue(e.target.value)}
+                        disabled={!transactionLimitEnabled}
+                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                      />
+                      <p className="text-xs text-gray-500">
+                        {limitType === "years"
+                          ? "Customers can view transactions from the last X years"
+                          : "Customers cannot view transactions earlier than this year"}
+                      </p>
+                    </div>
+
+                    {/* Preview */}
+                    {transactionLimitEnabled && limitValue && (
+                      <div className="space-y-2">
+                        <Label className="text-base font-medium">Preview</Label>
+                        <div className="border rounded-lg p-4 bg-gray-50">
+                          <p className="text-sm text-gray-700">
+                            {limitType === "years" ? (
+                              <>
+                                Customers will only see transactions from the last{" "}
+                                <span className="font-semibold">{limitValue}</span>{" "}
+                                {Number.parseInt(limitValue) === 1 ? "year" : "years"}.
+                              </>
+                            ) : (
+                              <>
+                                Customers will not see any transactions earlier than{" "}
+                                <span className="font-semibold">January 1, {limitValue}</span>.
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Save Button */}
+                    <Button
+                      onClick={handleSaveTransactionLimit}
+                      className="w-full bg-red-600 hover:bg-red-700"
+                      disabled={isSavingLimit || (transactionLimitEnabled && !limitValue)}
+                    >
+                      {isSavingLimit ? "Saving..." : "Save Transaction Limit"}
                     </Button>
                   </div>
                 </CardContent>
