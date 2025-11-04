@@ -45,10 +45,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Only admins can view admin list" }, { status: 403 })
     }
 
-    // Get Admin sheet data
     const adminResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Admin!A:B",
+      range: "Admin!A:C",
     })
 
     const adminData = adminResponse.data.values || []
@@ -61,13 +60,13 @@ export async function POST(request: Request) {
       })
     }
 
-    // Process admin data
     const admins = adminData
       .slice(1)
       .map((row: string[], index: number) => ({
         id: index + 1,
         email: row[0] || "",
         name: row[1] || "",
+        role: row[2] || "user", // Default to "user" if role is not set
       }))
       .filter((admin) => admin.email) // Filter out empty rows
 

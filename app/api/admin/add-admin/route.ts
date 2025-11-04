@@ -26,9 +26,10 @@ export async function POST(request: Request) {
     const body = await request.json()
     const adminEmail = body.adminEmail || body.email
     const adminName = body.adminName || body.name
+    const adminRole = body.adminRole || "user"
     const requestorEmail = body.requestorEmail
     const createFirebaseUser = body.createFirebaseUser !== false // default to true
-    console.log("Request to add admin received:", { adminEmail, adminName, createFirebaseUser })
+    console.log("Request to add admin received:", { adminEmail, adminName, adminRole, createFirebaseUser })
 
     if (!adminEmail || !adminName) {
       return NextResponse.json({ success: false, error: "Admin email and name are required" }, { status: 400 })
@@ -64,9 +65,7 @@ export async function POST(request: Request) {
 
     // Ensure Admin sheet exists
     const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId })
-    const adminSheet = sheetMetadata.data.sheets?.find(
-      (sheet) => sheet.properties?.title?.toLowerCase() === "admin"
-    )
+    const adminSheet = sheetMetadata.data.sheets?.find((sheet) => sheet.properties?.title?.toLowerCase() === "admin")
     if (!adminSheet) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
@@ -76,20 +75,20 @@ export async function POST(request: Request) {
       })
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: "Admin!A1:B1",
+        range: "Admin!A1:C1",
         valueInputOption: "RAW",
-        requestBody: { values: [["Email", "Name"]] },
+        requestBody: { values: [["Email", "Name", "Role"]] },
       })
     }
 
     const adminResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Admin!A:B",
+      range: "Admin!A:C",
     })
     const adminData = adminResponse.data.values || []
 
     const exists = adminData.some(
-      (row, idx) => idx > 0 && row[0]?.toLowerCase().trim() === adminEmail.toLowerCase().trim()
+      (row, idx) => idx > 0 && row[0]?.toLowerCase().trim() === adminEmail.toLowerCase().trim(),
     )
     if (exists) {
       return NextResponse.json({ success: false, error: "Admin already exists" }, { status: 400 })
@@ -98,9 +97,9 @@ export async function POST(request: Request) {
     const newRowIndex = adminData.length + 1
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Admin!A${newRowIndex}:B${newRowIndex}`,
+      range: `Admin!A${newRowIndex}:C${newRowIndex}`,
       valueInputOption: "RAW",
-      requestBody: { values: [[adminEmail, adminName]] },
+      requestBody: { values: [[adminEmail, adminName, adminRole]] },
     })
 
     let firebaseResult = null
@@ -136,37 +135,13 @@ export async function POST(request: Request) {
         }
       }
     }
-    if (createFirebaseUser) {
-      try {
-        const auth = getAuth()
-        const tempPassword = Math.random().toString(36).slice(-12) + "A1!"
-        const userRecord = await auth.createUser({
-          email: adminEmail,
-          password: tempPassword,
-          emailVerified: false,
-        })
-        const resetLink = await auth.generatePasswordResetLink(adminEmail, {
-          url: process.env.NEXT_PUBLIC_SITE_URL + "/admin/login",
-          handleCodeInApp: false,
-        })
-        firebaseResult = {
-          userId: userRecord.uid,
-          resetLink,
-          note: "Password reset email sent to admin",
-        }
-      } catch (e: any) {
-        firebaseResult = {
-          error: e.message,
-          note: "Admin was added to sheet, but Firebase user creation failed",
-        }
-      }
-    }
 
     return NextResponse.json({
       success: true,
       message: "Admin added successfully",
       email: adminEmail,
       name: adminName,
+      role: adminRole,
       firebase: firebaseResult,
     })
   } catch (err: any) {

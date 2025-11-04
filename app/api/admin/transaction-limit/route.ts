@@ -43,13 +43,13 @@ function saveTransactionLimit(limit: TransactionLimit): void {
 }
 
 // Verify admin access
-async function verifyAdmin(email: string): Promise<boolean> {
+async function verifyAdmin(email: string): Promise<{ isAdmin: boolean; isSuperAdmin: boolean }> {
   try {
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
     const spreadsheetId = process.env.SPREADSHEET_ID
 
     if (!credentials || !spreadsheetId) {
-      return false
+      return { isAdmin: false, isSuperAdmin: false }
     }
 
     const tempFilePath = join(os.tmpdir(), "google-credentials-admin.json")
@@ -69,24 +69,26 @@ async function verifyAdmin(email: string): Promise<boolean> {
 
     const rows = response.data.values || []
 
-    if (rows.length <= 1) return false
+    if (rows.length <= 1) return { isAdmin: false, isSuperAdmin: false }
 
     const headerRow = rows[0]
     const emailIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "email")
+    const roleIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "role")
 
-    if (emailIndex === -1) return false
+    if (emailIndex === -1) return { isAdmin: false, isSuperAdmin: false }
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i]
       if (row[emailIndex]?.toLowerCase().trim() === email.toLowerCase().trim()) {
-        return true
+        const role = roleIndex !== -1 ? row[roleIndex]?.toLowerCase().trim() : ""
+        return { isAdmin: true, isSuperAdmin: role === "superadmin" }
       }
     }
 
-    return false
+    return { isAdmin: false, isSuperAdmin: false }
   } catch (error) {
     console.error("Error verifying admin:", error)
-    return false
+    return { isAdmin: false, isSuperAdmin: false }
   }
 }
 
@@ -127,13 +129,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isAdmin = await verifyAdmin(requestorEmail)
+    const { isAdmin, isSuperAdmin } = await verifyAdmin(requestorEmail)
 
-    if (!isAdmin) {
+    if (!isAdmin || !isSuperAdmin) {
       return NextResponse.json(
         {
           success: false,
-          error: "Unauthorized: Admin access required",
+          error: "Unauthorized: Superadmin access required",
         },
         { status: 403 },
       )

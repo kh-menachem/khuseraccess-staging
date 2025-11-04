@@ -42,9 +42,10 @@ export default function AdminPage() {
   // Admin management states
   const [adminEmail, setAdminEmail] = useState("")
   const [adminName, setAdminName] = useState("")
+  const [adminRole, setAdminRole] = useState<"user" | "superadmin">("user")
   const [isAddingAdmin, setIsAddingAdmin] = useState(false)
   const [addAdminError, setAddAdminError] = useState<string | null>(null)
-  const [admins, setAdmins] = useState<Array<{ id: number; email: string; name: string }>>([])
+  const [admins, setAdmins] = useState<Array<{ id: number; email: string; name: string; role: string }>>([])
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false)
 
   // Account selection states
@@ -349,6 +350,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           adminEmail,
           adminName,
+          adminRole,
           requestorEmail: firebaseUser?.email,
         }),
       })
@@ -356,6 +358,7 @@ export default function AdminPage() {
       if (result.success) {
         setAdminEmail("")
         setAdminName("")
+        setAdminRole("user")
         loadAdmins() // Reload the admins list
       } else {
         setAddAdminError(result.error || "Failed to add admin")
@@ -651,7 +654,10 @@ export default function AdminPage() {
                           />
                           <datalist id="accounts-list">
                             {accounts.map((account) => (
-                              <option key={account.value} value={account.label} />
+                              <option
+                                key={account.accountNumber}
+                                value={`${account.accountNumber} - ${account.firstName} ${account.lastName}`}
+                              />
                             ))}
                           </datalist>
                         </div>
@@ -1057,6 +1063,25 @@ export default function AdminPage() {
                           />
                         </div>
 
+                        <div className="space-y-2">
+                          <Label htmlFor="adminRole">Role</Label>
+                          <Select
+                            value={adminRole}
+                            onValueChange={(value: "user" | "superadmin") => setAdminRole(value)}
+                          >
+                            <SelectTrigger id="adminRole" className="border-red-200 focus:border-red-500">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="superadmin">Superadmin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500">
+                            Superadmins have access to system settings and can manage other admins
+                          </p>
+                        </div>
+
                         <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAdmin}>
                           {isAddingAdmin ? "Adding Admin..." : "Add Admin"}
                         </Button>
@@ -1084,6 +1109,7 @@ export default function AdminPage() {
                             <TableRow>
                               <TableHead>Name</TableHead>
                               <TableHead>Email</TableHead>
+                              <TableHead>Role</TableHead>
                               <TableHead>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1100,6 +1126,14 @@ export default function AdminPage() {
                                       </Badge>
                                     )}
                                   </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={admin.role === "superadmin" ? "default" : "secondary"}
+                                    className={admin.role === "superadmin" ? "bg-purple-600 text-white" : ""}
+                                  >
+                                    {admin.role === "superadmin" ? "Superadmin" : "User"}
+                                  </Badge>
                                 </TableCell>
                                 <TableCell>
                                   <Button
