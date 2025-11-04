@@ -64,7 +64,7 @@ async function verifyAdmin(email: string): Promise<{ isAdmin: boolean; isSuperAd
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Admins!A:C",
+      range: "Admin!A:C", // Fixed sheet name from "Admins" to "Admin"
     })
 
     const rows = response.data.values || []
