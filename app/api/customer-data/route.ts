@@ -638,17 +638,23 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
         case "CC:Sale":
           net = roundToTwo(amt * 0.965)
           break
-        case "Grant:Recommendation":
-          net = roundToTwo(amt * 0.965)
-          break
         case "CC:Refund":
+          net = roundToTwo(amt)
+          break
+        case "CC:Credit":
           net = roundToTwo(amt)
           break
         case "Check:Sale":
           net = roundToTwo(amt * 0.9985)
           break
+        case "Grant:Recommendation":
+          net = roundToTwo(amt * 0.965)
+          break
+        case "CC:VoidRelease":
+          net = roundToTwo(amt * -0.965)
+          break
         default:
-          net = 0
+          net = 0 // or amt — depends on desired behavior
           break
       }
 
