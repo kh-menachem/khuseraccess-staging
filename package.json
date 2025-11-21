@@ -21,6 +21,7 @@
     "@radix-ui/react-switch": "^1.0.3",
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-toast": "^1.1.5",
+    "@vercel/blob": "latest",
     "buffer": "latest",
     "chrome-aws-lambda": "latest",
     "class-variance-authority": "^0.7.1",
