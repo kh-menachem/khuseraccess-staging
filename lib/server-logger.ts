@@ -4,9 +4,54 @@ import { writeFileSync } from "fs"
 import { join } from "path"
 import os from "os"
 
-// Server-side direct logging function (to be used in API routes only)
-export async function writeLogToSheet(logEntry: LogEntry): Promise<void> {
-  try {
+interface QueuedLog {
+  logEntry: LogEntry
+  resolve: () => void
+  reject: (error: any) => void
+}
+
+class LogQueue {
+  private queue: QueuedLog[] = []
+  private isProcessing = false
+  private readonly WRITE_DELAY = 300 // 300ms delay between writes
+
+  async add(logEntry: LogEntry): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ logEntry, resolve, reject })
+      if (!this.isProcessing) {
+        this.processQueue()
+      }
+    })
+  }
+
+  private async processQueue() {
+    if (this.isProcessing || this.queue.length === 0) {
+      return
+    }
+
+    this.isProcessing = true
+
+    while (this.queue.length > 0) {
+      const item = this.queue.shift()
+      if (!item) break
+
+      try {
+        await this.writeToSheet(item.logEntry)
+        item.resolve()
+      } catch (error) {
+        item.reject(error)
+      }
+
+      // Add delay before next write to prevent overwriting
+      if (this.queue.length > 0) {
+        await new Promise((resolve) => setTimeout(resolve, this.WRITE_DELAY))
+      }
+    }
+
+    this.isProcessing = false
+  }
+
+  private async writeToSheet(logEntry: LogEntry): Promise<void> {
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
     const spreadsheetId = process.env.SPREADSHEET_ID
 
@@ -25,7 +70,6 @@ export async function writeLogToSheet(logEntry: LogEntry): Promise<void> {
 
     const sheets = google.sheets({ version: "v4", auth })
 
-    // Append row to Logs sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: "Logs!A:G",
@@ -44,6 +88,15 @@ export async function writeLogToSheet(logEntry: LogEntry): Promise<void> {
         ],
       },
     })
+  }
+}
+
+const logQueue = new LogQueue()
+
+// Server-side direct logging function (to be used in API routes only)
+export async function writeLogToSheet(logEntry: LogEntry): Promise<void> {
+  try {
+    await logQueue.add(logEntry)
   } catch (error) {
     console.error("[Logger] Failed to write to sheet:", error)
   }
