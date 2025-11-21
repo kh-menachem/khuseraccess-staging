@@ -138,7 +138,10 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
   })
 
   const csvContent = generateCSV(errorLogs)
-  const csvBuffer = Buffer.from(csvContent, "utf-8")
+  const utf8BOM = "\uFEFF"
+  const csvWithBOM = utf8BOM + csvContent
+  const csvBuffer = Buffer.from(csvWithBOM, "utf-8")
+
   const timestamp = new Date().toISOString().split("T")[0]
   const fileName = `error-logs-${timestamp}.csv`
 
