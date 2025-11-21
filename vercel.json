@@ -9,5 +9,11 @@
   "env": {
     "PNPM_FLAGS": "--no-frozen-lockfile"
   },
-  "installCommand": "pnpm install --no-frozen-lockfile"
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "crons": [
+    {
+      "path": "/api/cron/daily-error-summary",
+      "schedule": "0 8 * * *"
+    }
+  ]
 }
