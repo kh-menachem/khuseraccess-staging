@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { writeLogToSheet, type LogEntry } from "@/lib/logger"
+import { writeLogToSheet } from "@/lib/server-logger"
+import type { LogEntry } from "@/lib/logger"
 
 export async function POST(request: NextRequest) {
   try {

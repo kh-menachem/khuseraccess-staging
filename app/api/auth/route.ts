@@ -3,7 +3,7 @@ import { google } from "googleapis"
 import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
-import { writeLogToSheet } from "@/lib/logger"
+import { writeLogToSheet } from "@/lib/server-logger"
 
 export async function POST(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") || "unknown"

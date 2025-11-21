@@ -4,7 +4,7 @@ import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/t
 import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
-import { writeLogToSheet } from "@/lib/logger"
+import { writeLogToSheet } from "@/lib/server-logger"
 
 const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
 
