@@ -27,6 +27,7 @@ import {
 import Image from "next/image"
 import React from "react"
 import { SystemMessageBanner } from "@/components/system-message-banner"
+import { logger, generateRequestId } from "@/lib/logger"
 
 const roundToTwo = (num: number): number => {
   return Math.round(num * 100) / 100
@@ -290,10 +291,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     const initializeDashboard = async () => {
+      const requestId = generateRequestId()
+
       try {
         // Check if user is logged in with Firebase
         if (!firebaseUser) {
           console.log("[v0] No Firebase user, redirecting to login")
+          await logger.warn(
+            "DASHBOARD_NO_AUTH",
+            "User attempted to access dashboard without Firebase authentication",
+            {},
+          )
           router.push("/login")
           return
         }
@@ -302,6 +310,7 @@ export default function Dashboard() {
         const storedUser = localStorage.getItem("user")
         if (!storedUser) {
           console.log("[v0] No stored user data, redirecting to login")
+          await logger.warn("DASHBOARD_NO_USER_DATA", "User attempted to access dashboard without stored user data", {})
           router.push("/login")
           return
         }
@@ -311,10 +320,18 @@ export default function Dashboard() {
           parsedUser = JSON.parse(storedUser)
         } catch (parseError) {
           console.error("[v0] Failed to parse stored user data:", parseError)
+          await logger.error("DASHBOARD_PARSE_ERROR", "Failed to parse stored user data", { error: String(parseError) })
           localStorage.removeItem("user")
           router.push("/login")
           return
         }
+
+        await logger.info(
+          "DASHBOARD_PAGE_LOAD",
+          `Dashboard page loaded for user: ${parsedUser.email}`,
+          { userId: parsedUser.id, accountNumber: parsedUser.accountNumber },
+          parsedUser.email,
+        )
 
         // Check if user needs to select an account first
         if (parsedUser.needsAccountSelection) {
@@ -342,6 +359,13 @@ export default function Dashboard() {
           }
 
           console.log("[v0] Fetching customer data for:", parsedUser.email, parsedUser.id)
+          await logger.info(
+            "DASHBOARD_FETCH_START",
+            `Fetching customer data for user: ${parsedUser.email}`,
+            { userId: parsedUser.id },
+            parsedUser.email,
+          )
+
           // Pass both email and userId to fetchCustomerData
           const data = await fetchCustomerData(parsedUser.email, parsedUser.id)
 
@@ -350,10 +374,25 @@ export default function Dashboard() {
           }
 
           console.log("[v0] Successfully loaded customer data")
+          await logger.info(
+            "DASHBOARD_FETCH_SUCCESS",
+            `Customer data loaded successfully for user: ${parsedUser.email}`,
+            { userId: parsedUser.id },
+            parsedUser.email,
+          )
+
           setCustomerData(data)
         } catch (fetchError) {
           console.error("[v0] Error loading customer data:", fetchError)
           const errorMessage = fetchError instanceof Error ? fetchError.message : "Failed to load customer data"
+
+          await logger.error(
+            "DASHBOARD_FETCH_ERROR",
+            `Failed to load customer data for user: ${parsedUser.email}`,
+            { userId: parsedUser.id, error: errorMessage },
+            parsedUser.email,
+          )
+
           setError(errorMessage)
 
           // User can retry without losing their session
@@ -361,6 +400,9 @@ export default function Dashboard() {
       } catch (error) {
         console.error("[v0] Error in dashboard initialization:", error)
         const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+
+        await logger.error("DASHBOARD_INIT_ERROR", "Dashboard initialization failed", { error: errorMessage })
+
         setError(errorMessage)
       } finally {
         setIsLoading(false)
@@ -368,15 +410,17 @@ export default function Dashboard() {
     }
 
     initializeDashboard()
-  }, [router, firebaseUser])
+  }, [firebaseUser, router]) // Removed setUser from dependencies as it's stable
 
   const handleLogout = async () => {
     try {
       console.log("[v0] Logging out user")
+      await logger.info("DASHBOARD_LOGOUT", "User logged out", {})
       await logout() // This will clear localStorage automatically
       router.push("/")
     } catch (error) {
       console.error("[v0] Error logging out:", error)
+      await logger.error("DASHBOARD_LOGOUT_ERROR", "Error during user logout", { error: String(error) })
       localStorage.removeItem("user")
       router.push("/")
     }
@@ -387,6 +431,13 @@ export default function Dashboard() {
     setError(null) // Clear errors when switching accounts
     try {
       console.log("[v0] Switching to account:", account.userId)
+      await logger.info(
+        "DASHBOARD_ACCOUNT_SWITCH",
+        `Switching to account: ${account.name}`,
+        { newAccountId: account.userId, currentUserId: user?.id },
+        user?.email,
+      )
+
       // Update user info with selected account
       const updatedUser = {
         ...user!,
@@ -411,10 +462,22 @@ export default function Dashboard() {
 
       setCustomerData(data)
       console.log("[v0] Successfully switched accounts")
+      await logger.info(
+        "DASHBOARD_ACCOUNT_SWITCH_SUCCESS",
+        `Successfully switched to account: ${account.name}`,
+        { userId: account.userId },
+        user?.email,
+      )
     } catch (error) {
       console.error("[v0] Error switching account:", error)
       const errorMessage = error instanceof Error ? error.message : "Failed to switch accounts"
       setError(errorMessage)
+      await logger.error(
+        "DASHBOARD_ACCOUNT_SWITCH_ERROR",
+        `Failed to switch accounts`,
+        { error: errorMessage, newAccountId: account.userId, currentUserId: user?.id },
+        user?.email,
+      )
     } finally {
       setIsLoading(false)
     }
@@ -428,6 +491,7 @@ export default function Dashboard() {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
       localStorage.setItem("user", JSON.stringify(updatedUser))
+      logger.info("DASHBOARD_LANGUAGE_CHANGE", `Language changed to ${newLanguage}`, { userId: user.id }, user.email)
     }
   }
 
@@ -439,6 +503,13 @@ export default function Dashboard() {
 
     try {
       console.log("[v0] Sending donation instructions email")
+      await logger.info(
+        "DASHBOARD_SEND_DONATION_EMAIL_START",
+        `Attempting to send donation instructions to ${user.email}`,
+        { userId: user.id },
+        user.email,
+      )
+
       const response = await fetch("/api/send-donation-instructions", {
         method: "POST",
         headers: {
@@ -460,13 +531,31 @@ export default function Dashboard() {
       if (result.success) {
         setEmailStatus({ type: "success", message: t.emailSentSuccess })
         console.log("[v0] Email sent successfully")
+        await logger.info(
+          "DASHBOARD_SEND_DONATION_EMAIL_SUCCESS",
+          "Donation instructions email sent successfully",
+          { userId: user.id },
+          user.email,
+        )
       } else {
         setEmailStatus({ type: "error", message: t.emailSentError })
         console.error("[v0] Email send failed:", result.error)
+        await logger.error(
+          "DASHBOARD_SEND_DONATION_EMAIL_FAILED",
+          "Failed to send donation instructions email",
+          { userId: user.id, error: result.error },
+          user.email,
+        )
       }
     } catch (error) {
       console.error("[v0] Error sending email:", error)
       setEmailStatus({ type: "error", message: t.emailSentError })
+      await logger.error(
+        "DASHBOARD_SEND_DONATION_EMAIL_ERROR",
+        "Error sending donation instructions email",
+        { userId: user.id, error: String(error) },
+        user.email,
+      )
     } finally {
       setIsSendingEmail(false)
       setShowEmailConfirmDialog(false)
@@ -535,6 +624,7 @@ export default function Dashboard() {
       return combined
     } catch (error) {
       console.error("[v0] Error processing transactions:", error)
+      logger.error("DASHBOARD_TRANSACTION_PROCESSING_ERROR", "Error processing transactions", { error: String(error) })
       return []
     }
   }, [customerData])
@@ -591,6 +681,9 @@ export default function Dashboard() {
       return combined
     } catch (error) {
       console.error("[v0] Error processing transactions for totals:", error)
+      logger.error("DASHBOARD_TOTAL_TRANSACTION_PROCESSING_ERROR", "Error processing transactions for totals", {
+        error: String(error),
+      })
       return []
     }
   }, [customerData])
@@ -791,16 +884,40 @@ export default function Dashboard() {
       setSortColumn(column)
       setSortDirection("desc")
     }
+    if (user) {
+      logger.info(
+        "DASHBOARD_SORT_CHANGE",
+        `Sorted by ${column} ${sortDirection}`,
+        { userId: user.id, column: column, direction: sortDirection },
+        user.email,
+      )
+    }
   }
 
   // Handle not cleared filter toggle
   const handleNotClearedClick = () => {
     setNotClearedFilter(!notClearedFilter)
+    if (user) {
+      logger.info(
+        "DASHBOARD_NOT_CLEARED_FILTER",
+        `Not cleared filter toggled to ${!notClearedFilter}`,
+        { userId: user.id, enabled: !notClearedFilter },
+        user.email,
+      )
+    }
   }
 
   // Handle date filter change
-  const handleDateFilterChange = (value: string) => {
+  const handleDateFilterChange = async (value: string) => {
     setDateFilter(value)
+    if (user) {
+      await logger.info(
+        "DASHBOARD_FILTER_CHANGE",
+        `User changed date filter to: ${value}`,
+        { filter: value, userId: user.id },
+        user.email,
+      )
+    }
     if (value === "custom") {
       setShowCustomDatePicker(true)
     } else {
@@ -813,6 +930,14 @@ export default function Dashboard() {
   // Apply custom date range
   const applyCustomDateRange = () => {
     setShowCustomDatePicker(false)
+    if (user) {
+      logger.info(
+        "DASHBOARD_CUSTOM_DATE_APPLIED",
+        `Custom date range applied: ${customDateFrom} - ${customDateTo}`,
+        { userId: user.id, from: customDateFrom, to: customDateTo },
+        user.email,
+      )
+    }
   }
 
   // Clear custom date range
@@ -821,6 +946,9 @@ export default function Dashboard() {
     setCustomDateTo("")
     setDateFilter("30")
     setShowCustomDatePicker(false)
+    if (user) {
+      logger.info("DASHBOARD_CUSTOM_DATE_CLEARED", `Custom date range cleared`, { userId: user.id }, user.email)
+    }
   }
 
   return (

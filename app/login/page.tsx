@@ -14,6 +14,7 @@ import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
 import Link from "next/link"
 import { SystemMessageBanner } from "@/components/system-message-banner"
+import { logger, generateRequestId } from "@/lib/logger"
 
 const translations = {
   he: {
@@ -83,7 +84,16 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
 
+    const requestId = generateRequestId()
+
     try {
+      await logger.info(
+        "LOGIN_ATTEMPT",
+        `User attempting to login: ${email}`,
+        { email, path: window.location.pathname },
+        email,
+      )
+
       // Determine if user is logging in from /admin/login
       const path = typeof window !== "undefined" ? window.location.pathname : ""
       const isAdminLogin = path.includes("/admin")
@@ -91,8 +101,10 @@ export default function LoginPage() {
       // Sign in with Firebase first
       await signIn(email, password)
 
+      await logger.info("AUTH_SUCCESS", "Firebase authentication successful", { email }, email)
+
       if (isAdminLogin) {
-        // Admin login flow – ONLY check Admin sheet
+        // Admin login flow
         const adminCheckResponse = await fetch("/api/admin/verify", {
           method: "POST",
           headers: {
@@ -104,14 +116,21 @@ export default function LoginPage() {
         const adminResult = await adminCheckResponse.json()
 
         if (adminResult.success && adminResult.isAdmin) {
-          // Redirect to admin panel
+          await logger.info(
+            "ADMIN_LOGIN_SUCCESS",
+            `Admin login successful: ${email}`,
+            { email, role: adminResult.role },
+            email,
+          )
+
           toast({
             title: "Admin login successful",
             description: "Redirecting to admin panel...",
           })
           router.push("/admin")
         } else {
-          // Not an admin – show error
+          await logger.warn("ADMIN_ACCESS_DENIED", `Non-admin user attempted admin login: ${email}`, { email }, email)
+
           toast({
             variant: "destructive",
             title: "Access Denied",
@@ -122,7 +141,7 @@ export default function LoginPage() {
         return
       }
 
-      // Regular user login flow – ONLY check People sheet
+      // Regular user login flow
       const response = await fetch("/api/auth", {
         method: "POST",
         headers: {
@@ -137,7 +156,7 @@ export default function LoginPage() {
         const accounts = result.user.accounts
 
         if (accounts.length === 1) {
-          // Single account – proceed directly to dashboard
+          // Single account
           const account = accounts[0]
           localStorage.setItem(
             "user",
@@ -152,6 +171,13 @@ export default function LoginPage() {
             }),
           )
 
+          await logger.info(
+            "LOGIN_SUCCESS",
+            `User logged in successfully: ${email}`,
+            { email, accountNumber: account.accountNumber },
+            email,
+          )
+
           toast({
             title: "Login successful",
             description: "Redirecting to your dashboard...",
@@ -159,7 +185,13 @@ export default function LoginPage() {
 
           router.push("/dashboard")
         } else {
-          // Multiple accounts – store and show selection
+          await logger.info(
+            "LOGIN_MULTI_ACCOUNT",
+            `Multiple accounts found for user: ${email}`,
+            { email, accountCount: accounts.length },
+            email,
+          )
+
           localStorage.setItem(
             "user",
             JSON.stringify({
@@ -178,7 +210,8 @@ export default function LoginPage() {
           router.push("/select-account")
         }
       } else {
-        // Account not found in People sheet
+        await logger.warn("LOGIN_ACCOUNT_NOT_FOUND", `Account not found in People sheet: ${email}`, { email }, email)
+
         setError("ACCOUNT_NOT_SETUP")
         toast({
           variant: "destructive",
@@ -190,13 +223,13 @@ export default function LoginPage() {
       let errorMessage = "Invalid email or password."
 
       if (error instanceof Error && error.message.includes("auth/invalid-credential")) {
-        // Optional: handle specific auth errors more gracefully
         errorMessage = language === "he" ? "האימייל או הסיסמה אינם נכונים." : "Invalid email or password."
       } else if (error instanceof Error) {
-        // Optionally log for debugging
         console.error("Login error:", error.message)
         errorMessage = error.message
       }
+
+      await logger.error("LOGIN_FAILED", `Login failed for user: ${email}`, { email, error: errorMessage }, email)
 
       setError(errorMessage)
 

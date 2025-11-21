@@ -4,6 +4,7 @@ import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/t
 import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
+import { writeLogToSheet } from "@/lib/logger"
 
 const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
 
@@ -645,7 +646,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
           net = roundToTwo(amt)
           break
         case "Check:Sale":
-          net = (amt * 0.9985)
+          net = amt * 0.9985
           break
         case "Grant:Recommendation":
           net = roundToTwo(amt * 0.965)
@@ -711,17 +712,38 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = request.headers.get("x-request-id") || "unknown"
+
   try {
     let body
     try {
       body = await request.json()
     } catch (parseError) {
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "ERROR",
+        event: "DATA_PARSE_ERROR",
+        message: "Failed to parse request body",
+        metadata: JSON.stringify({ error: String(parseError) }),
+        requestId,
+      })
+
       console.error("[v0] Failed to parse request body:", parseError)
       return NextResponse.json({ error: "Invalid request format" }, { status: 400 })
     }
 
     const { userEmail, userId, language } = body
     const lang = language === "he" ? "he" : "en"
+
+    await writeLogToSheet({
+      timestamp: new Date().toISOString(),
+      level: "INFO",
+      event: "DATA_FETCH_START",
+      message: `Fetching data for user: ${userEmail}`,
+      metadata: JSON.stringify({ userId, language: lang }),
+      user: userEmail,
+      requestId,
+    })
 
     console.log(`[v0] Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
@@ -908,8 +930,34 @@ export async function POST(request: NextRequest) {
       displayMachineRentals: filteredMachineRentals,
     }
 
+    await writeLogToSheet({
+      timestamp: new Date().toISOString(),
+      level: "INFO",
+      event: "DATA_FETCH_SUCCESS",
+      message: `Customer data fetched successfully for user: ${userEmail}`,
+      metadata: JSON.stringify({
+        userId,
+        currentTransactions: currentTransactions.length,
+        transactions2024: transactions2024.length,
+        oldTransactions: oldTransactions.length,
+        donations: donations.length,
+        machineRentals: machineRentals.length,
+      }),
+      user: userEmail,
+      requestId,
+    })
+
     return NextResponse.json(customerData)
   } catch (error) {
+    await writeLogToSheet({
+      timestamp: new Date().toISOString(),
+      level: "ERROR",
+      event: "DATA_FETCH_ERROR",
+      message: "Failed to fetch customer data",
+      metadata: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      requestId,
+    })
+
     console.error("[v0] Error fetching customer data:", error)
 
     const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"

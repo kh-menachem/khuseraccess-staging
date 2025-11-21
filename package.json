@@ -37,13 +37,15 @@
     "puppeteer-core": "latest",
     "react": "^18",
     "react-dom": "^18",
-    "tailwind-merge": "^2.5.5"
+    "tailwind-merge": "^2.5.5",
+    "uuid": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
     "@types/nodemailer": "^6.4.17",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.16",
     "eslint": "^8",
     "eslint-config-next": "14.0.0",

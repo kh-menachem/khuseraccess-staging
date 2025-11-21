@@ -3,8 +3,20 @@ import { google } from "googleapis"
 import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
+import { writeLogToSheet } from "@/lib/logger"
 
 export async function POST(request: NextRequest) {
+  const requestId = request.headers.get("x-request-id") || "unknown"
+
+  await writeLogToSheet({
+    timestamp: new Date().toISOString(),
+    level: "INFO",
+    event: "AUTH_API_CALL",
+    message: "Authentication API called",
+    metadata: JSON.stringify({ method: "POST" }),
+    requestId,
+  })
+
   console.log("Auth API route called")
 
   try {
@@ -12,6 +24,14 @@ export async function POST(request: NextRequest) {
     console.log("Email received:", email)
 
     if (!email) {
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "WARN",
+        event: "AUTH_MISSING_EMAIL",
+        message: "No email provided in auth request",
+        requestId,
+      })
+
       console.log("No email provided")
       return NextResponse.json({ success: false, error: "Email is required" }, { status: 400 })
     }
@@ -201,8 +221,17 @@ export async function POST(request: NextRequest) {
       })
 
       if (userRows.length === 0) {
+        await writeLogToSheet({
+          timestamp: new Date().toISOString(),
+          level: "WARN",
+          event: "AUTH_USER_NOT_FOUND",
+          message: `User not found in People sheet: ${email}`,
+          metadata: JSON.stringify({ email }),
+          user: email,
+          requestId,
+        })
+
         console.log("User not found")
-        // Show some sample emails for debugging
         const sampleEmails = rows
           .slice(1, 6)
           .map((row) => row[userAccessIndex])
@@ -218,6 +247,16 @@ export async function POST(request: NextRequest) {
           { status: 404 },
         )
       }
+
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "INFO",
+        event: "AUTH_SUCCESS",
+        message: `User authenticated successfully: ${email}`,
+        metadata: JSON.stringify({ email, accountCount: userRows.length }),
+        user: email,
+        requestId,
+      })
 
       console.log(`Found ${userRows.length} accounts for user:`, email)
 
@@ -282,6 +321,16 @@ export async function POST(request: NextRequest) {
         },
       })
     } catch (error) {
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "ERROR",
+        event: "AUTH_SPREADSHEET_ERROR",
+        message: "Failed to access spreadsheet",
+        metadata: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+        user: email,
+        requestId,
+      })
+
       console.error("Spreadsheet access error:", error)
       return NextResponse.json(
         {
@@ -293,6 +342,15 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error) {
+    await writeLogToSheet({
+      timestamp: new Date().toISOString(),
+      level: "ERROR",
+      event: "AUTH_ERROR",
+      message: "Authentication error occurred",
+      metadata: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      requestId,
+    })
+
     console.error("Authentication error:", error)
     return NextResponse.json(
       {
