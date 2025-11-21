@@ -142,7 +142,7 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
   const csvWithBOM = utf8BOM + csvContent
   const csvBuffer = Buffer.from(csvWithBOM, "utf-8")
 
-  const timestamp = new Date().toISOString().split("T")[0]
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
   const fileName = `error-logs-${timestamp}.csv`
 
   let downloadUrl = ""
@@ -150,6 +150,7 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
     const blob = await put(fileName, csvBuffer, {
       access: "public",
       contentType: "text/csv",
+      addRandomSuffix: true, // Add random suffix to ensure uniqueness
     })
     downloadUrl = blob.url
     console.log("[Cron] CSV uploaded to Blob:", downloadUrl)
