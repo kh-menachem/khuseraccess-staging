@@ -8,16 +8,18 @@ interface QueuedLog {
   logEntry: LogEntry
   resolve: () => void
   reject: (error: any) => void
+  retries: number
 }
 
 class LogQueue {
   private queue: QueuedLog[] = []
   private isProcessing = false
-  private readonly WRITE_DELAY = 300 // 300ms delay between writes
+  private readonly WRITE_DELAY = 500 // Increased delay to 500ms for better reliability
+  private readonly MAX_RETRIES = 3 // Added retry mechanism
 
   async add(logEntry: LogEntry): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.queue.push({ logEntry, resolve, reject })
+      this.queue.push({ logEntry, resolve, reject, retries: 0 })
       if (!this.isProcessing) {
         this.processQueue()
       }
@@ -37,9 +39,20 @@ class LogQueue {
 
       try {
         await this.writeToSheet(item.logEntry)
+        console.log(`[Logger] Successfully wrote log: ${item.logEntry.event}`)
         item.resolve()
       } catch (error) {
-        item.reject(error)
+        console.error(`[Logger] Failed to write log (attempt ${item.retries + 1}/${this.MAX_RETRIES}):`, error)
+
+        if (item.retries < this.MAX_RETRIES - 1) {
+          // Retry by putting back in queue
+          item.retries++
+          this.queue.push(item)
+        } else {
+          // Max retries reached, log to console and reject
+          console.error(`[Logger] Max retries reached for log: ${item.logEntry.event}`, item.logEntry)
+          item.reject(error)
+        }
       }
 
       // Add delay before next write to prevent overwriting
@@ -56,8 +69,7 @@ class LogQueue {
     const spreadsheetId = process.env.SPREADSHEET_ID
 
     if (!credentials || !spreadsheetId) {
-      console.error("[Logger] Missing credentials or spreadsheet ID")
-      return
+      throw new Error("Missing credentials or spreadsheet ID")
     }
 
     const tempFilePath = join(os.tmpdir(), "google-credentials.json")
@@ -70,24 +82,33 @@ class LogQueue {
 
     const sheets = google.sheets({ version: "v4", auth })
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: "Logs!A:G",
-      valueInputOption: "USER_ENTERED",
-      resource: {
-        values: [
-          [
-            logEntry.timestamp,
-            logEntry.level,
-            logEntry.event,
-            logEntry.message,
-            logEntry.metadata || "",
-            logEntry.user || "",
-            logEntry.requestId || "",
+    try {
+      const result = await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: "Logs!A:G",
+        valueInputOption: "USER_ENTERED",
+        resource: {
+          values: [
+            [
+              logEntry.timestamp,
+              logEntry.level,
+              logEntry.event,
+              logEntry.message,
+              logEntry.metadata || "",
+              logEntry.user || "",
+              logEntry.requestId || "",
+            ],
           ],
-        ],
-      },
-    })
+        },
+      })
+
+      if (!result.data.updates?.updatedRows || result.data.updates.updatedRows < 1) {
+        throw new Error("Failed to append row to sheet")
+      }
+    } catch (error: any) {
+      console.error("[Logger] Google Sheets API error:", error.message)
+      throw error
+    }
   }
 }
 

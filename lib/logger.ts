@@ -38,7 +38,10 @@ export async function logToServer(
   try {
     const requestId = getCurrentRequestId()
 
-    await fetch("/api/logs", {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
+    const response = await fetch("/api/logs", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,10 +54,20 @@ export async function logToServer(
         user,
         requestId,
       }),
+      signal: controller.signal,
     })
-  } catch (error) {
-    // Silently fail to avoid infinite loops
-    console.error("[Logger] Failed to send log:", error)
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      console.error(`[Logger] Failed to send log: ${response.status} ${response.statusText}`)
+    }
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      console.error("[Logger] Log request timed out:", event)
+    } else {
+      console.error("[Logger] Failed to send log:", error.message || error)
+    }
   }
 }
 

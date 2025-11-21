@@ -21,12 +21,13 @@ export async function POST(request: NextRequest) {
       requestId,
     }
 
-    // Write to Google Sheets asynchronously
-    writeLogToSheet(logEntry).catch((error) => {
+    try {
+      await writeLogToSheet(logEntry)
+      return NextResponse.json({ success: true })
+    } catch (error) {
       console.error("[Logs API] Failed to write log:", error)
-    })
-
-    return NextResponse.json({ success: true })
+      return NextResponse.json({ success: true, warning: "Log queued but write failed" })
+    }
   } catch (error) {
     console.error("[Logs API] Error processing log:", error)
     return NextResponse.json({ error: "Failed to process log" }, { status: 500 })
