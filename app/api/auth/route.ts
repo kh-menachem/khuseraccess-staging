@@ -4,36 +4,77 @@ import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 import { writeLogToSheet } from "@/lib/server-logger"
-import { crypto } from "node:crypto"
 
-export const maxDuration = 30
+export const maxDuration = 60
+
+async function handleWithErrorBoundary(handler: () => Promise<NextResponse>) {
+  try {
+    return await handler()
+  } catch (error) {
+    console.error("[AUTH FATAL ERROR]", error)
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Server error occurred",
+        code: "FATAL_ERROR",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store",
+        },
+      },
+    )
+  }
+}
 
 export async function POST(request: NextRequest) {
-  const requestId = request.headers.get("x-request-id") || crypto.randomUUID()
-  const startTime = Date.now()
+  return handleWithErrorBoundary(async () => {
+    const requestId = request.headers.get("x-request-id") || globalThis.crypto.randomUUID()
+    const startTime = Date.now()
 
-  await writeLogToSheet({
-    timestamp: new Date().toISOString(),
-    level: "INFO",
-    event: "AUTH_API_CALL",
-    message: "Authentication API called",
-    metadata: JSON.stringify({ method: "POST" }),
-    requestId,
-  }).catch(console.error)
+    writeLogToSheet({
+      timestamp: new Date().toISOString(),
+      level: "INFO",
+      event: "AUTH_API_CALL",
+      message: "Authentication API called",
+      metadata: JSON.stringify({ method: "POST" }),
+      requestId,
+    }).catch(console.error)
 
-  console.log("Auth API route called")
+    console.log("[AUTH] API route called")
 
-  try {
     let body
     try {
-      body = await request.json()
+      const text = await request.text()
+      console.log("[AUTH] Request body text:", text)
+
+      if (!text || text.trim() === "") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Empty request body",
+            code: "EMPTY_BODY",
+          },
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        )
+      }
+
+      body = JSON.parse(text)
     } catch (parseError) {
-      console.error("Failed to parse request body:", parseError)
+      console.error("[AUTH] Failed to parse request body:", parseError)
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid request format",
+          error: "Invalid JSON in request body",
           code: "PARSE_ERROR",
+          details: parseError instanceof Error ? parseError.message : "Unknown parse error",
         },
         {
           status: 400,
@@ -43,10 +84,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { email } = body
-    console.log("Email received:", email)
+    console.log("[AUTH] Email received:", email)
 
     if (!email) {
-      await writeLogToSheet({
+      writeLogToSheet({
         timestamp: new Date().toISOString(),
         level: "WARN",
         event: "AUTH_MISSING_EMAIL",
@@ -54,7 +95,6 @@ export async function POST(request: NextRequest) {
         requestId,
       }).catch(console.error)
 
-      console.log("No email provided")
       return NextResponse.json(
         {
           success: false,
@@ -70,14 +110,13 @@ export async function POST(request: NextRequest) {
 
     // Get the credentials from the environment variable
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    console.log("Credentials available:", !!credentials)
+    console.log("[AUTH] Credentials available:", !!credentials)
 
     if (!credentials) {
-      console.log("No credentials found in environment variables")
       return NextResponse.json(
         {
           success: false,
-          error: "Google credentials not found",
+          error: "Google credentials not configured",
           code: "MISSING_CREDENTIALS",
         },
         {
@@ -88,26 +127,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Create a temporary file with the credentials
-    const tempFilePath = join(os.tmpdir(), "google-credentials.json")
-    console.log("Writing credentials to temp file:", tempFilePath)
+    const tempFilePath = join(os.tmpdir(), `google-credentials-${requestId}.json`)
+    console.log("[AUTH] Writing credentials to temp file:", tempFilePath)
 
     try {
       writeFileSync(tempFilePath, credentials)
-      console.log("Credentials written successfully")
     } catch (writeError) {
-      console.error("Error writing credentials file:", writeError)
+      console.error("[AUTH] Error writing credentials file:", writeError)
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to write credentials file",
+          error: "Failed to initialize Google authentication",
           code: "WRITE_ERROR",
+          details: writeError instanceof Error ? writeError.message : "Unknown error",
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
       )
     }
 
     // Initialize the Sheets API client
-    console.log("Initializing Google Auth")
+    console.log("[AUTH] Initializing Google Auth")
     const auth = new google.auth.GoogleAuth({
       keyFile: tempFilePath,
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -115,14 +157,14 @@ export async function POST(request: NextRequest) {
 
     const sheets = google.sheets({ version: "v4", auth })
     const spreadsheetId = process.env.SPREADSHEET_ID
-    console.log("Spreadsheet ID:", spreadsheetId)
+    console.log("[AUTH] Spreadsheet ID:", spreadsheetId)
 
     if (!spreadsheetId) {
-      console.log("No spreadsheet ID found in environment variables")
+      console.log("[AUTH] No spreadsheet ID found in environment variables")
       return NextResponse.json(
         {
           success: false,
-          error: "Spreadsheet ID not found",
+          error: "Spreadsheet ID not configured",
           code: "MISSING_SPREADSHEET_ID",
         },
         {
@@ -135,14 +177,13 @@ export async function POST(request: NextRequest) {
     try {
       const spreadsheet = (await Promise.race([
         sheets.spreadsheets.get({ spreadsheetId }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Spreadsheet verification timeout")), 10000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Spreadsheet verification timeout")), 8000)),
       ])) as any
 
       const sheetNames = spreadsheet.data.sheets?.map((sheet: any) => sheet.properties?.title) || []
-      console.log("Available sheets:", sheetNames)
+      console.log("[AUTH] Available sheets:", sheetNames)
 
       if (!sheetNames.includes("People")) {
-        console.log("People sheet not found")
         return NextResponse.json(
           {
             success: false,
@@ -157,20 +198,20 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      console.log("Fetching People sheet (A:AQ)")
+      console.log("[AUTH] Fetching People sheet (A:AQ)")
+
       const response = (await Promise.race([
         sheets.spreadsheets.values.get({
           spreadsheetId,
           range: "People!A:AQ",
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("People sheet fetch timeout")), 15000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("People sheet fetch timeout after 12s")), 12000)),
       ])) as any
 
       const rows = response.data.values || []
-      console.log("Rows fetched:", rows.length)
+      console.log("[AUTH] Rows fetched:", rows.length)
 
       if (rows.length === 0) {
-        console.log("No data found in People sheet")
         return NextResponse.json(
           {
             success: false,
@@ -185,14 +226,14 @@ export async function POST(request: NextRequest) {
       }
 
       const headerRow = rows[0]
-      console.log("Header row:", headerRow)
-      console.log("Total columns found:", headerRow.length)
+      console.log("[AUTH] Header row:", headerRow)
+      console.log("[AUTH] Total columns found:", headerRow.length)
 
       // Find the UNIQUEID column (the unique identifier for each person)
       const uniqueIdIndex = headerRow.findIndex(
         (header: string) => header?.toLowerCase().trim() === "uniqueid" || header?.toLowerCase().trim() === "unique id",
       )
-      console.log("UNIQUEID column index:", uniqueIdIndex)
+      console.log("[AUTH] UNIQUEID column index:", uniqueIdIndex)
 
       // Find the unique number column (the account number)
       const uniqueNumberIndex = headerRow.findIndex(
@@ -204,7 +245,7 @@ export async function POST(request: NextRequest) {
           header?.toLowerCase().trim() === "account #" ||
           header?.toLowerCase().trim() === "account#",
       )
-      console.log("Unique Number column index:", uniqueNumberIndex)
+      console.log("[AUTH] Unique Number column index:", uniqueNumberIndex)
 
       // Find the user access column (email)
       const userAccessIndex = headerRow.findIndex(
@@ -214,7 +255,7 @@ export async function POST(request: NextRequest) {
           header?.toLowerCase().trim() === "email" ||
           header?.toLowerCase().trim() === "user email",
       )
-      console.log("User access column index:", userAccessIndex)
+      console.log("[AUTH] User access column index:", userAccessIndex)
 
       // Find the name columns - look for both first and last name
       const firstNameIndex = headerRow.findIndex(
@@ -239,10 +280,10 @@ export async function POST(request: NextRequest) {
           header?.toLowerCase().trim() === "fullname",
       )
 
-      console.log("Name column index:", nameIndex)
+      console.log("[AUTH] Name column index:", nameIndex)
 
       if (userAccessIndex === -1) {
-        console.log("User access column not found")
+        console.log("[AUTH] User access column not found")
         return NextResponse.json(
           {
             success: false,
@@ -256,7 +297,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (uniqueIdIndex === -1) {
-        console.log("UNIQUEID column not found")
+        console.log("[AUTH] UNIQUEID column not found")
         return NextResponse.json(
           {
             success: false,
@@ -270,7 +311,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Find ALL user rows with matching email
-      console.log("Looking for user with email:", email)
+      console.log("[AUTH] Looking for user with email:", email)
       const userRows = rows.filter((row: string[]) => {
         if (!row[userAccessIndex]) return false
         const userEmail = row[userAccessIndex].toLowerCase().trim()
@@ -288,7 +329,7 @@ export async function POST(request: NextRequest) {
           requestId,
         }).catch(console.error)
 
-        console.log("User not found")
+        console.log("[AUTH] User not found")
         const sampleEmails = rows
           .slice(1, 6)
           .map((row) => row[userAccessIndex])
@@ -310,9 +351,9 @@ export async function POST(request: NextRequest) {
       }
 
       const duration = Date.now() - startTime
-      console.log(`[v0] Auth completed in ${duration}ms`)
+      console.log(`[AUTH] Completed successfully in ${duration}ms for ${email}`)
 
-      await writeLogToSheet({
+      writeLogToSheet({
         timestamp: new Date().toISOString(),
         level: "INFO",
         event: "AUTH_SUCCESS",
@@ -322,7 +363,7 @@ export async function POST(request: NextRequest) {
         requestId,
       }).catch(console.error)
 
-      console.log(`Found ${userRows.length} accounts for user:`, email)
+      console.log(`[AUTH] Found ${userRows.length} accounts for user:`, email)
 
       // Process each account
       const accounts = userRows.map((userRow, index) => {
@@ -374,7 +415,7 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      console.log("Processed accounts:", accounts)
+      console.log("[AUTH] Processed accounts:", accounts)
 
       return NextResponse.json(
         {
@@ -395,69 +436,41 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       const duration = Date.now() - startTime
 
-      await writeLogToSheet({
+      writeLogToSheet({
         timestamp: new Date().toISOString(),
         level: "ERROR",
         event: "AUTH_SPREADSHEET_ERROR",
         message: "Failed to access spreadsheet",
         metadata: JSON.stringify({
           error: error instanceof Error ? error.message : String(error),
+          email,
           duration,
         }),
         user: email,
         requestId,
       }).catch(console.error)
 
-      console.error("Spreadsheet access error:", error)
+      console.error("[AUTH] Spreadsheet access error:", error)
 
-      const errorMessage =
-        error instanceof Error && error.message.includes("timeout")
-          ? "Request timed out. Please try again."
-          : error instanceof Error
-            ? error.message
-            : String(error)
+      const isTimeout = error instanceof Error && error.message.includes("timeout")
+      const errorMessage = isTimeout
+        ? "Request timed out accessing database. Please try again."
+        : error instanceof Error
+          ? error.message
+          : "Unknown error accessing database"
 
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to access spreadsheet",
-          code: error instanceof Error && error.message.includes("timeout") ? "TIMEOUT" : "SPREADSHEET_ERROR",
+          error: isTimeout ? "Request timed out" : "Failed to access database",
+          code: isTimeout ? "TIMEOUT" : "SPREADSHEET_ERROR",
           details: errorMessage,
         },
         {
-          status: error instanceof Error && error.message.includes("timeout") ? 504 : 500,
+          status: isTimeout ? 504 : 500,
           headers: { "Content-Type": "application/json" },
         },
       )
     }
-  } catch (error) {
-    const duration = Date.now() - startTime
-
-    await writeLogToSheet({
-      timestamp: new Date().toISOString(),
-      level: "ERROR",
-      event: "AUTH_ERROR",
-      message: "Authentication error occurred",
-      metadata: JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-        duration,
-      }),
-      requestId,
-    }).catch(console.error)
-
-    console.error("Authentication error:", error)
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "An error occurred during authentication",
-        code: "AUTH_ERROR",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    )
-  }
+  })
 }
