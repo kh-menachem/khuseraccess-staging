@@ -1,48 +1,117 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
-import { writeFileSync, readFileSync, existsSync } from "fs"
+import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 
-const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
-
 interface TransactionLimit {
   enabled: boolean
-  limitType: "years" | "date" // "years" for "1 year back", "date" for "not earlier than 2024"
-  limitValue: string // "1" for 1 year, "2024" for year 2024, etc.
+  limitType: "years" | "date"
+  limitValue: string
 }
 
-// Default settings
 const DEFAULT_LIMIT: TransactionLimit = {
   enabled: false,
   limitType: "years",
   limitValue: "1",
 }
 
-// Get current transaction limit settings
-function getTransactionLimit(): TransactionLimit {
-  try {
-    if (existsSync(TRANSACTION_LIMIT_FILE)) {
-      const data = readFileSync(TRANSACTION_LIMIT_FILE, "utf-8")
-      return JSON.parse(data)
-    }
-  } catch (error) {
-    console.error("Error reading transaction limit file:", error)
+async function getGoogleSheetsClient() {
+  const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  const spreadsheetId = process.env.SPREADSHEET_ID
+
+  if (!credentials || !spreadsheetId) {
+    throw new Error("Missing credentials or spreadsheet ID")
   }
-  return DEFAULT_LIMIT
+
+  const tempFilePath = join(os.tmpdir(), "google-credentials-transaction-limit.json")
+  writeFileSync(tempFilePath, credentials)
+
+  const auth = new google.auth.GoogleAuth({
+    keyFile: tempFilePath,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  })
+
+  const sheets = google.sheets({ version: "v4", auth })
+  return { sheets, spreadsheetId }
 }
 
-// Save transaction limit settings
-function saveTransactionLimit(limit: TransactionLimit): void {
+async function getTransactionLimit(): Promise<TransactionLimit> {
   try {
-    writeFileSync(TRANSACTION_LIMIT_FILE, JSON.stringify(limit, null, 2))
+    const { sheets, spreadsheetId } = await getGoogleSheetsClient()
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Settings!A:B",
+    })
+
+    const rows = response.data.values || []
+
+    let enabled = false
+    let limitType: "years" | "date" = "years"
+    let limitValue = "1"
+
+    for (const row of rows) {
+      const key = row[0]?.toLowerCase().trim()
+      const value = row[1]
+
+      if (key === "transaction_limit_enabled") enabled = value === "TRUE" || value === "true"
+      else if (key === "transaction_limit_type") limitType = value === "date" ? "date" : "years"
+      else if (key === "transaction_limit_value") limitValue = value || "1"
+    }
+
+    return { enabled, limitType, limitValue }
   } catch (error) {
-    console.error("Error saving transaction limit file:", error)
+    console.error("Error reading transaction limit from sheets:", error)
+    return DEFAULT_LIMIT
+  }
+}
+
+async function saveTransactionLimit(limit: TransactionLimit): Promise<void> {
+  try {
+    const { sheets, spreadsheetId } = await getGoogleSheetsClient()
+
+    const updates = [
+      ["transaction_limit_enabled", limit.enabled.toString()],
+      ["transaction_limit_type", limit.limitType],
+      ["transaction_limit_value", limit.limitValue],
+    ]
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Settings!A:B",
+    })
+
+    const rows = response.data.values || []
+
+    const updateData = updates.map(([key, value]) => {
+      const rowIndex = rows.findIndex((row) => row[0]?.toLowerCase().trim() === key.toLowerCase())
+      if (rowIndex >= 0) {
+        return {
+          range: `Settings!A${rowIndex + 1}:B${rowIndex + 1}`,
+          values: [[key, value]],
+        }
+      } else {
+        return {
+          range: `Settings!A${rows.length + 1}:B${rows.length + 1}`,
+          values: [[key, value]],
+        }
+      }
+    })
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: "RAW",
+        data: updateData,
+      },
+    })
+  } catch (error) {
+    console.error("Error saving transaction limit to sheets:", error)
     throw error
   }
 }
 
-// Verify admin access
 async function verifyAdmin(email: string): Promise<{ isAdmin: boolean; isSuperAdmin: boolean }> {
   try {
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
@@ -64,7 +133,7 @@ async function verifyAdmin(email: string): Promise<{ isAdmin: boolean; isSuperAd
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Admin!A:C", // Fixed sheet name from "Admins" to "Admin"
+      range: "Admin!A:D",
     })
 
     const rows = response.data.values || []
@@ -92,10 +161,9 @@ async function verifyAdmin(email: string): Promise<{ isAdmin: boolean; isSuperAd
   }
 }
 
-// GET: Retrieve current transaction limit settings
 export async function GET(request: NextRequest) {
   try {
-    const limit = getTransactionLimit()
+    const limit = await getTransactionLimit()
     return NextResponse.json({
       success: true,
       data: limit,
@@ -112,13 +180,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: Update transaction limit settings
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { requestorEmail, enabled, limitType, limitValue } = body
 
-    // Verify admin access
     if (!requestorEmail) {
       return NextResponse.json(
         {
@@ -141,7 +207,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate input
     if (typeof enabled !== "boolean") {
       return NextResponse.json(
         {
@@ -174,14 +239,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save the settings
     const newLimit: TransactionLimit = {
       enabled,
       limitType: limitType || "years",
       limitValue: limitValue || "1",
     }
 
-    saveTransactionLimit(newLimit)
+    await saveTransactionLimit(newLimit)
 
     return NextResponse.json({
       success: true,
