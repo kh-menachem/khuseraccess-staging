@@ -492,6 +492,12 @@ export default function AdminPage() {
     setSimulationError(null)
 
     try {
+      const accountNumberOnly = simulationAccount.includes(" - ")
+        ? simulationAccount.split(" - ")[0].trim()
+        : simulationAccount.trim()
+
+      console.log("[v0] Simulating account:", accountNumberOnly)
+
       const response = await fetch("/api/admin/simulate-user", {
         method: "POST",
         headers: {
@@ -499,7 +505,7 @@ export default function AdminPage() {
         },
         body: JSON.stringify({
           adminEmail: firebaseUser?.email,
-          accountNumber: simulationAccount,
+          accountNumber: accountNumberOnly,
         }),
       })
 
