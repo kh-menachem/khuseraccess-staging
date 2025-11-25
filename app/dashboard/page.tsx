@@ -308,25 +308,24 @@ export default function DashboardPage() {
   useEffect(() => {
     const initializeDashboard = async () => {
       const requestId = generateRequestId()
+      const dashboardLoadStart = Date.now()
 
       try {
-        // Check if user is logged in with Firebase
         if (!firebaseUser) {
           console.log("[v0] No Firebase user, redirecting to login")
-          await logger.warn(
-            "DASHBOARD_NO_AUTH",
-            "User attempted to access dashboard without Firebase authentication",
-            {},
-          )
+          await logger.warn("DASHBOARD_NO_AUTH", "User attempted to access dashboard without Firebase authentication", {
+            currentPath: window.location.pathname,
+          })
           router.push("/login")
           return
         }
 
-        // Check if we have the user data in localStorage
         const storedUser = localStorage.getItem("user")
         if (!storedUser) {
           console.log("[v0] No stored user data, redirecting to login")
-          await logger.warn("DASHBOARD_NO_USER_DATA", "User attempted to access dashboard without stored user data", {})
+          await logger.warn("DASHBOARD_NO_USER_DATA", "User attempted to access dashboard without stored user data", {
+            firebaseUserEmail: firebaseUser.email,
+          })
           router.push("/login")
           return
         }
@@ -340,7 +339,12 @@ export default function DashboardPage() {
           }
         } catch (parseError) {
           console.error("[v0] Failed to parse stored user data:", parseError)
-          await logger.error("DASHBOARD_PARSE_ERROR", "Failed to parse stored user data", { error: String(parseError) })
+
+          await logger.error("DASHBOARD_PARSE_ERROR", "Failed to parse stored user data", parseError, {
+            storedDataLength: storedUser.length,
+            storedDataPreview: storedUser.substring(0, 100),
+          })
+
           localStorage.removeItem("user")
           router.push("/login")
           return
@@ -349,79 +353,101 @@ export default function DashboardPage() {
         await logger.info(
           "DASHBOARD_PAGE_LOAD",
           `Dashboard page loaded for user: ${parsedUser.email}`,
-          { userId: parsedUser.id, accountNumber: parsedUser.accountNumber },
+          {
+            userId: parsedUser.id,
+            accountNumber: parsedUser.accountNumber,
+            isSimulation: parsedUser.isSimulation || false,
+          },
           parsedUser.email,
         )
 
-        // Check if user needs to select an account first
         if (parsedUser.needsAccountSelection) {
           console.log("[v0] User needs account selection")
           router.push("/select-account")
           return
         }
 
-        // Check if user has a selected account
         if (!parsedUser.id) {
           console.log("[v0] No user ID found, redirecting to account selection")
           router.push("/select-account")
           return
         }
 
-        // Fetch customer data
         try {
           setIsLoading(true)
-          setError(null) // Clear any previous errors
+          setError(null)
           setUser(parsedUser)
 
-          // Set language from stored user preference
           if (parsedUser.language) {
             setLanguage(parsedUser.language)
           }
 
           console.log("[v0] Fetching customer data for:", parsedUser.email, parsedUser.id)
+
+          const fetchStartTime = Date.now()
           await logger.info(
             "DASHBOARD_FETCH_START",
             `Fetching customer data for user: ${parsedUser.email}`,
-            { userId: parsedUser.id },
+            { userId: parsedUser.id, accountNumber: parsedUser.accountNumber },
             parsedUser.email,
           )
 
-          // Pass both email and userId to fetchCustomerData
           const data = await fetchCustomerData(parsedUser.email, parsedUser.id)
 
           if (!data) {
             throw new Error("No data received from server")
           }
 
+          const fetchDuration = Date.now() - fetchStartTime
           console.log("[v0] Successfully loaded customer data")
+
           await logger.info(
             "DASHBOARD_FETCH_SUCCESS",
             `Customer data loaded successfully for user: ${parsedUser.email}`,
-            { userId: parsedUser.id },
+            {
+              userId: parsedUser.id,
+              fetchDuration,
+              dataSize: {
+                currentTransactions: data.currentTransactions?.length || 0,
+                transactions2024: data.transactions2024?.length || 0,
+                oldTransactions: data.oldTransactions?.length || 0,
+                donations: data.donations?.length || 0,
+                machineRentals: data.machineRentals?.length || 0,
+              },
+            },
             parsedUser.email,
           )
 
           setCustomerData(data)
         } catch (fetchError) {
+          const fetchDuration = Date.now() - dashboardLoadStart
           console.error("[v0] Error loading customer data:", fetchError)
           const errorMessage = fetchError instanceof Error ? fetchError.message : "Failed to load customer data"
 
           await logger.error(
             "DASHBOARD_FETCH_ERROR",
             `Failed to load customer data for user: ${parsedUser.email}`,
-            { userId: parsedUser.id, error: errorMessage },
+            fetchError,
+            {
+              userId: parsedUser.id,
+              errorMessage,
+              fetchDuration,
+              accountNumber: parsedUser.accountNumber,
+            },
             parsedUser.email,
           )
 
           setError(errorMessage)
-
-          // User can retry without losing their session
         }
       } catch (error) {
+        const totalDuration = Date.now() - dashboardLoadStart
         console.error("[v0] Error in dashboard initialization:", error)
         const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
 
-        await logger.error("DASHBOARD_INIT_ERROR", "Dashboard initialization failed", { error: errorMessage })
+        await logger.error("DASHBOARD_INIT_ERROR", "Dashboard initialization failed", error, {
+          errorMessage,
+          totalDuration,
+        })
 
         setError(errorMessage)
       } finally {
@@ -430,7 +456,7 @@ export default function DashboardPage() {
     }
 
     initializeDashboard()
-  }, [firebaseUser, router]) // Removed setUser from dependencies as it's stable
+  }, [firebaseUser, router])
 
   const handleLogout = async () => {
     try {
