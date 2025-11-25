@@ -4,9 +4,13 @@ import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 import { writeLogToSheet } from "@/lib/server-logger"
+import { crypto } from "node:crypto"
+
+export const maxDuration = 30
 
 export async function POST(request: NextRequest) {
-  const requestId = request.headers.get("x-request-id") || "unknown"
+  const requestId = request.headers.get("x-request-id") || crypto.randomUUID()
+  const startTime = Date.now()
 
   await writeLogToSheet({
     timestamp: new Date().toISOString(),
@@ -15,12 +19,30 @@ export async function POST(request: NextRequest) {
     message: "Authentication API called",
     metadata: JSON.stringify({ method: "POST" }),
     requestId,
-  })
+  }).catch(console.error)
 
   console.log("Auth API route called")
 
   try {
-    const { email } = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (parseError) {
+      console.error("Failed to parse request body:", parseError)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid request format",
+          code: "PARSE_ERROR",
+        },
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
+    }
+
+    const { email } = body
     console.log("Email received:", email)
 
     if (!email) {
@@ -30,10 +52,20 @@ export async function POST(request: NextRequest) {
         event: "AUTH_MISSING_EMAIL",
         message: "No email provided in auth request",
         requestId,
-      })
+      }).catch(console.error)
 
       console.log("No email provided")
-      return NextResponse.json({ success: false, error: "Email is required" }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Email is required",
+          code: "MISSING_EMAIL",
+        },
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
     }
 
     // Get the credentials from the environment variable
@@ -46,8 +78,12 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Google credentials not found",
+          code: "MISSING_CREDENTIALS",
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
       )
     }
 
@@ -64,6 +100,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Failed to write credentials file",
+          code: "WRITE_ERROR",
         },
         { status: 500 },
       )
@@ -86,47 +123,65 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Spreadsheet ID not found",
+          code: "MISSING_SPREADSHEET_ID",
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
       )
     }
 
     try {
-      // First, verify the spreadsheet exists and get available sheets
-      console.log("Verifying spreadsheet access")
-      const spreadsheet = await sheets.spreadsheets.get({
-        spreadsheetId,
-      })
+      const spreadsheet = (await Promise.race([
+        sheets.spreadsheets.get({ spreadsheetId }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Spreadsheet verification timeout")), 10000)),
+      ])) as any
 
-      const sheetNames = spreadsheet.data.sheets?.map((sheet) => sheet.properties?.title) || []
+      const sheetNames = spreadsheet.data.sheets?.map((sheet: any) => sheet.properties?.title) || []
       console.log("Available sheets:", sheetNames)
 
-      // Check if People sheet exists
       if (!sheetNames.includes("People")) {
         console.log("People sheet not found")
         return NextResponse.json(
           {
             success: false,
             error: "People sheet not found in spreadsheet",
+            code: "SHEET_NOT_FOUND",
             availableSheets: sheetNames,
           },
-          { status: 404 },
+          {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          },
         )
       }
 
-      // Fetch the People sheet - Updated to include columns A through AQ
       console.log("Fetching People sheet (A:AQ)")
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "People!A:AQ",
-      })
+      const response = (await Promise.race([
+        sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "People!A:AQ",
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("People sheet fetch timeout")), 15000)),
+      ])) as any
 
       const rows = response.data.values || []
       console.log("Rows fetched:", rows.length)
 
       if (rows.length === 0) {
         console.log("No data found in People sheet")
-        return NextResponse.json({ success: false, error: "No data found in People sheet" }, { status: 404 })
+        return NextResponse.json(
+          {
+            success: false,
+            error: "No data found in People sheet",
+            code: "NO_DATA",
+          },
+          {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          },
+        )
       }
 
       const headerRow = rows[0]
@@ -192,6 +247,7 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             error: "User access column not found in People sheet",
+            code: "USER_ACCESS_COLUMN_NOT_FOUND",
             availableColumns: headerRow,
             totalColumns: headerRow.length,
           },
@@ -205,6 +261,7 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             error: "UNIQUEID column not found in People sheet",
+            code: "UNIQUEID_COLUMN_NOT_FOUND",
             availableColumns: headerRow,
             totalColumns: headerRow.length,
           },
@@ -229,7 +286,7 @@ export async function POST(request: NextRequest) {
           metadata: JSON.stringify({ email }),
           user: email,
           requestId,
-        })
+        }).catch(console.error)
 
         console.log("User not found")
         const sampleEmails = rows
@@ -240,23 +297,30 @@ export async function POST(request: NextRequest) {
           {
             success: false,
             error: "User not found",
+            code: "USER_NOT_FOUND",
             sampleEmails: sampleEmails,
             emailColumnName: headerRow[userAccessIndex],
             totalColumns: headerRow.length,
           },
-          { status: 404 },
+          {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          },
         )
       }
+
+      const duration = Date.now() - startTime
+      console.log(`[v0] Auth completed in ${duration}ms`)
 
       await writeLogToSheet({
         timestamp: new Date().toISOString(),
         level: "INFO",
         event: "AUTH_SUCCESS",
         message: `User authenticated successfully: ${email}`,
-        metadata: JSON.stringify({ email, accountCount: userRows.length }),
+        metadata: JSON.stringify({ email, accountCount: userRows.length, duration }),
         user: email,
         requestId,
-      })
+      }).catch(console.error)
 
       console.log(`Found ${userRows.length} accounts for user:`, email)
 
@@ -312,53 +376,88 @@ export async function POST(request: NextRequest) {
 
       console.log("Processed accounts:", accounts)
 
-      return NextResponse.json({
-        success: true,
-        user: {
-          email: email,
-          accounts: accounts,
-          hasMultipleAccounts: accounts.length > 1,
+      return NextResponse.json(
+        {
+          success: true,
+          user: {
+            email: email,
+            accounts: accounts,
+            hasMultipleAccounts: accounts.length > 1,
+          },
         },
-      })
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+          },
+        },
+      )
     } catch (error) {
+      const duration = Date.now() - startTime
+
       await writeLogToSheet({
         timestamp: new Date().toISOString(),
         level: "ERROR",
         event: "AUTH_SPREADSHEET_ERROR",
         message: "Failed to access spreadsheet",
-        metadata: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+        metadata: JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          duration,
+        }),
         user: email,
         requestId,
-      })
+      }).catch(console.error)
 
       console.error("Spreadsheet access error:", error)
+
+      const errorMessage =
+        error instanceof Error && error.message.includes("timeout")
+          ? "Request timed out. Please try again."
+          : error instanceof Error
+            ? error.message
+            : String(error)
+
       return NextResponse.json(
         {
           success: false,
           error: "Failed to access spreadsheet",
-          details: error instanceof Error ? error.message : String(error),
+          code: error instanceof Error && error.message.includes("timeout") ? "TIMEOUT" : "SPREADSHEET_ERROR",
+          details: errorMessage,
         },
-        { status: 500 },
+        {
+          status: error instanceof Error && error.message.includes("timeout") ? 504 : 500,
+          headers: { "Content-Type": "application/json" },
+        },
       )
     }
   } catch (error) {
+    const duration = Date.now() - startTime
+
     await writeLogToSheet({
       timestamp: new Date().toISOString(),
       level: "ERROR",
       event: "AUTH_ERROR",
       message: "Authentication error occurred",
-      metadata: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      metadata: JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+        duration,
+      }),
       requestId,
-    })
+    }).catch(console.error)
 
     console.error("Authentication error:", error)
+
     return NextResponse.json(
       {
         success: false,
         error: "An error occurred during authentication",
+        code: "AUTH_ERROR",
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
     )
   }
 }

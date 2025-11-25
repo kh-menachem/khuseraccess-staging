@@ -94,24 +94,37 @@ export default function LoginPage() {
         email,
       )
 
-      // Determine if user is logging in from /admin/login
       const path = typeof window !== "undefined" ? window.location.pathname : ""
       const isAdminLogin = path.includes("/admin")
 
-      // Sign in with Firebase first
-      await signIn(email, password)
+      const authPromise = signIn(email, password)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Authentication timeout")), 15000),
+      )
+
+      await Promise.race([authPromise, timeoutPromise])
 
       await logger.info("AUTH_SUCCESS", "Firebase authentication successful", { email }, email)
 
       if (isAdminLogin) {
-        // Admin login flow
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 10000)
+
         const adminCheckResponse = await fetch("/api/admin/verify", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email }),
+          signal: controller.signal,
         })
+
+        clearTimeout(timeoutId)
+
+        const contentType = adminCheckResponse.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Invalid response from server")
+        }
 
         const adminResult = await adminCheckResponse.json()
 
@@ -141,14 +154,26 @@ export default function LoginPage() {
         return
       }
 
-      // Regular user login flow
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
       const response = await fetch("/api/auth", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
+
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text()
+        console.error("[v0] Non-JSON response:", text.substring(0, 200))
+        throw new Error("Server returned an invalid response. Please try again.")
+      }
 
       const result = await response.json()
 
@@ -222,11 +247,22 @@ export default function LoginPage() {
     } catch (error) {
       let errorMessage = "Invalid email or password."
 
-      if (error instanceof Error && error.message.includes("auth/invalid-credential")) {
-        errorMessage = language === "he" ? "האימייל או הסיסמה אינם נכונים." : "Invalid email or password."
-      } else if (error instanceof Error) {
-        console.error("Login error:", error.message)
-        errorMessage = error.message
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          errorMessage = language === "he" ? "הבקשה פגה. אנא נסה שוב." : "Request timed out. Please try again."
+        } else if (error.message.includes("auth/invalid-credential")) {
+          errorMessage = language === "he" ? "האימייל או הסיסמה אינם נכונים." : "Invalid email or password."
+        } else if (error.message.includes("network") || error.message.includes("fetch")) {
+          errorMessage =
+            language === "he" ? "שגיאת רשת. אנא בדוק את החיבור שלך." : "Network error. Please check your connection."
+        } else if (error.message.includes("timeout")) {
+          errorMessage =
+            language === "he"
+              ? "הבקשה פגה. השרת עשוי להיות עמוס. אנא נסה שוב."
+              : "Request timed out. Server may be busy. Please try again."
+        } else {
+          errorMessage = error.message
+        }
       }
 
       await logger.error("LOGIN_FAILED", `Login failed for user: ${email}`, { email, error: errorMessage }, email)

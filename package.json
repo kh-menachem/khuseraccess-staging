@@ -26,6 +26,7 @@
     "chrome-aws-lambda": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "crypto": "latest",
     "firebase": "latest",
     "firebase-admin": "latest",
     "fs": "latest",

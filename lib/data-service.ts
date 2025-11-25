@@ -5,73 +5,113 @@ export async function fetchCustomerData(userEmail: string, userId: string): Prom
     throw new Error("User email and ID are required")
   }
 
-  try {
-    console.log("[v0] Fetching customer data for:", { userEmail, userId })
+  const maxRetries = 2
+  let lastError: Error | null = null
 
-    const response = await fetch("/api/customer-data", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userEmail,
-        userId,
-        language: "en", // Default language, can be made dynamic
-      }),
-      signal: AbortSignal.timeout(30000), // 30 second timeout
-    })
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[v0] Fetching customer data (attempt ${attempt}/${maxRetries}):`, { userEmail, userId })
 
-    console.log("[v0] API response status:", response.status)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 second timeout
 
-    if (!response.ok) {
-      let errorMessage = "Failed to fetch customer data"
+      const response = await fetch("/api/customer-data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Request-ID": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          userEmail,
+          userId,
+          language: "en",
+        }),
+        signal: controller.signal,
+      })
 
-      try {
-        const errorData = await response.json()
-        errorMessage = errorData.error || errorData.message || errorMessage
-      } catch (parseError) {
-        // If we can't parse the error response, use status text
-        errorMessage = `Server error: ${response.status} ${response.statusText}`
+      clearTimeout(timeoutId)
+
+      console.log("[v0] API response status:", response.status)
+
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text()
+        console.error("[v0] Non-JSON response received:", text.substring(0, 200))
+        throw new Error("Server returned invalid response format (not JSON)")
       }
 
-      console.error("[v0] API error response:", errorMessage)
-      throw new Error(errorMessage)
-    }
+      if (!response.ok) {
+        let errorMessage = "Failed to fetch customer data"
 
-    const contentType = response.headers.get("content-type")
-    if (!contentType || !contentType.includes("application/json")) {
-      throw new Error("Invalid response format from server")
-    }
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.message || errorMessage
 
-    const data = await response.json()
+          if (response.status >= 400 && response.status < 500) {
+            throw new Error(errorMessage)
+          }
+        } catch (parseError) {
+          errorMessage = `Server error: ${response.status} ${response.statusText}`
+        }
 
-    if (!data || typeof data !== "object") {
-      throw new Error("Invalid data received from server")
-    }
+        console.error("[v0] API error response:", errorMessage)
 
-    console.log("[v0] Successfully received customer data:", {
-      id: data.id,
-      currentTransactions: data.currentTransactions?.length || 0,
-      transactions2024: data.transactions2024?.length || 0,
-      oldTransactions: data.oldTransactions?.length || 0,
-      donations: data.donations?.length || 0,
-      machineRentals: data.machineRentals?.length || 0,
-    })
+        if (attempt < maxRetries && response.status >= 500) {
+          lastError = new Error(errorMessage)
+          console.log(`[v0] Retrying after error... (attempt ${attempt + 1}/${maxRetries})`)
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt)) // Exponential backoff
+          continue
+        }
 
-    return data
-  } catch (error) {
-    console.error("[v0] Error in fetchCustomerData:", error)
-
-    if (error instanceof Error) {
-      if (error.name === "AbortError") {
-        throw new Error("Request timed out. Please check your connection and try again.")
+        throw new Error(errorMessage)
       }
-      if (error.message.includes("fetch")) {
-        throw new Error("Network error. Please check your internet connection.")
-      }
-      throw error
-    }
 
-    throw new Error("An unexpected error occurred while fetching data")
+      const data = await response.json()
+
+      if (!data || typeof data !== "object") {
+        throw new Error("Invalid data structure received from server")
+      }
+
+      console.log("[v0] Successfully received customer data:", {
+        id: data.id,
+        currentTransactions: data.currentTransactions?.length || 0,
+        transactions2024: data.transactions2024?.length || 0,
+        oldTransactions: data.oldTransactions?.length || 0,
+        donations: data.donations?.length || 0,
+        machineRentals: data.machineRentals?.length || 0,
+      })
+
+      return data
+    } catch (error) {
+      console.error(`[v0] Error in fetchCustomerData (attempt ${attempt}/${maxRetries}):`, error)
+      lastError = error as Error
+
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          if (attempt < maxRetries) {
+            console.log(`[v0] Request timed out, retrying... (attempt ${attempt + 1}/${maxRetries})`)
+            await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+            continue
+          }
+          throw new Error(
+            "Request timed out after multiple attempts. The server may be overloaded. Please try again in a few moments.",
+          )
+        }
+        if (error.message.includes("fetch") || error.message.includes("network")) {
+          if (attempt < maxRetries) {
+            console.log(`[v0] Network error, retrying... (attempt ${attempt + 1}/${maxRetries})`)
+            await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+            continue
+          }
+          throw new Error("Network error. Please check your internet connection and try again.")
+        }
+      }
+
+      // Don't retry on other errors
+      throw lastError
+    }
   }
+
+  // If we've exhausted all retries
+  throw lastError || new Error("Failed to fetch customer data after multiple attempts")
 }
