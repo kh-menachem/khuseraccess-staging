@@ -94,13 +94,20 @@ export async function POST(request: NextRequest) {
     console.log("[v0] People sheet headers:", headers)
 
     const uniqueNumberIndex = headers.findIndex((h) => h === "Unique Number")
+    const uniqueIdIndex = headers.findIndex((h) => h === "UNIQUEID")
 
     if (uniqueNumberIndex === -1) {
       console.log("[v0] Available headers:", headers)
       return NextResponse.json({ error: "Invalid sheet structure: Unique Number column not found" }, { status: 500 })
     }
 
+    if (uniqueIdIndex === -1) {
+      console.log("[v0] Available headers:", headers)
+      return NextResponse.json({ error: "Invalid sheet structure: UNIQUEID column not found" }, { status: 500 })
+    }
+
     console.log("[v0] Unique Number column index:", uniqueNumberIndex)
+    console.log("[v0] UNIQUEID column index:", uniqueIdIndex)
     console.log("[v0] Looking for account number:", accountNumber)
 
     const accountRow = peopleRows.slice(1).find((row) => {
@@ -124,9 +131,11 @@ export async function POST(request: NextRequest) {
     const lastNameIndex = headers.findIndex((h) => h === "Last Name")
     const userAccessIndex = headers.findIndex((h) => h === "User Access")
 
+    const uniqueId = accountRow[uniqueIdIndex]?.toString().trim() || accountNumber
+
     const simulatedUser = {
-      id: accountNumber,
-      accountNumber: accountNumber,
+      id: uniqueId, // This is the UNIQUEID used for transaction matching
+      accountNumber: accountNumber, // This is the Unique Number for display
       firstName: accountRow[firstNameIndex] || "",
       lastName: accountRow[lastNameIndex] || "",
       name: `${accountRow[firstNameIndex] || ""} ${accountRow[lastNameIndex] || ""}`.trim(),
@@ -136,7 +145,7 @@ export async function POST(request: NextRequest) {
       language: "en",
     }
 
-    console.log("[v0] Simulation successful for account:", accountNumber)
+    console.log("[v0] Simulation successful for account:", accountNumber, "with UNIQUEID:", uniqueId)
 
     return NextResponse.json({
       success: true,
