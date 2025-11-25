@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
-import type { CustomerData, Transaction, Donation } from "@/lib/types"
+import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/types"
 import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
@@ -484,6 +484,128 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
   })
 }
 
+function processMachineRentals(rows: string[][], userId: string, machinesMap: Map<string, string>): MachineRental[] {
+  if (rows.length === 0) return []
+
+  const headerRow = rows[0]
+  console.log("Machine Records sheet headers:", headerRow)
+  console.log("Total columns in machine records sheet:", headerRow.length)
+
+  const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
+
+  console.log("Person column index in machine records:", personIndex)
+
+  if (personIndex === -1) {
+    console.log("No Person column found in machine records sheet")
+    console.log("Available headers:", headerRow)
+    return []
+  }
+
+  const machineRefIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "machine" ||
+      header?.toLowerCase().trim() === "machine ref" ||
+      header?.toLowerCase().trim() === "machineref",
+  )
+
+  const dateIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "date" ||
+      header?.toLowerCase().trim() === "date/time" ||
+      header?.toLowerCase().trim() === "datetime",
+  )
+
+  const statusIndex = headerRow.findIndex(
+    (header: string) => header?.toLowerCase().trim() === "status" || header?.toLowerCase().trim() === "in/out",
+  )
+
+  const feeIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "fee" ||
+      header?.toLowerCase().trim() === "amount" ||
+      header?.toLowerCase().trim() === "cost",
+  )
+
+  const filteredRows = rows.slice(1).filter((row: string[]) => {
+    if (!row[personIndex]) return false
+    const rowPersonId = row[personIndex]?.toString().trim()
+    return rowPersonId === userId
+  })
+
+  console.log(`Found ${filteredRows.length} matching machine records for user UNIQUEID ${userId}`)
+
+  const machineGroups = new Map<string, { in?: any; out?: any }>()
+
+  filteredRows.forEach((row: string[]) => {
+    const machineRef = machineRefIndex !== -1 ? row[machineRefIndex]?.toString().trim() : ""
+    const status = statusIndex !== -1 ? row[statusIndex]?.toString().trim().toLowerCase() : ""
+    const date = dateIndex !== -1 ? row[dateIndex] || "" : ""
+
+    let fee = 0
+    try {
+      const feeStr = row[feeIndex]?.toString().trim() || "0"
+      const cleanedFee = feeStr.replace(/[$,]/g, "")
+      fee = Number.parseFloat(cleanedFee)
+
+      if (Number.isNaN(fee)) {
+        fee = 0
+      }
+    } catch (error) {
+      console.error("Error parsing fee:", error)
+      fee = 0
+    }
+
+    const record = {
+      date,
+      fee,
+      row,
+    }
+
+    if (!machineGroups.has(machineRef)) {
+      machineGroups.set(machineRef, {})
+    }
+
+    const group = machineGroups.get(machineRef)!
+    if (status === "out") {
+      group.out = record
+    } else if (status === "in") {
+      group.in = record
+    }
+  })
+
+  const machineRentals: MachineRental[] = []
+  let index = 0
+
+  machineGroups.forEach((group, machineRef) => {
+    const machineId = machinesMap.get(machineRef) || machineRef
+
+    const rentalDate = group.out?.date || ""
+    const returnDate = group.in?.date || null
+
+    const fee = group.out?.fee || group.in?.fee || 0
+
+    let status = "Unknown"
+    if (group.out && group.in) {
+      status = "Returned"
+    } else if (group.out && !group.in) {
+      status = "Out"
+    } else if (!group.out && group.in) {
+      status = "In"
+    }
+
+    machineRentals.push({
+      id: `MR-${index++}`,
+      machineId: machineId,
+      rentalDate: rentalDate,
+      returnDate: returnDate,
+      status: status,
+      fee: fee,
+    })
+  })
+
+  return machineRentals
+}
+
 function processLinksTransactionsGrouped(rows: string[][], userId: string, language: string): Transaction[] {
   if (rows.length === 0) return []
 
@@ -773,79 +895,41 @@ export async function POST(request: NextRequest) {
 
     console.log("Fetching transaction tables")
 
-    let availableSheets: string[] = []
-    try {
-      const metadataResponse = (await Promise.race([
-        sheets.spreadsheets.get({
-          spreadsheetId,
-          fields: "sheets.properties.title",
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Metadata fetch timeout")), 10000)),
-      ])) as any
-
-      availableSheets = metadataResponse.data.sheets?.map((sheet: any) => sheet.properties.title) || []
-      console.log("[v0] Available sheets:", availableSheets)
-    } catch (error) {
-      console.error("Failed to fetch spreadsheet metadata:", error)
-      await writeLogToSheet({
-        timestamp: new Date().toISOString(),
-        level: "ERROR",
-        event: "METADATA_FETCH_ERROR",
-        message: "Failed to fetch spreadsheet metadata",
-        metadata: JSON.stringify({ error: String(error) }),
-        user: userEmail,
-        requestId,
-      }).catch(console.error)
-    }
-
-    const sheetConfigs = [
-      { name: "Current Transactions", range: "A:S", timeout: 20000 },
-      { name: "2024 Transactions", range: "A:R", timeout: 20000 },
-      { name: "Old transactions", range: "A:R", timeout: 20000 },
-      { name: "Donations", range: "A:O", timeout: 20000 },
-      { name: "Links And Phone", range: "A:L", timeout: 20000 },
-    ]
-
-    const fetchWithTimeout = async (sheetName: string, range: string, timeout: number) => {
-      // Check if sheet exists
-      if (availableSheets.length > 0 && !availableSheets.includes(sheetName)) {
-        throw new Error(`Sheet "${sheetName}" not found. Available sheets: ${availableSheets.join(", ")}`)
-      }
-
-      const fullRange = `'${sheetName}'!${range}`
-      console.log(`[v0] Fetching range: ${fullRange}`)
-
+    const fetchWithTimeout = (range: string, timeout = 20000) => {
       return Promise.race([
-        sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: fullRange,
-          valueRenderOption: "UNFORMATTED_VALUE",
-        }),
+        sheets.spreadsheets.values.get({ spreadsheetId, range }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout fetching ${sheetName} after ${timeout}ms`)), timeout),
+          setTimeout(() => reject(new Error(`${range} fetch timeout after ${timeout}ms`)), timeout),
         ),
       ])
     }
 
-    const responses = await Promise.allSettled(
-      sheetConfigs.map((config) => fetchWithTimeout(config.name, config.range, config.timeout)),
-    )
+    const responses = await Promise.allSettled([
+      fetchWithTimeout("Current Transactions!A:S", 20000),
+      fetchWithTimeout("2024 Transactions!A:R", 20000),
+      fetchWithTimeout("Old transactions!A:R", 20000),
+      fetchWithTimeout("Donations!A:O", 20000),
+      fetchWithTimeout("Machine Rentals!A:I", 20000),
+      fetchWithTimeout("Links And Phone!A:L", 20000),
+    ])
 
     responses.forEach((result, index) => {
       if (result.status === "rejected") {
-        const sheetName = sheetConfigs[index].name
-        console.error(`[v0] Failed to fetch ${sheetName}:`, result.reason)
+        const sheetNames = [
+          "Current Transactions",
+          "2024 Transactions",
+          "Old transactions",
+          "Donations",
+          "Machine Rentals",
+          "Links And Phone",
+        ]
+        console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
         writeLogToSheet({
           timestamp: new Date().toISOString(),
           level: "ERROR",
-          event: "SHEET_FETCH_ERROR",
-          message: `Failed to fetch ${sheetName}`,
-          metadata: JSON.stringify({
-            error: String(result.reason),
-            sheetName,
-            userId,
-            availableSheets: availableSheets.join(", "),
-          }),
+          event: "SHEET_FETCH_TIMEOUT",
+          message: `Failed to fetch ${sheetNames[index]}`,
+          metadata: JSON.stringify({ error: String(result.reason), userId }),
           user: userEmail,
           requestId,
         }).catch(console.error)
@@ -858,18 +942,21 @@ export async function POST(request: NextRequest) {
       responses[1].status === "fulfilled" ? (responses[1].value as any).data.values || [] : []
     const oldTransactionsData = responses[2].status === "fulfilled" ? (responses[2].value as any).data.values || [] : []
     const donationsData = responses[3].status === "fulfilled" ? (responses[3].value as any).data.values || [] : []
-    const linksAndPhoneData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
+    const machineRentalsData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
+    const linksAndPhoneData = responses[5].status === "fulfilled" ? (responses[5].value as any).data.values || [] : []
 
     const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
+    const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
     const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
 
     console.log(`Found ${currentTransactions.length} current transactions (total)`)
     console.log(`Found ${transactions2024.length} transactions from 2024 (total)`)
     console.log(`Found ${oldTransactions.length} old transactions (total)`)
     console.log(`Found ${donations.length} donations (total)`)
+    console.log(`Found ${machineRentals.length} machine rentals (total)`)
 
     const transactionLimit = await getTransactionLimit()
     const cutoffDate = getCutoffDate(transactionLimit)
@@ -878,12 +965,14 @@ export async function POST(request: NextRequest) {
     let displayTransactions2024 = transactions2024
     let displayOldTransactions = oldTransactions
     let displayDonations = donations
+    let displayMachineRentals = machineRentals
 
     if (transactionLimit.enabled) {
       displayCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
       displayTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
       displayOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
       displayDonations = filterTransactionsByDate(donations, cutoffDate)
+      displayMachineRentals = filterTransactionsByDate(machineRentals, cutoffDate)
     }
 
     const customerData: CustomerData = {
@@ -894,11 +983,13 @@ export async function POST(request: NextRequest) {
       transactions2024: transactions2024 || [],
       oldTransactions: oldTransactions || [],
       donations: donations || [],
+      machineRentals: machineRentals || [],
       linksAndPhoneGrouped: linksAndPhoneGrouped || [],
       displayCurrentTransactions,
       displayTransactions2024,
       displayOldTransactions,
       displayDonations,
+      displayMachineRentals,
     }
 
     const duration = Date.now() - startTime
@@ -917,6 +1008,7 @@ export async function POST(request: NextRequest) {
           transactions2024: displayTransactions2024.length,
           old: displayOldTransactions.length,
           donations: displayDonations.length,
+          machineRentals: displayMachineRentals.length,
         },
       }),
       user: userEmail,

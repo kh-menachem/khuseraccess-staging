@@ -85,26 +85,17 @@ export default function LoginPage() {
     setError(null)
 
     const requestId = generateRequestId()
-    const loginStartTime = Date.now()
 
     try {
       await logger.info(
         "LOGIN_ATTEMPT",
         `User attempting to login: ${email}`,
-        {
-          email,
-          path: window.location.pathname,
-          language,
-          loginStartTime,
-        },
+        { email, path: window.location.pathname },
         email,
       )
 
       const path = typeof window !== "undefined" ? window.location.pathname : ""
       const isAdminLogin = path.includes("/admin")
-
-      const authApiLogger = await logger.apiCall("Firebase Auth", "signIn", { email }, email)
-      const authStartTime = Date.now()
 
       const authPromise = signIn(email, password)
       const timeoutPromise = new Promise((_, reject) =>
@@ -113,15 +104,9 @@ export default function LoginPage() {
 
       await Promise.race([authPromise, timeoutPromise])
 
-      const authDuration = Date.now() - authStartTime
-      authApiLogger.logResponse(200, authDuration)
-
-      await logger.info("AUTH_SUCCESS", "Firebase authentication successful", { email, authDuration }, email)
+      await logger.info("AUTH_SUCCESS", "Firebase authentication successful", { email }, email)
 
       if (isAdminLogin) {
-        const adminApiLogger = await logger.apiCall("/api/admin/verify", "POST", { email }, email)
-        const adminCheckStart = Date.now()
-
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 10000)
 
@@ -135,22 +120,19 @@ export default function LoginPage() {
         })
 
         clearTimeout(timeoutId)
-        const adminCheckDuration = Date.now() - adminCheckStart
 
         const contentType = adminCheckResponse.headers.get("content-type")
         if (!contentType || !contentType.includes("application/json")) {
-          adminApiLogger.logError(new Error("Invalid response format"), adminCheckDuration)
           throw new Error("Invalid response from server")
         }
 
         const adminResult = await adminCheckResponse.json()
-        adminApiLogger.logResponse(adminCheckResponse.status, adminCheckDuration, adminCheckResponse.headers)
 
         if (adminResult.success && adminResult.isAdmin) {
           await logger.info(
             "ADMIN_LOGIN_SUCCESS",
             `Admin login successful: ${email}`,
-            { email, role: adminResult.role, totalLoginDuration: Date.now() - loginStartTime },
+            { email, role: adminResult.role },
             email,
           )
 
@@ -172,9 +154,6 @@ export default function LoginPage() {
         return
       }
 
-      const authApiLogger2 = await logger.apiCall("/api/auth", "POST", { email }, email)
-      const customerAuthStart = Date.now()
-
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
 
@@ -188,36 +167,21 @@ export default function LoginPage() {
       })
 
       clearTimeout(timeoutId)
-      const customerAuthDuration = Date.now() - customerAuthStart
 
       const contentType = response.headers.get("content-type")
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text()
         console.error("[v0] Non-JSON response:", text.substring(0, 200))
-
-        authApiLogger2.logError(new Error("Non-JSON response"), customerAuthDuration)
-
-        await logger.error(
-          "LOGIN_INVALID_RESPONSE",
-          "Server returned non-JSON response",
-          new Error(text.substring(0, 200)),
-          {
-            contentType,
-            responsePreview: text.substring(0, 200),
-          },
-          email,
-        )
-
         throw new Error("Server returned an invalid response. Please try again.")
       }
 
       const result = await response.json()
-      authApiLogger2.logResponse(response.status, customerAuthDuration, response.headers)
 
       if (result.success && result.user && result.user.accounts && result.user.accounts.length > 0) {
         const accounts = result.user.accounts
 
         if (accounts.length === 1) {
+          // Single account
           const account = accounts[0]
           localStorage.setItem(
             "user",
@@ -235,11 +199,7 @@ export default function LoginPage() {
           await logger.info(
             "LOGIN_SUCCESS",
             `User logged in successfully: ${email}`,
-            {
-              email,
-              accountNumber: account.accountNumber,
-              totalLoginDuration: Date.now() - loginStartTime,
-            },
+            { email, accountNumber: account.accountNumber },
             email,
           )
 
@@ -285,7 +245,6 @@ export default function LoginPage() {
         })
       }
     } catch (error) {
-      const loginDuration = Date.now() - loginStartTime
       let errorMessage = "Invalid email or password."
 
       if (error instanceof Error) {
@@ -306,18 +265,7 @@ export default function LoginPage() {
         }
       }
 
-      await logger.error(
-        "LOGIN_FAILED",
-        `Login failed for user: ${email}`,
-        error,
-        {
-          email,
-          errorMessage,
-          loginDuration,
-          language,
-        },
-        email,
-      )
+      await logger.error("LOGIN_FAILED", `Login failed for user: ${email}`, { email, error: errorMessage }, email)
 
       setError(errorMessage)
 
