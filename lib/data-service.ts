@@ -110,7 +110,6 @@ export async function fetchCustomerData(userEmail: string, userId: string): Prom
         transactions2024: data.transactions2024?.length || 0,
         oldTransactions: data.oldTransactions?.length || 0,
         donations: data.donations?.length || 0,
-        machineRentals: data.machineRentals?.length || 0,
       })
 
       return data

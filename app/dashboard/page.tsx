@@ -401,7 +401,7 @@ export default function DashboardPage() {
           const fetchDuration = Date.now() - fetchStartTime
           console.log("[v0] Successfully loaded customer data")
 
-          await logger.info(
+          logger.info(
             "DASHBOARD_FETCH_SUCCESS",
             `Customer data loaded successfully for user: ${parsedUser.email}`,
             {
@@ -412,7 +412,6 @@ export default function DashboardPage() {
                 transactions2024: data.transactions2024?.length || 0,
                 oldTransactions: data.oldTransactions?.length || 0,
                 donations: data.donations?.length || 0,
-                machineRentals: data.machineRentals?.length || 0,
               },
             },
             parsedUser.email,
