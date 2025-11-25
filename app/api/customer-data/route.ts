@@ -773,39 +773,79 @@ export async function POST(request: NextRequest) {
 
     console.log("Fetching transaction tables")
 
-    const fetchWithTimeout = (range: string, timeout = 20000) => {
+    let availableSheets: string[] = []
+    try {
+      const metadataResponse = (await Promise.race([
+        sheets.spreadsheets.get({
+          spreadsheetId,
+          fields: "sheets.properties.title",
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Metadata fetch timeout")), 10000)),
+      ])) as any
+
+      availableSheets = metadataResponse.data.sheets?.map((sheet: any) => sheet.properties.title) || []
+      console.log("[v0] Available sheets:", availableSheets)
+    } catch (error) {
+      console.error("Failed to fetch spreadsheet metadata:", error)
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "ERROR",
+        event: "METADATA_FETCH_ERROR",
+        message: "Failed to fetch spreadsheet metadata",
+        metadata: JSON.stringify({ error: String(error) }),
+        user: userEmail,
+        requestId,
+      }).catch(console.error)
+    }
+
+    const sheetConfigs = [
+      { name: "Current Transactions", range: "A:S", timeout: 20000 },
+      { name: "2024 Transactions", range: "A:R", timeout: 20000 },
+      { name: "Old transactions", range: "A:R", timeout: 20000 },
+      { name: "Donations", range: "A:O", timeout: 20000 },
+      { name: "Links And Phone", range: "A:L", timeout: 20000 },
+    ]
+
+    const fetchWithTimeout = async (sheetName: string, range: string, timeout: number) => {
+      // Check if sheet exists
+      if (availableSheets.length > 0 && !availableSheets.includes(sheetName)) {
+        throw new Error(`Sheet "${sheetName}" not found. Available sheets: ${availableSheets.join(", ")}`)
+      }
+
+      const fullRange = `'${sheetName}'!${range}`
+      console.log(`[v0] Fetching range: ${fullRange}`)
+
       return Promise.race([
-        sheets.spreadsheets.values.get({ spreadsheetId, range }),
+        sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: fullRange,
+          valueRenderOption: "UNFORMATTED_VALUE",
+        }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`${range} fetch timeout after ${timeout}ms`)), timeout),
+          setTimeout(() => reject(new Error(`Timeout fetching ${sheetName} after ${timeout}ms`)), timeout),
         ),
       ])
     }
 
-    const responses = await Promise.allSettled([
-      fetchWithTimeout("Current Transactions!A:S", 20000),
-      fetchWithTimeout("2024 Transactions!A:R", 20000),
-      fetchWithTimeout("Old transactions!A:R", 20000),
-      fetchWithTimeout("Donations!A:O", 20000),
-      fetchWithTimeout("Links And Phone!A:L", 20000),
-    ])
+    const responses = await Promise.allSettled(
+      sheetConfigs.map((config) => fetchWithTimeout(config.name, config.range, config.timeout)),
+    )
 
     responses.forEach((result, index) => {
       if (result.status === "rejected") {
-        const sheetNames = [
-          "Current Transactions",
-          "2024 Transactions",
-          "Old transactions",
-          "Donations",
-          "Links And Phone",
-        ]
-        console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
+        const sheetName = sheetConfigs[index].name
+        console.error(`[v0] Failed to fetch ${sheetName}:`, result.reason)
         writeLogToSheet({
           timestamp: new Date().toISOString(),
           level: "ERROR",
-          event: "SHEET_FETCH_TIMEOUT",
-          message: `Failed to fetch ${sheetNames[index]}`,
-          metadata: JSON.stringify({ error: String(result.reason), userId }),
+          event: "SHEET_FETCH_ERROR",
+          message: `Failed to fetch ${sheetName}`,
+          metadata: JSON.stringify({
+            error: String(result.reason),
+            sheetName,
+            userId,
+            availableSheets: availableSheets.join(", "),
+          }),
           user: userEmail,
           requestId,
         }).catch(console.error)
