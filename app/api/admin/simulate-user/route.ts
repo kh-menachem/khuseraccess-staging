@@ -88,17 +88,35 @@ export async function POST(request: NextRequest) {
     })
 
     const peopleRows = peopleResponse.data.values || []
+    console.log("[v0] People sheet rows count:", peopleRows.length)
+
     const headers = peopleRows[0] || []
+    console.log("[v0] People sheet headers:", headers)
+
     const uniqueNumberIndex = headers.findIndex((h) => h === "Unique Number")
 
     if (uniqueNumberIndex === -1) {
-      return NextResponse.json({ error: "Invalid sheet structure" }, { status: 500 })
+      console.log("[v0] Available headers:", headers)
+      return NextResponse.json({ error: "Invalid sheet structure: Unique Number column not found" }, { status: 500 })
     }
 
-    // Find the account
-    const accountRow = peopleRows.slice(1).find((row) => row[uniqueNumberIndex] === accountNumber)
+    console.log("[v0] Unique Number column index:", uniqueNumberIndex)
+    console.log("[v0] Looking for account number:", accountNumber)
+
+    const accountRow = peopleRows.slice(1).find((row) => {
+      const rowAccountNumber = row[uniqueNumberIndex]?.toString().trim()
+      const searchAccountNumber = accountNumber.toString().trim()
+      console.log("[v0] Comparing:", rowAccountNumber, "with", searchAccountNumber)
+      return rowAccountNumber === searchAccountNumber
+    })
+
+    console.log("[v0] Account row found:", !!accountRow)
 
     if (!accountRow) {
+      console.log(
+        "[v0] All account numbers in sheet:",
+        peopleRows.slice(1).map((row) => row[uniqueNumberIndex]),
+      )
       return NextResponse.json({ error: "Account not found" }, { status: 404 })
     }
 
