@@ -61,7 +61,7 @@ export default function AdminPage() {
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false)
 
   // Account selection states
-  const [accounts, setAccounts] = useState<Array<{ accountNumber: string; firstName: string; lastName: string }>>([])
+  const [accounts, setAccounts] = useState<Array<{ value: string; label: string }>>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState("")
 
@@ -121,18 +121,19 @@ export default function AdminPage() {
         body: JSON.stringify({ requestorEmail: firebaseUser?.email }),
       })
       const result = await response.json()
+
+      console.log("[v0] Get accounts response:", result)
+
       if (result.success) {
-        // Map accounts to the format expected by Input with list
-        const formattedAccounts = result.accounts.map(
-          (acc: { accountNumber: string; firstName: string; lastName: string }) => ({
-            value: acc.accountNumber,
-            label: `${acc.accountNumber} - ${acc.firstName} ${acc.lastName}`,
-          }),
-        )
-        setAccounts(formattedAccounts || [])
+        setAccounts(result.accounts || [])
+        console.log("[v0] Loaded accounts:", result.accounts?.length || 0)
+      } else {
+        console.error("[v0] Failed to load accounts:", result.error)
+        setAccounts([])
       }
     } catch (error) {
-      console.error("Error loading accounts:", error)
+      console.error("[v0] Error loading accounts:", error)
+      setAccounts([])
     } finally {
       setIsLoadingAccounts(false)
     }
