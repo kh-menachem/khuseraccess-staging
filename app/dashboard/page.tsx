@@ -8,7 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DollarSign, LogOut, Search, Languages, AlertTriangle, Calendar, ChevronDown, Mail, Send } from "lucide-react"
+import {
+  DollarSign,
+  LogOut,
+  Search,
+  Languages,
+  AlertTriangle,
+  Calendar,
+  ChevronDown,
+  Mail,
+  Send,
+  Eye,
+} from "lucide-react"
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
 import { Input } from "@/components/ui/input"
@@ -63,8 +74,8 @@ interface Account {
   userId: string
   accountNumber: string
   name: string
-  firstName: string
-  lastName: string
+  firstName?: string
+  lastName?: string
 }
 
 // Translation object
@@ -251,7 +262,8 @@ const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "a
   return false
 }
 
-export default function Dashboard() {
+// Use DashboardPage instead of Dashboard as per the updates
+export default function DashboardPage() {
   const [user, setUser] = useState<{
     id: string
     name: string
@@ -261,6 +273,8 @@ export default function Dashboard() {
     email: string
     accounts?: Account[]
     language?: "en" | "he"
+    isSimulation?: boolean // Added for simulation mode
+    simulatedBy?: string // Added for simulation mode
   } | null>(null)
   const [customerData, setCustomerData] = useState<CustomerData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -280,6 +294,8 @@ export default function Dashboard() {
   const [emailStatus, setEmailStatus] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const { user: firebaseUser, logout } = useAuth()
   const router = useRouter()
+
+  const [isSimulationMode, setIsSimulationMode] = useState(false)
 
   useSessionManager({
     mode: "inactivity",
@@ -318,6 +334,10 @@ export default function Dashboard() {
         let parsedUser
         try {
           parsedUser = JSON.parse(storedUser)
+          const simulationMode = localStorage.getItem("simulationMode")
+          if (simulationMode === "true" && parsedUser.isSimulation) {
+            setIsSimulationMode(true)
+          }
         } catch (parseError) {
           console.error("[v0] Failed to parse stored user data:", parseError)
           await logger.error("DASHBOARD_PARSE_ERROR", "Failed to parse stored user data", { error: String(parseError) })
@@ -426,6 +446,12 @@ export default function Dashboard() {
     }
   }
 
+  const handleExitSimulation = () => {
+    localStorage.removeItem("user")
+    localStorage.removeItem("simulationMode")
+    router.push("/admin")
+  }
+
   const handleAccountSwitch = async (account: Account) => {
     setIsLoading(true)
     setError(null) // Clear errors when switching accounts
@@ -490,7 +516,7 @@ export default function Dashboard() {
     if (user) {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
-      localStorage.setItem("user", JSON.stringify(updatedUser))
+      localStorage.setItem("user", JSON.JSON.stringify(updatedUser))
       logger.info("DASHBOARD_LANGUAGE_CHANGE", `Language changed to ${newLanguage}`, { userId: user.id }, user.email)
     }
   }
@@ -952,8 +978,40 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={`flex min-h-screen flex-col ${language === "he" ? "rtl" : "ltr"}`}>
-      <SystemMessageBanner location="dashboard" />
+    // Changed background and direction based on language
+    <div
+      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50"
+      dir={language === "he" ? "rtl" : "ltr"}
+    >
+      <SystemMessageBanner page="dashboard" />
+
+      {isSimulationMode && user && (
+        <div className="bg-orange-600 text-white sticky top-0 z-50 shadow-lg">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Eye className="h-5 w-5" />
+                <div>
+                  <p className="font-semibold">Simulation Mode Active</p>
+                  <p className="text-xs text-orange-100">
+                    Viewing as: {user.name} (Account #{user.accountNumber})
+                    {user.simulatedBy && ` • Simulated by: ${user.simulatedBy}`}
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleExitSimulation}
+                variant="outline"
+                size="sm"
+                className="bg-white text-orange-600 hover:bg-orange-50 border-white"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Exit Simulation
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <header
         className="border-b shadow-sm"

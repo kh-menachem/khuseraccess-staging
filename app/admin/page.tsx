@@ -10,7 +10,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, UserPlus, Mail, Shield, LogOut, Users, Trash2, MessageSquare, Calendar } from "lucide-react"
+import {
+  AlertCircle,
+  UserPlus,
+  Mail,
+  Shield,
+  LogOut,
+  Users,
+  Trash2,
+  MessageSquare,
+  Calendar,
+  Eye,
+  AlertTriangle,
+} from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -68,6 +80,10 @@ export default function AdminPage() {
   const [limitSuccess, setLimitSuccess] = useState<string | null>(null)
   const [limitError, setLimitError] = useState<string | null>(null)
 
+  const [simulationAccount, setSimulationAccount] = useState("")
+  const [isSimulating, setIsSimulating] = useState(false)
+  const [simulationError, setSimulationError] = useState<string | null>(null)
+
   const { user: firebaseUser, logout } = useAuth()
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
@@ -106,7 +122,14 @@ export default function AdminPage() {
       })
       const result = await response.json()
       if (result.success) {
-        setAccounts(result.accounts || [])
+        // Map accounts to the format expected by Input with list
+        const formattedAccounts = result.accounts.map(
+          (acc: { accountNumber: string; firstName: string; lastName: string }) => ({
+            value: acc.accountNumber,
+            label: `${acc.accountNumber} - ${acc.firstName} ${acc.lastName}`,
+          }),
+        )
+        setAccounts(formattedAccounts || [])
       }
     } catch (error) {
       console.error("Error loading accounts:", error)
@@ -462,9 +485,50 @@ export default function AdminPage() {
     }
   }
 
+  const handleSimulateUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSimulating(true)
+    setSimulationError(null)
+
+    try {
+      const response = await fetch("/api/admin/simulate-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminEmail: firebaseUser?.email,
+          accountNumber: simulationAccount,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        setSimulationError(result.error || "Failed to simulate user")
+        return
+      }
+
+      // Store simulation data in localStorage
+      localStorage.setItem("user", JSON.stringify(result.user))
+      localStorage.setItem("simulationMode", "true")
+
+      // Redirect to dashboard
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Error simulating user:", error)
+      setSimulationError("Failed to simulate user. Please try again.")
+    } finally {
+      setIsSimulating(false)
+    }
+  }
+
   const handleLogout = async () => {
     try {
       await logout()
+      // Clear simulation data if present
+      localStorage.removeItem("user")
+      localStorage.removeItem("simulationMode")
       router.push("/")
     } catch (error) {
       console.error("Error logging out:", error)
@@ -511,7 +575,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50">
       <header
         className="border-b shadow-sm"
         style={{
@@ -545,616 +609,718 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-800 mb-2">Admin Panel</h2>
-            <p className="text-gray-600">Welcome, {adminUser?.name || firebaseUser?.email}</p>
-          </div>
+      <main className="flex-1 py-8">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <Card className="shadow-xl border-red-200">
+            <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6">
+              <CardTitle className="text-3xl font-bold">Admin Panel</CardTitle>
+              <CardDescription className="text-red-100">
+                Welcome, {adminUser?.name || firebaseUser?.email}. Manage users, settings, and more.
+              </CardDescription>
+            </CardHeader>
 
-          <Tabs
-            value={activeTab}
-            onValueChange={(val) => {
-              setActiveTab(val)
-              if (val === "create-user") {
-                setNewUserPassword(generateRandomPassword())
-              }
-            }}
-            className="space-y-6"
-          >
-            <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-5" : "grid-cols-3"} bg-red-50`}>
-              <TabsTrigger
-                value="add-access"
-                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
-              >
-                <UserPlus className="h-4 w-4" />
-                Add User Access
-              </TabsTrigger>
-              <TabsTrigger
-                value="create-user"
-                className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
-              >
-                <Mail className="h-4 w-4" />
-                Create New User
-              </TabsTrigger>
-              {isSuperAdmin && (
-                <>
-                  <TabsTrigger
-                    value="system-message"
-                    className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    System Message
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="transaction-limit"
-                    className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    Transaction Limit
-                  </TabsTrigger>
-                </>
-              )}
-              {isSuperAdmin && (
+            <Tabs
+              value={activeTab}
+              onValueChange={(val) => {
+                setActiveTab(val)
+                if (val === "create-user") {
+                  setNewUserPassword(generateRandomPassword())
+                }
+              }}
+              className="p-6"
+            >
+              <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-6" : "grid-cols-3"} bg-red-50`}>
                 <TabsTrigger
-                  value="manage-admins"
+                  value="add-access"
                   className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
                 >
-                  <Users className="h-4 w-4" />
-                  Manage Admins
+                  <UserPlus className="h-4 w-4" />
+                  Add User Access
                 </TabsTrigger>
-              )}
-            </TabsList>
+                <TabsTrigger
+                  value="create-user"
+                  className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                >
+                  <Mail className="h-4 w-4" />
+                  Create New User
+                </TabsTrigger>
+                {isSuperAdmin && (
+                  <>
+                    <TabsTrigger
+                      value="simulate-user"
+                      className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View as User
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="system-message"
+                      className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      System Message
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="transaction-limit"
+                      className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Transaction Limit
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="manage-admins"
+                      className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                    >
+                      <Users className="h-4 w-4" />
+                      Manage Admins
+                    </TabsTrigger>
+                  </>
+                )}
+              </TabsList>
 
-            <TabsContent value="add-access">
-              <Card className="border-red-200">
-                <CardHeader className="bg-red-50">
-                  <CardTitle className="flex items-center gap-2 text-red-800">
-                    <UserPlus className="h-5 w-5" />
-                    Add User Access
-                  </CardTitle>
-                  <CardDescription>Grant existing account access to a user by adding their email</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <form onSubmit={handleAddUserAccess} className="space-y-4">
-                    {addAccessError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{addAccessError}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {addAccessSuccess && (
-                      <Alert className="border-green-200 bg-green-50">
-                        <AlertCircle className="h-4 w-4 text-green-600" />
-                        <AlertTitle className="text-green-800">Success</AlertTitle>
-                        <AlertDescription className="text-green-700">{addAccessSuccess}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="accountSelect">Select Account</Label>
-                      {isLoadingAccounts ? (
-                        <div className="flex items-center justify-center p-4 border rounded-md">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
-                          <span className="ml-2 text-gray-600">Loading accounts...</span>
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <Input
-                            id="accountSelect"
-                            type="text"
-                            placeholder="Type account number or select from dropdown..."
-                            value={selectedAccount}
-                            onChange={(e) => setSelectedAccount(e.target.value)}
-                            required
-                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                            list="accounts-list"
-                          />
-                          <datalist id="accounts-list">
-                            {accounts.map((account) => (
-                              <option key={account.value} value={account.label} />
-                            ))}
-                          </datalist>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="userEmail">User Email</Label>
-                      <Input
-                        id="userEmail"
-                        type="email"
-                        placeholder="Enter user email address"
-                        value={userEmail}
-                        onChange={(e) => setUserEmail(e.target.value)}
-                        required
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                    </div>
-
-                    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAccess}>
-                      {isAddingAccess ? "Adding..." : "Add Access"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="create-user">
-              <Card className="border-red-200">
-                <CardHeader className="bg-red-50">
-                  <CardTitle className="flex items-center gap-2 text-red-800">
-                    <Mail className="h-5 w-5" />
-                    Create New User Account
-                  </CardTitle>
-                  <CardDescription>Create a new user account with email and password</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <form onSubmit={handleCreateNewUser} className="space-y-4">
-                    {createUserError && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Error</AlertTitle>
-                        <AlertDescription>{createUserError}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {createUserSuccess && (
-                      <Alert className="border-green-200 bg-green-50">
-                        <AlertCircle className="h-4 w-4 text-green-600" />
-                        <AlertTitle className="text-green-800">Success</AlertTitle>
-                        <AlertDescription className="text-green-700">{createUserSuccess}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="newUserEmail">User Email</Label>
-                      <Input
-                        id="newUserEmail"
-                        type="email"
-                        placeholder="Enter user email address"
-                        value={newUserEmail}
-                        onChange={(e) => setNewUserEmail(e.target.value)}
-                        required
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="newUserPassword">Password</Label>
-                      <Input
-                        id="newUserPassword"
-                        type="password"
-                        placeholder="Enter password (minimum 8 characters)"
-                        value={newUserPassword}
-                        onChange={(e) => setNewUserPassword(e.target.value)}
-                        required
-                        minLength={8}
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        placeholder="Confirm password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        minLength={8}
-                        className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                      />
-                    </div>
-
-                    <Alert className="border-red-200 bg-red-50">
-                      <AlertCircle className="h-4 w-4 text-red-600" />
-                      <AlertDescription className="text-red-800">
-                        User will be able to login immediately with the provided email and password
-                      </AlertDescription>
-                    </Alert>
-
-                    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isCreatingUser}>
-                      {isCreatingUser ? "Creating..." : "Create User Account"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {isSuperAdmin && (
-              <TabsContent value="system-message">
+              <TabsContent value="add-access">
                 <Card className="border-red-200">
                   <CardHeader className="bg-red-50">
                     <CardTitle className="flex items-center gap-2 text-red-800">
-                      <MessageSquare className="h-5 w-5" />
-                      System Message Banner
+                      <UserPlus className="h-5 w-5" />
+                      Add User Access
                     </CardTitle>
-                    <CardDescription>
-                      Display a custom message banner on the customer dashboard and/or login page
-                    </CardDescription>
+                    <CardDescription>Grant existing account access to a user by adding their email</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    <div className="space-y-6">
-                      {messageSuccess && (
-                        <Alert className="border-green-200 bg-green-50">
-                          <AlertCircle className="h-4 w-4 text-green-600" />
-                          <AlertTitle className="text-green-800">Success</AlertTitle>
-                          <AlertDescription className="text-green-700">{messageSuccess}</AlertDescription>
-                        </Alert>
-                      )}
-
-                      {messageError && (
+                    <form onSubmit={handleAddUserAccess} className="space-y-4">
+                      {addAccessError && (
                         <Alert variant="destructive">
                           <AlertCircle className="h-4 w-4" />
                           <AlertTitle>Error</AlertTitle>
-                          <AlertDescription>{messageError}</AlertDescription>
+                          <AlertDescription>{addAccessError}</AlertDescription>
                         </Alert>
                       )}
 
-                      {/* Enable/Disable Toggle */}
-                      <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50 border-yellow-200">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="message-enabled" className="text-base font-medium">
-                            Enable System Message
-                          </Label>
-                          <p className="text-sm text-gray-600">Show the message banner to users</p>
-                        </div>
-                        <Switch
-                          id="message-enabled"
-                          checked={systemMessageEnabled}
-                          onCheckedChange={setSystemMessageEnabled}
-                        />
-                      </div>
-
-                      {/* Message Text */}
-                      <div className="space-y-2">
-                        <Label htmlFor="system-message">Message Text</Label>
-                        <Textarea
-                          id="system-message"
-                          placeholder="Enter the message to display to users..."
-                          value={systemMessage}
-                          onChange={(e) => setSystemMessage(e.target.value)}
-                          rows={4}
-                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                        />
-                        <p className="text-xs text-gray-500">
-                          This message will appear as a yellow banner at the top of the selected pages
-                        </p>
-                      </div>
-
-                      {/* Display Location Options */}
-                      <div className="space-y-4">
-                        <Label className="text-base font-medium">Display On</Label>
-
-                        <div className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="show-dashboard" className="font-normal">
-                              Customer Dashboard
-                            </Label>
-                            <p className="text-xs text-gray-500">Show banner on the customer dashboard page</p>
-                          </div>
-                          <Switch
-                            id="show-dashboard"
-                            checked={showOnDashboard}
-                            onCheckedChange={setShowOnDashboard}
-                            disabled={!systemMessageEnabled}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="space-y-0.5">
-                            <Label htmlFor="show-login" className="font-normal">
-                              Login Page
-                            </Label>
-                            <p className="text-xs text-gray-500">Show banner on the login page</p>
-                          </div>
-                          <Switch
-                            id="show-login"
-                            checked={showOnLogin}
-                            onCheckedChange={setShowOnLogin}
-                            disabled={!systemMessageEnabled}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Preview */}
-                      {systemMessageEnabled && systemMessage && (
-                        <div className="space-y-2">
-                          <Label className="text-base font-medium">Preview</Label>
-                          <div className="border rounded-lg overflow-hidden">
-                            <div className="bg-yellow-400 border-b-2 border-yellow-500 p-3">
-                              <p className="text-sm md:text-base font-medium text-gray-900 text-center">
-                                {systemMessage}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Save Button */}
-                      <Button
-                        onClick={handleSaveSystemMessage}
-                        className="w-full bg-red-600 hover:bg-red-700"
-                        disabled={isSavingMessage}
-                      >
-                        {isSavingMessage ? "Saving..." : "Save System Message"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
-
-            {isSuperAdmin && (
-              <TabsContent value="transaction-limit">
-                <Card className="border-red-200">
-                  <CardHeader className="bg-red-50">
-                    <CardTitle className="flex items-center gap-2 text-red-800">
-                      <Calendar className="h-5 w-5" />
-                      Transaction Date Limit
-                    </CardTitle>
-                    <CardDescription>Limit how far back customers can view their transaction history</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="space-y-6">
-                      {limitSuccess && (
+                      {addAccessSuccess && (
                         <Alert className="border-green-200 bg-green-50">
                           <AlertCircle className="h-4 w-4 text-green-600" />
                           <AlertTitle className="text-green-800">Success</AlertTitle>
-                          <AlertDescription className="text-green-700">{limitSuccess}</AlertDescription>
+                          <AlertDescription className="text-green-700">{addAccessSuccess}</AlertDescription>
                         </Alert>
                       )}
 
-                      {limitError && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Error</AlertTitle>
-                          <AlertDescription>{limitError}</AlertDescription>
-                        </Alert>
-                      )}
-
-                      {/* Enable/Disable Toggle */}
-                      <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="limit-enabled" className="text-base font-medium">
-                            Enable Transaction Limit
-                          </Label>
-                          <p className="text-sm text-gray-600">Restrict customer transaction history visibility</p>
-                        </div>
-                        <Switch
-                          id="limit-enabled"
-                          checked={transactionLimitEnabled}
-                          onCheckedChange={setTransactionLimitEnabled}
-                        />
+                      <div className="space-y-2">
+                        <Label htmlFor="accountSelect">Select Account</Label>
+                        {isLoadingAccounts ? (
+                          <div className="flex items-center justify-center p-4 border rounded-md">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
+                            <span className="ml-2 text-gray-600">Loading accounts...</span>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <Input
+                              id="accountSelect"
+                              type="text"
+                              placeholder="Type account number or select from dropdown..."
+                              value={selectedAccount}
+                              onChange={(e) => setSelectedAccount(e.target.value)}
+                              required
+                              className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                              list="accounts-list"
+                            />
+                            <datalist id="accounts-list">
+                              {accounts.map((account) => (
+                                <option key={account.value} value={account.label} />
+                              ))}
+                            </datalist>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Limit Type Selection */}
                       <div className="space-y-2">
-                        <Label htmlFor="limit-type">Limit Type</Label>
-                        <Select
-                          value={limitType}
-                          onValueChange={(value: "years" | "date") => setLimitType(value)}
-                          disabled={!transactionLimitEnabled}
-                        >
-                          <SelectTrigger id="limit-type" className="border-red-200 focus:border-red-500">
-                            <SelectValue placeholder="Select limit type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="years">Years Back</SelectItem>
-                            <SelectItem value="date">Not Earlier Than Year</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500">
-                          Choose whether to limit by number of years back or a specific year
-                        </p>
-                      </div>
-
-                      {/* Limit Value Input */}
-                      <div className="space-y-2">
-                        <Label htmlFor="limit-value">
-                          {limitType === "years" ? "Number of Years" : "Earliest Year"}
-                        </Label>
+                        <Label htmlFor="userEmail">User Email</Label>
                         <Input
-                          id="limit-value"
-                          type="number"
-                          min={limitType === "years" ? "1" : "2000"}
-                          max={limitType === "years" ? "10" : new Date().getFullYear().toString()}
-                          placeholder={limitType === "years" ? "e.g., 1" : "e.g., 2024"}
-                          value={limitValue}
-                          onChange={(e) => setLimitValue(e.target.value)}
-                          disabled={!transactionLimitEnabled}
+                          id="userEmail"
+                          type="email"
+                          placeholder="Enter user email address"
+                          value={userEmail}
+                          onChange={(e) => setUserEmail(e.target.value)}
+                          required
                           className="border-red-200 focus:border-red-500 focus:ring-red-500"
                         />
-                        <p className="text-xs text-gray-500">
-                          {limitType === "years"
-                            ? "Customers can view transactions from the last X years"
-                            : "Customers cannot view transactions earlier than this year"}
-                        </p>
                       </div>
 
-                      {/* Preview */}
-                      {transactionLimitEnabled && limitValue && (
-                        <div className="space-y-2">
-                          <Label className="text-base font-medium">Preview</Label>
-                          <div className="border rounded-lg p-4 bg-gray-50">
-                            <p className="text-sm text-gray-700">
-                              {limitType === "years" ? (
-                                <>
-                                  Customers will only see transactions from the last{" "}
-                                  <span className="font-semibold">{limitValue}</span>{" "}
-                                  {Number.parseInt(limitValue) === 1 ? "year" : "years"}.
-                                </>
-                              ) : (
-                                <>
-                                  Customers will not see any transactions earlier than{" "}
-                                  <span className="font-semibold">January 1, {limitValue}</span>.
-                                </>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Save Button */}
-                      <Button
-                        onClick={handleSaveTransactionLimit}
-                        className="w-full bg-red-600 hover:bg-red-700"
-                        disabled={isSavingLimit || (transactionLimitEnabled && !limitValue)}
-                      >
-                        {isSavingLimit ? "Saving..." : "Save Transaction Limit"}
+                      <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAccess}>
+                        {isAddingAccess ? "Adding..." : "Add Access"}
                       </Button>
-                    </div>
+                    </form>
                   </CardContent>
                 </Card>
               </TabsContent>
-            )}
 
-            {isSuperAdmin && (
-              <TabsContent value="manage-admins">
-                <div className="space-y-6">
+              <TabsContent value="create-user">
+                <Card className="border-red-200">
+                  <CardHeader className="bg-red-50">
+                    <CardTitle className="flex items-center gap-2 text-red-800">
+                      <Mail className="h-5 w-5" />
+                      Create New User Account
+                    </CardTitle>
+                    <CardDescription>Create a new user account with email and password</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <form onSubmit={handleCreateNewUser} className="space-y-4">
+                      {createUserError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Error</AlertTitle>
+                          <AlertDescription>{createUserError}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      {createUserSuccess && (
+                        <Alert className="border-green-200 bg-green-50">
+                          <AlertCircle className="h-4 w-4 text-green-600" />
+                          <AlertTitle className="text-green-800">Success</AlertTitle>
+                          <AlertDescription className="text-green-700">{createUserSuccess}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="newUserEmail">User Email</Label>
+                        <Input
+                          id="newUserEmail"
+                          type="email"
+                          placeholder="Enter user email address"
+                          value={newUserEmail}
+                          onChange={(e) => setNewUserEmail(e.target.value)}
+                          required
+                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="newUserPassword">Password</Label>
+                        <Input
+                          id="newUserPassword"
+                          type="password"
+                          placeholder="Enter password (minimum 8 characters)"
+                          value={newUserPassword}
+                          onChange={(e) => setNewUserPassword(e.target.value)}
+                          required
+                          minLength={8}
+                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <Input
+                          id="confirmPassword"
+                          type="password"
+                          placeholder="Confirm password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                          minLength={8}
+                          className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                        />
+                      </div>
+
+                      <Alert className="border-red-200 bg-red-50">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
+                          User will be able to login immediately with the provided email and password
+                        </AlertDescription>
+                      </Alert>
+
+                      <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isCreatingUser}>
+                        {isCreatingUser ? "Creating..." : "Create User Account"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {isSuperAdmin && (
+                <TabsContent value="simulate-user">
                   <Card className="border-red-200">
                     <CardHeader className="bg-red-50">
                       <CardTitle className="flex items-center gap-2 text-red-800">
-                        <UserPlus className="h-5 w-5" />
-                        Add Admin
+                        <Eye className="h-5 w-5" />
+                        View as User (Simulation Mode)
                       </CardTitle>
-                      <CardDescription>Add or remove admin users who can access this admin panel</CardDescription>
+                      <CardDescription>
+                        View any customer account as they would see it. Perfect for troubleshooting and support.
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
-                      <form onSubmit={handleAddAdmin} className="space-y-4">
-                        {addAdminError && (
+                      <form onSubmit={handleSimulateUser} className="space-y-4">
+                        {simulationError && (
                           <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
                             <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{addAdminError}</AlertDescription>
+                            <AlertDescription>{simulationError}</AlertDescription>
                           </Alert>
                         )}
 
                         <div className="space-y-2">
-                          <Label htmlFor="adminEmail">Admin Email</Label>
-                          <Input
-                            id="adminEmail"
-                            type="email"
-                            placeholder="Enter admin email address"
-                            value={adminEmail}
-                            onChange={(e) => setAdminEmail(e.target.value)}
-                            required
-                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="adminName">Admin Name</Label>
-                          <Input
-                            id="adminName"
-                            type="text"
-                            placeholder="Enter admin full name"
-                            value={adminName}
-                            onChange={(e) => setAdminName(e.target.value)}
-                            required
-                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="adminRole">Role</Label>
-                          <Select
-                            value={adminRole}
-                            onValueChange={(value: "user" | "superadmin") => setAdminRole(value)}
-                          >
-                            <SelectTrigger id="adminRole" className="border-red-200 focus:border-red-500">
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="user">User</SelectItem>
-                              <SelectItem value="superadmin">Superadmin</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <Label htmlFor="simulationAccount">Account Number</Label>
+                          {isLoadingAccounts ? (
+                            <div className="flex items-center justify-center p-4 border rounded-md">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
+                              <span className="ml-2 text-gray-600">Loading accounts...</span>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <Input
+                                id="simulationAccount"
+                                type="text"
+                                placeholder="Type account number or select from dropdown..."
+                                value={simulationAccount}
+                                onChange={(e) => setSimulationAccount(e.target.value)}
+                                required
+                                className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                                list="simulation-accounts-list"
+                              />
+                              <datalist id="simulation-accounts-list">
+                                {accounts.map((account) => (
+                                  <option key={account.value} value={account.label} />
+                                ))}
+                              </datalist>
+                            </div>
+                          )}
                           <p className="text-xs text-gray-500">
-                            Superadmins have access to system settings and can manage other admins
+                            Enter the account number of the user you want to view as. You will see their dashboard
+                            exactly as they see it.
                           </p>
                         </div>
 
-                        <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAdmin}>
-                          {isAddingAdmin ? "Adding Admin..." : "Add Admin"}
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm text-yellow-800">
+                              <p className="font-medium mb-1">Simulation Mode Features:</p>
+                              <ul className="list-disc list-inside space-y-1 ml-2">
+                                <li>View all transactions and data as the user sees it</li>
+                                <li>Test filters, sorting, and date ranges</li>
+                                <li>Identify issues with their specific account</li>
+                                <li>A banner will indicate you are in simulation mode</li>
+                                <li>Click "Exit Simulation" to return to the admin panel</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="submit"
+                          className="w-full bg-red-600 hover:bg-red-700"
+                          disabled={isSimulating || !simulationAccount}
+                        >
+                          {isSimulating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Starting Simulation...
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View as User
+                            </>
+                          )}
                         </Button>
                       </form>
                     </CardContent>
                   </Card>
+                </TabsContent>
+              )}
 
+              {isSuperAdmin && (
+                <TabsContent value="system-message">
                   <Card className="border-red-200">
                     <CardHeader className="bg-red-50">
                       <CardTitle className="flex items-center gap-2 text-red-800">
-                        <Users className="h-5 w-5" />
-                        Current Admins
+                        <MessageSquare className="h-5 w-5" />
+                        System Message Banner
                       </CardTitle>
+                      <CardDescription>
+                        Display a custom message banner on the customer dashboard and/or login page
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
-                      {isLoadingAdmins ? (
-                        <div className="text-center py-4">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+                      <div className="space-y-6">
+                        {messageSuccess && (
+                          <Alert className="border-green-200 bg-green-50">
+                            <AlertCircle className="h-4 w-4 text-green-600" />
+                            <AlertTitle className="text-green-800">Success</AlertTitle>
+                            <AlertDescription className="text-green-700">{messageSuccess}</AlertDescription>
+                          </Alert>
+                        )}
+
+                        {messageError && (
+                          <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{messageError}</AlertDescription>
+                          </Alert>
+                        )}
+
+                        {/* Enable/Disable Toggle */}
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50 border-yellow-200">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="message-enabled" className="text-base font-medium">
+                              Enable System Message
+                            </Label>
+                            <p className="text-sm text-gray-600">Show the message banner to users</p>
+                          </div>
+                          <Switch
+                            id="message-enabled"
+                            checked={systemMessageEnabled}
+                            onCheckedChange={setSystemMessageEnabled}
+                          />
                         </div>
-                      ) : admins.length === 0 ? (
-                        <p className="text-gray-500 text-center py-4">No admins found</p>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Email</TableHead>
-                              <TableHead>Role</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {admins.map((admin) => (
-                              <TableRow key={admin.id}>
-                                <TableCell className="font-medium">{admin.name}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {admin.email}
-                                    {admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase() && (
-                                      <Badge variant="secondary" className="bg-red-100 text-red-800">
-                                        You
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant={admin.role === "superadmin" ? "default" : "secondary"}
-                                    className={admin.role === "superadmin" ? "bg-purple-600 text-white" : ""}
-                                  >
-                                    {admin.role === "superadmin" ? "Superadmin" : "User"}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRemoveAdmin(admin)}
-                                    disabled={admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase()}
-                                    className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-200"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1" />
-                                    Remove
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      )}
+
+                        {/* Message Text */}
+                        <div className="space-y-2">
+                          <Label htmlFor="system-message">Message Text</Label>
+                          <Textarea
+                            id="system-message"
+                            placeholder="Enter the message to display to users..."
+                            value={systemMessage}
+                            onChange={(e) => setSystemMessage(e.target.value)}
+                            rows={4}
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                          />
+                          <p className="text-xs text-gray-500">
+                            This message will appear as a yellow banner at the top of the selected pages
+                          </p>
+                        </div>
+
+                        {/* Display Location Options */}
+                        <div className="space-y-4">
+                          <Label className="text-base font-medium">Display On</Label>
+
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="show-dashboard" className="font-normal">
+                                Customer Dashboard
+                              </Label>
+                              <p className="text-xs text-gray-500">Show banner on the customer dashboard page</p>
+                            </div>
+                            <Switch
+                              id="show-dashboard"
+                              checked={showOnDashboard}
+                              onCheckedChange={setShowOnDashboard}
+                              disabled={!systemMessageEnabled}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="show-login" className="font-normal">
+                                Login Page
+                              </Label>
+                              <p className="text-xs text-gray-500">Show banner on the login page</p>
+                            </div>
+                            <Switch
+                              id="show-login"
+                              checked={showOnLogin}
+                              onCheckedChange={setShowOnLogin}
+                              disabled={!systemMessageEnabled}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Preview */}
+                        {systemMessageEnabled && systemMessage && (
+                          <div className="space-y-2">
+                            <Label className="text-base font-medium">Preview</Label>
+                            <div className="border rounded-lg overflow-hidden">
+                              <div className="bg-yellow-400 border-b-2 border-yellow-500 p-3">
+                                <p className="text-sm md:text-base font-medium text-gray-900 text-center">
+                                  {systemMessage}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Save Button */}
+                        <Button
+                          onClick={handleSaveSystemMessage}
+                          className="w-full bg-red-600 hover:bg-red-700"
+                          disabled={isSavingMessage}
+                        >
+                          {isSavingMessage ? "Saving..." : "Save System Message"}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
+                </TabsContent>
+              )}
+
+              {isSuperAdmin && (
+                <TabsContent value="transaction-limit">
+                  <Card className="border-red-200">
+                    <CardHeader className="bg-red-50">
+                      <CardTitle className="flex items-center gap-2 text-red-800">
+                        <Calendar className="h-5 w-5" />
+                        Transaction Date Limit
+                      </CardTitle>
+                      <CardDescription>Limit how far back customers can view their transaction history</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="space-y-6">
+                        {limitSuccess && (
+                          <Alert className="border-green-200 bg-green-50">
+                            <AlertCircle className="h-4 w-4 text-green-600" />
+                            <AlertTitle className="text-green-800">Success</AlertTitle>
+                            <AlertDescription className="text-green-700">{limitSuccess}</AlertDescription>
+                          </Alert>
+                        )}
+
+                        {limitError && (
+                          <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{limitError}</AlertDescription>
+                          </Alert>
+                        )}
+
+                        {/* Enable/Disable Toggle */}
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="limit-enabled" className="text-base font-medium">
+                              Enable Transaction Limit
+                            </Label>
+                            <p className="text-sm text-gray-600">Restrict customer transaction history visibility</p>
+                          </div>
+                          <Switch
+                            id="limit-enabled"
+                            checked={transactionLimitEnabled}
+                            onCheckedChange={setTransactionLimitEnabled}
+                          />
+                        </div>
+
+                        {/* Limit Type Selection */}
+                        <div className="space-y-2">
+                          <Label htmlFor="limit-type">Limit Type</Label>
+                          <Select
+                            value={limitType}
+                            onValueChange={(value: "years" | "date") => setLimitType(value)}
+                            disabled={!transactionLimitEnabled}
+                          >
+                            <SelectTrigger id="limit-type" className="border-red-200 focus:border-red-500">
+                              <SelectValue placeholder="Select limit type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="years">Years Back</SelectItem>
+                              <SelectItem value="date">Not Earlier Than Year</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-500">
+                            Choose whether to limit by number of years back or a specific year
+                          </p>
+                        </div>
+
+                        {/* Limit Value Input */}
+                        <div className="space-y-2">
+                          <Label htmlFor="limit-value">
+                            {limitType === "years" ? "Number of Years" : "Earliest Year"}
+                          </Label>
+                          <Input
+                            id="limit-value"
+                            type="number"
+                            min={limitType === "years" ? "1" : "2000"}
+                            max={limitType === "years" ? "10" : new Date().getFullYear().toString()}
+                            placeholder={limitType === "years" ? "e.g., 1" : "e.g., 2024"}
+                            value={limitValue}
+                            onChange={(e) => setLimitValue(e.target.value)}
+                            disabled={!transactionLimitEnabled}
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                          />
+                          <p className="text-xs text-gray-500">
+                            {limitType === "years"
+                              ? "Customers can view transactions from the last X years"
+                              : "Customers cannot view transactions earlier than this year"}
+                          </p>
+                        </div>
+
+                        {/* Preview */}
+                        {transactionLimitEnabled && limitValue && (
+                          <div className="space-y-2">
+                            <Label className="text-base font-medium">Preview</Label>
+                            <div className="border rounded-lg p-4 bg-gray-50">
+                              <p className="text-sm text-gray-700">
+                                {limitType === "years" ? (
+                                  <>
+                                    Customers will only see transactions from the last{" "}
+                                    <span className="font-semibold">{limitValue}</span>{" "}
+                                    {Number.parseInt(limitValue) === 1 ? "year" : "years"}.
+                                  </>
+                                ) : (
+                                  <>
+                                    Customers will not see any transactions earlier than{" "}
+                                    <span className="font-semibold">January 1, {limitValue}</span>.
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Save Button */}
+                        <Button
+                          onClick={handleSaveTransactionLimit}
+                          className="w-full bg-red-600 hover:bg-red-700"
+                          disabled={isSavingLimit || (transactionLimitEnabled && !limitValue)}
+                        >
+                          {isSavingLimit ? "Saving..." : "Save Transaction Limit"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
+
+              {isSuperAdmin && (
+                <TabsContent value="manage-admins">
+                  <div className="space-y-6">
+                    <Card className="border-red-200">
+                      <CardHeader className="bg-red-50">
+                        <CardTitle className="flex items-center gap-2 text-red-800">
+                          <UserPlus className="h-5 w-5" />
+                          Add Admin
+                        </CardTitle>
+                        <CardDescription>Add or remove admin users who can access this admin panel</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        <form onSubmit={handleAddAdmin} className="space-y-4">
+                          {addAdminError && (
+                            <Alert variant="destructive">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertTitle>Error</AlertTitle>
+                              <AlertDescription>{addAdminError}</AlertDescription>
+                            </Alert>
+                          )}
+
+                          <div className="space-y-2">
+                            <Label htmlFor="adminEmail">Admin Email</Label>
+                            <Input
+                              id="adminEmail"
+                              type="email"
+                              placeholder="Enter admin email address"
+                              value={adminEmail}
+                              onChange={(e) => setAdminEmail(e.target.value)}
+                              required
+                              className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="adminName">Admin Name</Label>
+                            <Input
+                              id="adminName"
+                              type="text"
+                              placeholder="Enter admin full name"
+                              value={adminName}
+                              onChange={(e) => setAdminName(e.target.value)}
+                              required
+                              className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="adminRole">Role</Label>
+                            <Select
+                              value={adminRole}
+                              onValueChange={(value: "user" | "superadmin") => setAdminRole(value)}
+                            >
+                              <SelectTrigger id="adminRole" className="border-red-200 focus:border-red-500">
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="user">User</SelectItem>
+                                <SelectItem value="superadmin">Superadmin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500">
+                              Superadmins have access to system settings and can manage other admins
+                            </p>
+                          </div>
+
+                          <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={isAddingAdmin}>
+                            {isAddingAdmin ? "Adding Admin..." : "Add Admin"}
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-red-200">
+                      <CardHeader className="bg-red-50">
+                        <CardTitle className="flex items-center gap-2 text-red-800">
+                          <Users className="h-5 w-5" />
+                          Current Admins
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        {isLoadingAdmins ? (
+                          <div className="text-center py-4">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto"></div>
+                          </div>
+                        ) : admins.length === 0 ? (
+                          <p className="text-gray-500 text-center py-4">No admins found</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {admins.map((admin) => (
+                                <TableRow key={admin.id}>
+                                  <TableCell className="font-medium">{admin.name}</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      {admin.email}
+                                      {admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase() && (
+                                        <Badge variant="secondary" className="bg-red-100 text-red-800">
+                                          You
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant={admin.role === "superadmin" ? "default" : "secondary"}
+                                      className={admin.role === "superadmin" ? "bg-purple-600 text-white" : ""}
+                                    >
+                                      {admin.role === "superadmin" ? "Superadmin" : "User"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleRemoveAdmin(admin)}
+                                      disabled={admin.email.toLowerCase() === firebaseUser?.email?.toLowerCase()}
+                                      className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-200"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-1" />
+                                      Remove
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+              )}
+            </Tabs>
+          </Card>
         </div>
       </main>
 
