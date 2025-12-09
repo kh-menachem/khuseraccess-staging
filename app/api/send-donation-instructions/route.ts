@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
-import { generatePDFfromHTML } from "@/lib/generatePDF" // Adjust path if needed
+import { generatePDFfromHTML } from "@/lib/generatePDF"
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     const html = `
     <div style="font-family: Arial, sans-serif; color: #000; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #fffbe6;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <img src="/images/design-mode/logo-new.png" alt="Keren Hatzedakah Logo" width="130" style="margin-bottom: 10px;" />
+        <img src="/images/logo-20transparent-20backgrond-page-0001.jpeg" alt="Keren Hatzedakah Logo" width="130" style="margin-bottom: 10px;" />
         <h2 style="color: #000; margin: 0; text-transform: uppercase;">KEREN HATZEDAKAH</h2>
         <p style="color: #000; font-size: 16px; font-weight: bold;">Donation Instructions for Fund: ${accountNumber} - ${name}</p>
       </div>
@@ -139,16 +139,21 @@ export async function POST(req: NextRequest) {
     </div>
     `
 
-
-
-        
-    
+    console.log("📄 Generating PDF attachment...")
+    let pdfBuffer: Buffer | null = null
+    try {
+      pdfBuffer = await generatePDFfromHTML(html)
+      console.log("✅ PDF generated successfully, size:", pdfBuffer.length, "bytes")
+    } catch (pdfError) {
+      console.error("⚠️ PDF generation failed, continuing without attachment:", pdfError)
+      // Continue without PDF attachment if generation fails
+    }
 
     console.log("🔧 Creating SMTP transporter...")
 
     // Create Gmail transporter
     const transporter = nodemailer.createTransport({
-      service: "gmail", // Use Gmail service
+      service: "gmail",
       auth: {
         user: smtpConfig.user,
         pass: smtpConfig.pass,
@@ -171,10 +176,8 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("📤 Sending email...")
-  
 
-    // Send email
-    const info = await transporter.sendMail({
+    const mailOptions: any = {
       from: `"Keren Hatzedakah" <${smtpConfig.user}>`,
       to: email,
       subject: subject,
@@ -199,10 +202,22 @@ export async function POST(req: NextRequest) {
 
     Important: Please ensure to include the correct campaign name and ID in your memo.
       `,
-      
+    }
 
-    })
+    // Add PDF attachment if available
+    if (pdfBuffer) {
+      mailOptions.attachments = [
+        {
+          filename: `Donation-Instructions-${accountNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ]
+      console.log("📎 PDF attachment added to email")
+    }
 
+    // Send email
+    const info = await transporter.sendMail(mailOptions)
 
     console.log("✅ Email sent successfully!")
     console.log("📧 Message ID:", info.messageId)
@@ -212,6 +227,7 @@ export async function POST(req: NextRequest) {
       success: true,
       messageId: info.messageId,
       message: "Donation instructions sent successfully!",
+      attachmentIncluded: !!pdfBuffer,
     })
   } catch (error) {
     console.error("❌ Email sending failed:", error)
