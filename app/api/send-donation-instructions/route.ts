@@ -1,6 +1,35 @@
 import { type NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
-import { generatePDFfromHTML } from "@/lib/generatePDF"
+import { chromium } from "chrome-aws-lambda"
+import puppeteer from "puppeteer-core"
+
+// Inline PDF generation function to keep chrome-aws-lambda server-side only
+async function generatePDFfromHTML(html: string): Promise<Buffer> {
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath,
+    headless: chromium.headless,
+  })
+
+  const page = await browser.newPage()
+  await page.setContent(html, { waitUntil: "networkidle0" })
+
+  const pdfBuffer = await page.pdf({
+    format: "Letter",
+    landscape: true,
+    margin: {
+      top: "0.4in",
+      right: "0.4in",
+      bottom: "0.4in",
+      left: "0.4in",
+    },
+    printBackground: true,
+  })
+
+  await browser.close()
+  return Buffer.from(pdfBuffer)
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,13 +77,208 @@ export async function POST(req: NextRequest) {
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(donationURL)}`
 
-    const timestamp = new Date().toLocaleString("en-US", {
-      timeZone: "America/New_York",
-      dateStyle: "medium",
-      timeStyle: "short",
-    })
+    const pdfHTML = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: Arial, sans-serif; 
+          background-color: #fffbe6; 
+          padding: 15px;
+          font-size: 11px;
+        }
+        .container { 
+          max-width: 100%; 
+          margin: 0 auto;
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 15px; 
+        }
+        .header img { 
+          width: 80px; 
+          margin-bottom: 5px; 
+        }
+        .header h2 { 
+          font-size: 18px; 
+          margin: 5px 0; 
+          text-transform: uppercase; 
+        }
+        .header p { 
+          font-size: 12px; 
+          font-weight: bold; 
+        }
+        .important-note {
+          background-color: #fff3cd;
+          border: 2px solid #ffeaa7;
+          padding: 10px;
+          margin-bottom: 15px;
+          text-align: center;
+          font-size: 11px;
+          border-radius: 5px;
+        }
+        .important-note strong { 
+          color: #d63031; 
+        }
+        .columns {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 15px;
+        }
+        .method {
+          background: white;
+          padding: 12px;
+          border-radius: 5px;
+          border: 1px solid #ddd;
+          page-break-inside: avoid;
+        }
+        .method-title {
+          font-weight: bold;
+          font-size: 12px;
+          margin-bottom: 8px;
+          color: #000;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 5px;
+        }
+        .method-content {
+          font-size: 10px;
+          line-height: 1.6;
+        }
+        .method-content a {
+          color: #007bff;
+          text-decoration: none;
+          word-break: break-all;
+        }
+        .donate-button {
+          background: #e60000;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 4px;
+          text-decoration: none;
+          display: inline-block;
+          margin-top: 8px;
+          font-weight: bold;
+          font-size: 11px;
+        }
+        .qr-section {
+          text-align: center;
+          margin-top: 10px;
+          padding: 10px;
+          background: white;
+          border-radius: 5px;
+        }
+        .qr-section img {
+          width: 100px;
+          border: 2px solid #20B2AA;
+          border-radius: 5px;
+        }
+        .footer-note {
+          background-color: #fff3cd;
+          border: 1px solid #ffeaa7;
+          padding: 10px;
+          text-align: center;
+          font-size: 10px;
+          border-radius: 5px;
+          margin-top: 10px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <img src="/images/logo-20transparent-20backgrond-page-0001.jpeg" alt="Logo" />
+          <h2>KEREN HATZEDAKAH</h2>
+          <p>Donation Instructions for Fund: ${accountNumber} - ${name}</p>
+        </div>
 
-    const html = `
+        <div class="important-note">
+          <strong>⚠️ IMPORTANT:</strong> Please include "<em>In honor of ${name} / ${accountNumber}</em>" with your donation.
+        </div>
+
+        <div class="columns">
+          <div>
+            <div class="method">
+              <div class="method-title">1. Zelle / Chase QuickPay - זל</div>
+              <div class="method-content">
+                Email: <a href="mailto:kerenhatzedaka@gmail.com">kerenhatzedaka@gmail.com</a>
+              </div>
+            </div>
+
+            <div class="method">
+              <div class="method-title">2. By Check - צ׳ק</div>
+              <div class="method-content">
+                Make checks payable to:<br>
+                <strong>Congregation Tiferes Yaakov</strong><br>
+                422 Monmouth Ave, Lakewood, NJ 08701
+              </div>
+            </div>
+
+            <div class="method">
+              <div class="method-title">3. Donor-Advised Funds (DAF) - חברת דונורס</div>
+              <div class="method-content">
+                Accepted via: The Donors Fund, OJC, Pledger, Fidelity<br>
+                Tax ID: 83-4411630<br>
+                Address: Congregation Tiferes Yaakov, 6 Shoshana Dr, Lakewood, NJ
+              </div>
+            </div>
+
+            <div class="method">
+              <div class="method-title">4. Bank Wire Transfer - העברה בנקאית</div>
+              <div class="method-content">
+                <strong>Congregation Tiferes Yaakov</strong><br>
+                Account #: 4392635765<br>
+                Fedwire #: 031201360<br>
+                Memo: ${name} / ${accountNumber}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="method">
+              <div class="method-title">5. Credit Card Donation - אשראי</div>
+              <div class="method-content">
+                <a href="${donationURL}" class="donate-button">💳 Donate Here</a>
+                <p style="margin-top: 8px; font-size: 9px;">
+                  Or copy: <a href="${donationURL}">${donationURL}</a>
+                </p>
+              </div>
+            </div>
+
+            <div class="method">
+              <div class="method-title">6. Donation Hotline - דרך הטלפון</div>
+              <div class="method-content">
+                Call: <strong>732-800-9840</strong><br>
+                Use Campaign ID: <strong>${accountNumber}</strong>
+              </div>
+            </div>
+
+            <div class="method">
+              <div class="method-title">7. SMS (Text Message) - SMS דרך</div>
+              <div class="method-content">
+                Text: <strong>5540/amount</strong> to <strong>732-800-9840</strong>
+              </div>
+            </div>
+
+            <div class="qr-section">
+              <p style="font-weight: bold; margin-bottom: 8px;">📱 Scan QR to Donate</p>
+              <img src="${qrCodeUrl}" alt="QR Code" />
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-note">
+          <strong>⚠️ Note:</strong> Please include the correct name and campaign ID in the memo. Without it, funds may be distributed at the discretion of Keren Hatzedakah.
+        </div>
+      </div>
+    </body>
+    </html>
+    `
+
+    const emailHTML = `
     <div style="font-family: Arial, sans-serif; color: #000; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #fffbe6;">
       <div style="text-align: center; margin-bottom: 30px;">
         <img src="/images/logo-20transparent-20backgrond-page-0001.jpeg" alt="Keren Hatzedakah Logo" width="130" style="margin-bottom: 10px;" />
@@ -142,7 +366,7 @@ export async function POST(req: NextRequest) {
     console.log("📄 Generating PDF attachment...")
     let pdfBuffer: Buffer | null = null
     try {
-      pdfBuffer = await generatePDFfromHTML(html)
+      pdfBuffer = await generatePDFfromHTML(pdfHTML)
       console.log("✅ PDF generated successfully, size:", pdfBuffer.length, "bytes")
     } catch (pdfError) {
       console.error("⚠️ PDF generation failed, continuing without attachment:", pdfError)
@@ -181,7 +405,7 @@ export async function POST(req: NextRequest) {
       from: `"Keren Hatzedakah" <${smtpConfig.user}>`,
       to: email,
       subject: subject,
-      html: html,
+      html: emailHTML,
       text: `
     Donation Instructions for ${name} (Account: ${accountNumber})
 
