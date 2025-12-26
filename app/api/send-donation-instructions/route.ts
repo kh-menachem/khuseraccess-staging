@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
-import puppeteer from "puppeteer-core"
+import puppeteer from "puppeteer"
 import chromium from "chrome-aws-lambda"
 
 async function generatePDFfromHTML(html: string): Promise<Buffer> {
@@ -9,7 +9,7 @@ async function generatePDFfromHTML(html: string): Promise<Buffer> {
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
-    executablePath: (await chromium.executablePath) || "/usr/bin/chromium-browser",
+    executablePath: isDev ? await chromium.executablePath : "/usr/bin/chromium-browser",
     headless: chromium.headless,
   })
 
@@ -168,16 +168,6 @@ export async function POST(req: NextRequest) {
     </div>
     `
 
-    console.log("📄 Generating PDF attachment...")
-    let pdfBuffer: Buffer | null = null
-    try {
-      pdfBuffer = await generatePDFfromHTML(html)
-      console.log("✅ PDF generated successfully, size:", pdfBuffer.length, "bytes")
-    } catch (pdfError) {
-      console.error("⚠️ PDF generation failed, continuing without attachment:", pdfError)
-      // Continue without PDF attachment if generation fails
-    }
-
     console.log("🔧 Creating SMTP transporter...")
 
     // Create Gmail transporter
@@ -233,18 +223,6 @@ export async function POST(req: NextRequest) {
       `,
     }
 
-    // Add PDF attachment if available
-    if (pdfBuffer) {
-      mailOptions.attachments = [
-        {
-          filename: `Donation-Instructions-${accountNumber}.pdf`,
-          content: pdfBuffer,
-          contentType: "application/pdf",
-        },
-      ]
-      console.log("📎 PDF attachment added to email")
-    }
-
     // Send email
     const info = await transporter.sendMail(mailOptions)
 
@@ -256,7 +234,6 @@ export async function POST(req: NextRequest) {
       success: true,
       messageId: info.messageId,
       message: "Donation instructions sent successfully!",
-      attachmentIncluded: !!pdfBuffer,
     })
   } catch (error) {
     console.error("❌ Email sending failed:", error)

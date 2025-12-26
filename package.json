@@ -37,6 +37,7 @@
     "nodemailer": "latest",
     "os": "latest",
     "path": "latest",
+    "puppeteer": "24.34.0",
     "puppeteer-core": "latest",
     "react": "^18",
     "react-dom": "^18",
