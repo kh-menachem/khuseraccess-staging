@@ -1,6 +1,35 @@
 import { type NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
-import { generatePDFfromHTML } from "@/lib/generatePDF"
+import puppeteer from "puppeteer-core"
+import chromium from "chrome-aws-lambda"
+
+async function generatePDFfromHTML(html: string): Promise<Buffer> {
+  const isDev = !process.env.AWS_REGION
+
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: (await chromium.executablePath) || "/usr/bin/chromium-browser",
+    headless: chromium.headless,
+  })
+
+  const page = await browser.newPage()
+  await page.setContent(html, { waitUntil: "networkidle0" })
+
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    margin: {
+      top: "20px",
+      bottom: "20px",
+      left: "20px",
+      right: "20px",
+    },
+  })
+
+  await browser.close()
+  return pdfBuffer
+}
 
 export async function POST(req: NextRequest) {
   try {
