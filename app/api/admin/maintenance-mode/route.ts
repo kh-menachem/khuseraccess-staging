@@ -6,13 +6,15 @@ import * as os from "os"
 
 interface MaintenanceMode {
   enabled: boolean
-  message: string
+  messageEnglish: string
+  messageHebrew: string
   estimatedTime?: string
 }
 
 const DEFAULT_MAINTENANCE: MaintenanceMode = {
   enabled: false,
-  message: "System maintenance in progress. Please try again later.",
+  messageEnglish: "System maintenance in progress. Please try again later.",
+  messageHebrew: "תחזוקת מערכת בתהליך. אנא נסו שוב מאוחר יותר.",
   estimatedTime: "",
 }
 
@@ -48,7 +50,8 @@ async function getMaintenanceMode(): Promise<MaintenanceMode> {
     const rows = response.data.values || []
 
     let enabled = false
-    let message = DEFAULT_MAINTENANCE.message
+    let messageEnglish = DEFAULT_MAINTENANCE.messageEnglish
+    let messageHebrew = DEFAULT_MAINTENANCE.messageHebrew
     let estimatedTime = ""
 
     for (const row of rows) {
@@ -56,11 +59,12 @@ async function getMaintenanceMode(): Promise<MaintenanceMode> {
       const value = row[1]
 
       if (key === "maintenance_mode_enabled") enabled = value === "TRUE" || value === "true"
-      else if (key === "maintenance_mode_message") message = value || DEFAULT_MAINTENANCE.message
+      else if (key === "maintenance_mode_message_english") messageEnglish = value || DEFAULT_MAINTENANCE.messageEnglish
+      else if (key === "maintenance_mode_message_hebrew") messageHebrew = value || DEFAULT_MAINTENANCE.messageHebrew
       else if (key === "maintenance_mode_estimated_time") estimatedTime = value || ""
     }
 
-    return { enabled, message, estimatedTime }
+    return { enabled, messageEnglish, messageHebrew, estimatedTime }
   } catch (error) {
     console.error("Error reading maintenance mode from sheets:", error)
     return DEFAULT_MAINTENANCE
@@ -73,7 +77,8 @@ async function saveMaintenanceMode(data: MaintenanceMode): Promise<void> {
 
     const updates = [
       ["maintenance_mode_enabled", data.enabled.toString()],
-      ["maintenance_mode_message", data.message],
+      ["maintenance_mode_message_english", data.messageEnglish],
+      ["maintenance_mode_message_hebrew", data.messageHebrew],
       ["maintenance_mode_estimated_time", data.estimatedTime || ""],
     ]
 
@@ -183,7 +188,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { requestorEmail, enabled, message, estimatedTime } = body
+    const { requestorEmail, enabled, messageEnglish, messageHebrew, estimatedTime } = body
 
     if (!requestorEmail) {
       return NextResponse.json(
@@ -211,7 +216,8 @@ export async function POST(request: NextRequest) {
 
     const newSettings: MaintenanceMode = {
       enabled: enabled ?? currentSettings.enabled,
-      message: message ?? currentSettings.message,
+      messageEnglish: messageEnglish ?? currentSettings.messageEnglish,
+      messageHebrew: messageHebrew ?? currentSettings.messageHebrew,
       estimatedTime: estimatedTime ?? currentSettings.estimatedTime,
     }
 

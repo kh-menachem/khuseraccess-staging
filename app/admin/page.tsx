@@ -84,6 +84,15 @@ export default function AdminPage() {
   const [isSimulating, setIsSimulating] = useState(false)
   const [simulationError, setSimulationError] = useState<string | null>(null)
 
+  // Maintenance Mode States
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
+  const [maintenanceMessageEn, setMaintenanceMessageEn] = useState("")
+  const [maintenanceMessageHe, setMaintenanceMessageHe] = useState("")
+  const [maintenanceEstimatedTime, setMaintenanceEstimatedTime] = useState("")
+  const [isSavingMaintenance, setIsSavingMaintenance] = useState(false)
+  const [maintenanceSuccess, setMaintenanceSuccess] = useState<string | null>(null)
+  const [maintenanceError, setMaintenanceError] = useState<string | null>(null)
+
   const { user: firebaseUser, logout } = useAuth()
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
@@ -189,6 +198,22 @@ export default function AdminPage() {
     }
   }
 
+  // Load Maintenance Mode Settings
+  const loadMaintenanceMode = async () => {
+    try {
+      const response = await fetch("/api/admin/maintenance-mode")
+      const result = await response.json()
+      if (result.success) {
+        setMaintenanceEnabled(result.data.enabled)
+        setMaintenanceMessageEn(result.data.messageEn)
+        setMaintenanceMessageHe(result.data.messageHe)
+        setMaintenanceEstimatedTime(result.data.estimatedTime || "")
+      }
+    } catch (error) {
+      console.error("Error loading maintenance mode settings:", error)
+    }
+  }
+
   useEffect(() => {
     const checkAdminAccess = async () => {
       if (!firebaseUser) {
@@ -212,6 +237,7 @@ export default function AdminPage() {
           loadAdmins()
           loadSystemMessage() // Load system message on mount
           loadTransactionLimit() // Load transaction limit settings
+          loadMaintenanceMode() // Load maintenance mode settings
         } else {
           setIsAuthorized(false)
         }
@@ -486,6 +512,42 @@ export default function AdminPage() {
     }
   }
 
+  // Save Maintenance Mode Settings
+  const handleSaveMaintenanceMode = async () => {
+    setIsSavingMaintenance(true)
+    setMaintenanceSuccess(null)
+    setMaintenanceError(null)
+
+    try {
+      const response = await fetch("/api/admin/maintenance-mode", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestorEmail: firebaseUser?.email,
+          enabled: maintenanceEnabled,
+          messageEn: maintenanceMessageEn,
+          messageHe: maintenanceMessageHe,
+          estimatedTime: maintenanceEstimatedTime,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setMaintenanceSuccess("Maintenance mode settings updated successfully")
+        setTimeout(() => setMaintenanceSuccess(null), 3000)
+      } else {
+        setMaintenanceError(result.error || "Failed to update maintenance mode settings")
+      }
+    } catch (error) {
+      setMaintenanceError("Error updating maintenance mode settings")
+    } finally {
+      setIsSavingMaintenance(false)
+    }
+  }
+
   const handleSimulateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSimulating(true)
@@ -636,7 +698,7 @@ export default function AdminPage() {
               }}
               className="p-6"
             >
-              <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-6" : "grid-cols-3"} bg-red-50`}>
+              <TabsList className={`grid w-full ${isSuperAdmin ? "grid-cols-7" : "grid-cols-3"} bg-red-50`}>
                 <TabsTrigger
                   value="add-access"
                   className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
@@ -680,6 +742,14 @@ export default function AdminPage() {
                     >
                       <Users className="h-4 w-4" />
                       Manage Admins
+                    </TabsTrigger>
+                    {/* New Tab Trigger */}
+                    <TabsTrigger
+                      value="maintenance-mode"
+                      className="flex items-center gap-2 data-[state=active]:bg-red-600 data-[state=active]:text-white"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      Maintenance
                     </TabsTrigger>
                   </>
                 )}
@@ -1324,6 +1394,134 @@ export default function AdminPage() {
                       </CardContent>
                     </Card>
                   </div>
+                </TabsContent>
+              )}
+
+              {/* Maintenance Mode Tab Content */}
+              {isSuperAdmin && (
+                <TabsContent value="maintenance-mode">
+                  <Card className="border-red-200">
+                    <CardHeader className="bg-red-50">
+                      <CardTitle className="flex items-center gap-2 text-red-800">
+                        <AlertTriangle className="h-5 w-5" />
+                        Maintenance Mode
+                      </CardTitle>
+                      <CardDescription>
+                        Enable maintenance mode to redirect users to a maintenance page with bilingual messages
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="space-y-6">
+                        {maintenanceError && (
+                          <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{maintenanceError}</AlertDescription>
+                          </Alert>
+                        )}
+
+                        {maintenanceSuccess && (
+                          <Alert className="border-green-200 bg-green-50">
+                            <AlertCircle className="h-4 w-4 text-green-600" />
+                            <AlertTitle className="text-green-800">Success</AlertTitle>
+                            <AlertDescription className="text-green-700">{maintenanceSuccess}</AlertDescription>
+                          </Alert>
+                        )}
+
+                        {/* Enable/Disable Toggle */}
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50 border-red-200">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="maintenance-enabled" className="text-base font-medium">
+                              Enable Maintenance Mode
+                            </Label>
+                            <p className="text-sm text-gray-600">Redirect all users to maintenance page</p>
+                          </div>
+                          <Switch
+                            id="maintenance-enabled"
+                            checked={maintenanceEnabled}
+                            onCheckedChange={setMaintenanceEnabled}
+                          />
+                        </div>
+
+                        {/* English Message */}
+                        <div className="space-y-2">
+                          <Label htmlFor="maintenance-message-en">English Message</Label>
+                          <Textarea
+                            id="maintenance-message-en"
+                            placeholder="Enter the maintenance message in English..."
+                            value={maintenanceMessageEn}
+                            onChange={(e) => setMaintenanceMessageEn(e.target.value)}
+                            rows={3}
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                          />
+                        </div>
+
+                        {/* Hebrew Message */}
+                        <div className="space-y-2">
+                          <Label htmlFor="maintenance-message-he">Hebrew Message (הודעה בעברית)</Label>
+                          <Textarea
+                            id="maintenance-message-he"
+                            placeholder="Enter the maintenance message in Hebrew..."
+                            value={maintenanceMessageHe}
+                            onChange={(e) => setMaintenanceMessageHe(e.target.value)}
+                            rows={3}
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                            dir="rtl"
+                          />
+                        </div>
+
+                        {/* Estimated Time */}
+                        <div className="space-y-2">
+                          <Label htmlFor="maintenance-estimated-time">Estimated Completion Time (Optional)</Label>
+                          <Input
+                            id="maintenance-estimated-time"
+                            type="text"
+                            placeholder="e.g., 2 hours, 3:00 PM EST"
+                            value={maintenanceEstimatedTime}
+                            onChange={(e) => setMaintenanceEstimatedTime(e.target.value)}
+                            className="border-red-200 focus:border-red-500 focus:ring-red-500"
+                          />
+                        </div>
+
+                        {/* Preview */}
+                        {maintenanceEnabled && (
+                          <div className="space-y-4">
+                            <Label className="text-base font-medium">Preview</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* English Preview */}
+                              <div className="border rounded-lg p-4 bg-slate-50">
+                                <div className="text-xs font-semibold text-gray-500 mb-2">ENGLISH</div>
+                                <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                  {maintenanceMessageEn || "No message set"}
+                                </div>
+                              </div>
+
+                              {/* Hebrew Preview */}
+                              <div className="border rounded-lg p-4 bg-slate-50">
+                                <div className="text-xs font-semibold text-gray-500 mb-2 text-right">עברית</div>
+                                <div className="text-sm text-gray-700 whitespace-pre-wrap text-right" dir="rtl">
+                                  {maintenanceMessageHe || "No message set"}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Save Button */}
+                        <Button
+                          onClick={handleSaveMaintenanceMode}
+                          className="w-full bg-red-600 hover:bg-red-700"
+                          disabled={
+                            isSavingMaintenance ||
+                            (!maintenanceMessageEn && maintenanceEnabled) ||
+                            (!maintenanceMessageHe && maintenanceEnabled)
+                          }
+                        >
+                          {isSavingMaintenance ? "Saving..." : "Save Maintenance Mode"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
               )}
             </Tabs>
