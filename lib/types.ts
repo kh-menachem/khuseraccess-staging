@@ -4,13 +4,12 @@ export interface CustomerData {
   transactions2024: Transaction[]
   oldTransactions: Transaction[]
   donations: Donation[]
-  machineRentals: MachineRental[]
-  linksAndPhoneTransactions?: TransactionDetail[]
+  linksAndPhone: TransactionDetail[]
   displayCurrentTransactions?: Transaction[]
   displayTransactions2024?: Transaction[]
   displayOldTransactions?: Transaction[]
   displayDonations?: Donation[]
-  displayMachineRentals?: MachineRental[]
+  displayLinksAndPhone?: TransactionDetail[]
 }
 
 export interface Transaction {
@@ -47,11 +46,4 @@ export interface Donation {
   type: string
 }
 
-export interface MachineRental {
-  id: string
-  machineId: string
-  rentalDate: string
-  returnDate: string | null
-  status: string
-  fee: number
-}
+// MachineRental interface removed as per updates

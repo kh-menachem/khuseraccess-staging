@@ -633,7 +633,7 @@ export default function DashboardPage() {
           cardknox: "", // Donations don't have cardknox
         })),
         // Add LinksandPhone transactions if they exist
-        ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
+        ...(customerData.displayLinksAndPhone || customerData.linksAndPhone || []).map((tx) => ({
           id: tx.id || `LINK-${Math.random()}`,
           date: tx.date,
           description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
