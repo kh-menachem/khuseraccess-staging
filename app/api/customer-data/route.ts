@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
-import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/types"
+import type { CustomerData, Transaction, Donation } from "@/lib/types"
 import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
@@ -78,7 +78,6 @@ function getHardcodedPercentages(): Map<string, number> {
     { type: "Wires", value: 1 },
     { type: "Remote Checks", value: 1 },
     { type: "Post Dated", value: 1 },
-    { type: "Machine Rental", value: -1 },
     { type: "Payout", value: -1 },
     { type: "Fees", value: -1 },
     { type: "Ramp", value: -1 },
@@ -166,48 +165,6 @@ function processDonors(rows: string[][]): Map<string, string> {
   }
 
   return donorsMap
-}
-
-function processMachines(rows: string[][]): Map<string, string> {
-  const machinesMap = new Map<string, string>()
-
-  if (rows.length <= 1) return machinesMap
-
-  const headerRow = rows[0]
-  console.log("Machines sheet headers:", headerRow)
-
-  const machineRefIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "machine" ||
-      header?.toLowerCase().trim() === "machine ref" ||
-      header?.toLowerCase().trim() === "machineref",
-  )
-
-  const machineIdIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "machine id" ||
-      header?.toLowerCase().trim() === "machineid" ||
-      header?.toLowerCase().trim() === "id" ||
-      header?.toLowerCase().trim() === "number",
-  )
-
-  if (machineRefIndex === -1 || machineIdIndex === -1) {
-    console.log("Could not find machine reference or machine ID columns in Machines sheet")
-    console.log("Available headers:", headerRow)
-    return machinesMap
-  }
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i]
-    if (row[machineRefIndex] && row[machineIdIndex]) {
-      const machineRef = row[machineRefIndex].trim()
-      const machineId = row[machineIdIndex].trim()
-      machinesMap.set(machineRef, machineId)
-      console.log(`Added machine mapping: ${machineRef} -> ${machineId}`)
-    }
-  }
-
-  return machinesMap
 }
 
 function processPercentages(rows: string[][]): Map<string, number> {
@@ -484,158 +441,36 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
   })
 }
 
-function processMachineRentals(rows: string[][], userId: string, machinesMap: Map<string, string>): MachineRental[] {
-  if (rows.length === 0) return []
-
-  const headerRow = rows[0]
-  console.log("Machine Records sheet headers:", headerRow)
-  console.log("Total columns in machine records sheet:", headerRow.length)
-
-  const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
-
-  console.log("Person column index in machine records:", personIndex)
-
-  if (personIndex === -1) {
-    console.log("No Person column found in machine records sheet")
-    console.log("Available headers:", headerRow)
-    return []
-  }
-
-  const machineRefIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "machine" ||
-      header?.toLowerCase().trim() === "machine ref" ||
-      header?.toLowerCase().trim() === "machineref",
-  )
-
-  const dateIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "date" ||
-      header?.toLowerCase().trim() === "date/time" ||
-      header?.toLowerCase().trim() === "datetime",
-  )
-
-  const statusIndex = headerRow.findIndex(
-    (header: string) => header?.toLowerCase().trim() === "status" || header?.toLowerCase().trim() === "in/out",
-  )
-
-  const feeIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "fee" ||
-      header?.toLowerCase().trim() === "amount" ||
-      header?.toLowerCase().trim() === "cost",
-  )
-
-  const filteredRows = rows.slice(1).filter((row: string[]) => {
-    if (!row[personIndex]) return false
-    const rowPersonId = row[personIndex]?.toString().trim()
-    return rowPersonId === userId
-  })
-
-  console.log(`Found ${filteredRows.length} matching machine records for user UNIQUEID ${userId}`)
-
-  const machineGroups = new Map<string, { in?: any; out?: any }>()
-
-  filteredRows.forEach((row: string[]) => {
-    const machineRef = machineRefIndex !== -1 ? row[machineRefIndex]?.toString().trim() : ""
-    const status = statusIndex !== -1 ? row[statusIndex]?.toString().trim().toLowerCase() : ""
-    const date = dateIndex !== -1 ? row[dateIndex] || "" : ""
-
-    let fee = 0
-    try {
-      const feeStr = row[feeIndex]?.toString().trim() || "0"
-      const cleanedFee = feeStr.replace(/[$,]/g, "")
-      fee = Number.parseFloat(cleanedFee)
-
-      if (Number.isNaN(fee)) {
-        fee = 0
-      }
-    } catch (error) {
-      console.error("Error parsing fee:", error)
-      fee = 0
-    }
-
-    const record = {
-      date,
-      fee,
-      row,
-    }
-
-    if (!machineGroups.has(machineRef)) {
-      machineGroups.set(machineRef, {})
-    }
-
-    const group = machineGroups.get(machineRef)!
-    if (status === "out") {
-      group.out = record
-    } else if (status === "in") {
-      group.in = record
-    }
-  })
-
-  const machineRentals: MachineRental[] = []
-  let index = 0
-
-  machineGroups.forEach((group, machineRef) => {
-    const machineId = machinesMap.get(machineRef) || machineRef
-
-    const rentalDate = group.out?.date || ""
-    const returnDate = group.in?.date || null
-
-    const fee = group.out?.fee || group.in?.fee || 0
-
-    let status = "Unknown"
-    if (group.out && group.in) {
-      status = "Returned"
-    } else if (group.out && !group.in) {
-      status = "Out"
-    } else if (!group.out && group.in) {
-      status = "In"
-    }
-
-    machineRentals.push({
-      id: `MR-${index++}`,
-      machineId: machineId,
-      rentalDate: rentalDate,
-      returnDate: returnDate,
-      status: status,
-      fee: fee,
-    })
-  })
-
-  return machineRentals
-}
-
-function processLinksTransactionsGrouped(rows: string[][], userId: string, language: string): Transaction[] {
+function processLinksAndPhone(rows: string[][], userId: string, language: string): Transaction[] {
   if (rows.length === 0) return []
 
   const hdr = rows[0].map((h) => h.toLowerCase().trim())
 
-  const iPerson = hdr.indexOf("personid") // L
-  const iDate = hdr.indexOf("date") // B
-  const iName = hdr.indexOf("name") // C
-  const iAmount = hdr.indexOf("amount") // E
-  const iDesc = hdr.indexOf("description") // G
-  const iResult = hdr.indexOf("result") // H
-  const iType = hdr.indexOf("type") // J
-  const iMid = hdr.indexOf("mid") // K
+  const iPerson = hdr.indexOf("personid")
+  const iDate = hdr.indexOf("date")
+  const iName = hdr.indexOf("name")
+  const iAmount = hdr.indexOf("amount")
+  const iDesc = hdr.indexOf("description")
+  const iResult = hdr.indexOf("result")
+  const iType = hdr.indexOf("type")
+  const iMid = hdr.indexOf("mid")
 
   if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some((i) => i === -1)) {
     console.error("Missing one or more required columns in LinksandPhone")
     return []
   }
 
-  const details = rows
+  return rows
     .slice(1)
     .filter((r) => r[iPerson]?.trim() === userId)
     .filter((r) => r[iResult]?.trim() === "Approved")
     .filter((r) => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
     .map((r, index) => {
       const date = r[iDate]
-      const yearMonth = date.slice(0, 7)
       const amt = Number.parseFloat(r[iAmount].replace(/[$,]/g, "")) || 0
       const type = r[iType]?.trim()
       let net = 0
+
       switch (type) {
         case "CC:Sale":
           net = roundToTwo(amt * 0.965)
@@ -647,7 +482,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
           net = roundToTwo(amt)
           break
         case "Check:Sale":
-          net = amt * 0.9985
+          net = roundToTwo(amt * 0.9985)
           break
         case "Grant:Recommendation":
           net = roundToTwo(amt * 0.965)
@@ -656,7 +491,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
           net = roundToTwo(amt * -0.965)
           break
         default:
-          net = 0 // or amt — depends on desired behavior
+          net = 0
           break
       }
 
@@ -665,51 +500,16 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       return {
         id: `LINK-${index}`,
         date,
-        name: r[iName],
+        description: `${r[iName]} - ${r[iDesc] || ""} (${source})`,
+        reference: r[iName],
         amount: amt,
         net,
-        description: r[iDesc] || "",
-        source,
-        yearMonth,
+        type: "Links/Phone",
+        notCleared: "",
+        cardknox: "",
+        source: "LinksandPhone",
       }
     })
-
-  // Group by month
-  const grouped = new Map<string, Transaction>()
-  for (const d of details) {
-    const key = d.yearMonth
-
-    if (!grouped.has(key)) {
-      grouped.set(key, {
-        id: `LINKS-${key}`,
-        date: `${key}-01`,
-        description: getMonthName(key, language),
-        reference: `LINKS-${key}`,
-        amount: 0,
-        net: 0,
-        type: language === "he" ? "תרומות קישורים / טלפון" : "Links/Phone Donations",
-        notCleared: language === "he" ? "זמין" : "Cleared",
-        source: "LinksandPhone",
-        details: [],
-      })
-    }
-
-    const tx = grouped.get(key)!
-    tx.amount += d.amount
-    tx.net = roundToTwo(tx.net + d.net)
-    if (!tx.date || d.date < tx.date) tx.date = d.date
-
-    tx.details!.push({
-      date: d.date,
-      name: d.name,
-      amount: d.amount,
-      net: d.net,
-      description: d.description,
-      source: d.source,
-    })
-  }
-
-  return Array.from(grouped.values())
 }
 
 export const maxDuration = 60 // Allow up to 60 seconds for Vercel Pro
@@ -851,7 +651,7 @@ export async function POST(request: NextRequest) {
       ])) as any
 
       const machinesData = machinesResponse.data.values || []
-      machinesMap = processMachines(machinesData)
+      machinesMap = processDonors(machinesData) // Process machines as donors for now
       console.log("Machines map loaded:", machinesMap.size, "entries")
     } catch (error) {
       console.error("Error fetching machines data:", error)
@@ -909,7 +709,6 @@ export async function POST(request: NextRequest) {
       fetchWithTimeout("2024 Transactions!A:R", 20000),
       fetchWithTimeout("Old transactions!A:R", 20000),
       fetchWithTimeout("Donations!A:O", 20000),
-      fetchWithTimeout("Machine Rentals!A:I", 20000),
       fetchWithTimeout("Links And Phone!A:L", 20000),
     ])
 
@@ -920,7 +719,6 @@ export async function POST(request: NextRequest) {
           "2024 Transactions",
           "Old transactions",
           "Donations",
-          "Machine Rentals",
           "Links And Phone",
         ]
         console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
@@ -942,21 +740,19 @@ export async function POST(request: NextRequest) {
       responses[1].status === "fulfilled" ? (responses[1].value as any).data.values || [] : []
     const oldTransactionsData = responses[2].status === "fulfilled" ? (responses[2].value as any).data.values || [] : []
     const donationsData = responses[3].status === "fulfilled" ? (responses[3].value as any).data.values || [] : []
-    const machineRentalsData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
-    const linksAndPhoneData = responses[5].status === "fulfilled" ? (responses[5].value as any).data.values || [] : []
+    const linksAndPhoneData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
 
     const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
-    const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
-    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
+    const linksAndPhone = processLinksAndPhone(linksAndPhoneData, userId, lang)
 
     console.log(`Found ${currentTransactions.length} current transactions (total)`)
     console.log(`Found ${transactions2024.length} transactions from 2024 (total)`)
     console.log(`Found ${oldTransactions.length} old transactions (total)`)
     console.log(`Found ${donations.length} donations (total)`)
-    console.log(`Found ${machineRentals.length} machine rentals (total)`)
+    console.log(`Found ${linksAndPhone.length} links and phone transactions`)
 
     const transactionLimit = await getTransactionLimit()
     const cutoffDate = getCutoffDate(transactionLimit)
@@ -965,14 +761,14 @@ export async function POST(request: NextRequest) {
     let displayTransactions2024 = transactions2024
     let displayOldTransactions = oldTransactions
     let displayDonations = donations
-    let displayMachineRentals = machineRentals
+    let displayLinksAndPhone = linksAndPhone
 
     if (transactionLimit.enabled) {
       displayCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
       displayTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
       displayOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
       displayDonations = filterTransactionsByDate(donations, cutoffDate)
-      displayMachineRentals = filterTransactionsByDate(machineRentals, cutoffDate)
+      displayLinksAndPhone = filterTransactionsByDate(linksAndPhone, cutoffDate)
     }
 
     const customerData: CustomerData = {
@@ -983,13 +779,12 @@ export async function POST(request: NextRequest) {
       transactions2024: transactions2024 || [],
       oldTransactions: oldTransactions || [],
       donations: donations || [],
-      machineRentals: machineRentals || [],
-      linksAndPhoneGrouped: linksAndPhoneGrouped || [],
+      linksAndPhone: linksAndPhone || [],
       displayCurrentTransactions,
       displayTransactions2024,
       displayOldTransactions,
       displayDonations,
-      displayMachineRentals,
+      displayLinksAndPhone,
     }
 
     const duration = Date.now() - startTime
@@ -1008,7 +803,7 @@ export async function POST(request: NextRequest) {
           transactions2024: displayTransactions2024.length,
           old: displayOldTransactions.length,
           donations: displayDonations.length,
-          machineRentals: displayMachineRentals.length,
+          linksAndPhone: displayLinksAndPhone.length,
         },
       }),
       user: userEmail,
