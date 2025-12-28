@@ -1,11 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { google } from "googleapis"
-import type { CustomerData, Transaction, Donation } from "@/lib/types"
+import type { CustomerData, Transaction, Donation, MachineRental } from "@/lib/types"
 import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 import { writeLogToSheet } from "@/lib/server-logger"
-import { crypto } from "crypto"
 
 const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
 
@@ -19,7 +18,7 @@ interface TransactionLimit {
   limitValue: string
 }
 
-async function getTransactionLimit(): Promise<TransactionLimit> {
+function getTransactionLimit(): TransactionLimit {
   try {
     if (existsSync(TRANSACTION_LIMIT_FILE)) {
       const data = readFileSync(TRANSACTION_LIMIT_FILE, "utf-8")
@@ -78,6 +77,7 @@ function getHardcodedPercentages(): Map<string, number> {
     { type: "Wires", value: 1 },
     { type: "Remote Checks", value: 1 },
     { type: "Post Dated", value: 1 },
+    { type: "Machine Rental", value: -1 },
     { type: "Payout", value: -1 },
     { type: "Fees", value: -1 },
     { type: "Ramp", value: -1 },
@@ -165,6 +165,48 @@ function processDonors(rows: string[][]): Map<string, string> {
   }
 
   return donorsMap
+}
+
+function processMachines(rows: string[][]): Map<string, string> {
+  const machinesMap = new Map<string, string>()
+
+  if (rows.length <= 1) return machinesMap
+
+  const headerRow = rows[0]
+  console.log("Machines sheet headers:", headerRow)
+
+  const machineRefIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "machine" ||
+      header?.toLowerCase().trim() === "machine ref" ||
+      header?.toLowerCase().trim() === "machineref",
+  )
+
+  const machineIdIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "machine id" ||
+      header?.toLowerCase().trim() === "machineid" ||
+      header?.toLowerCase().trim() === "id" ||
+      header?.toLowerCase().trim() === "number",
+  )
+
+  if (machineRefIndex === -1 || machineIdIndex === -1) {
+    console.log("Could not find machine reference or machine ID columns in Machines sheet")
+    console.log("Available headers:", headerRow)
+    return machinesMap
+  }
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]
+    if (row[machineRefIndex] && row[machineIdIndex]) {
+      const machineRef = row[machineRefIndex].trim()
+      const machineId = row[machineIdIndex].trim()
+      machinesMap.set(machineRef, machineId)
+      console.log(`Added machine mapping: ${machineRef} -> ${machineId}`)
+    }
+  }
+
+  return machinesMap
 }
 
 function processPercentages(rows: string[][]): Map<string, number> {
@@ -441,36 +483,158 @@ function processDonations(rows: string[][], userId: string, donorsMap: Map<strin
   })
 }
 
-function processLinksAndPhone(rows: string[][], userId: string, language: string): Transaction[] {
+function processMachineRentals(rows: string[][], userId: string, machinesMap: Map<string, string>): MachineRental[] {
+  if (rows.length === 0) return []
+
+  const headerRow = rows[0]
+  console.log("Machine Records sheet headers:", headerRow)
+  console.log("Total columns in machine records sheet:", headerRow.length)
+
+  const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
+
+  console.log("Person column index in machine records:", personIndex)
+
+  if (personIndex === -1) {
+    console.log("No Person column found in machine records sheet")
+    console.log("Available headers:", headerRow)
+    return []
+  }
+
+  const machineRefIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "machine" ||
+      header?.toLowerCase().trim() === "machine ref" ||
+      header?.toLowerCase().trim() === "machineref",
+  )
+
+  const dateIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "date" ||
+      header?.toLowerCase().trim() === "date/time" ||
+      header?.toLowerCase().trim() === "datetime",
+  )
+
+  const statusIndex = headerRow.findIndex(
+    (header: string) => header?.toLowerCase().trim() === "status" || header?.toLowerCase().trim() === "in/out",
+  )
+
+  const feeIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "fee" ||
+      header?.toLowerCase().trim() === "amount" ||
+      header?.toLowerCase().trim() === "cost",
+  )
+
+  const filteredRows = rows.slice(1).filter((row: string[]) => {
+    if (!row[personIndex]) return false
+    const rowPersonId = row[personIndex]?.toString().trim()
+    return rowPersonId === userId
+  })
+
+  console.log(`Found ${filteredRows.length} matching machine records for user UNIQUEID ${userId}`)
+
+  const machineGroups = new Map<string, { in?: any; out?: any }>()
+
+  filteredRows.forEach((row: string[]) => {
+    const machineRef = machineRefIndex !== -1 ? row[machineRefIndex]?.toString().trim() : ""
+    const status = statusIndex !== -1 ? row[statusIndex]?.toString().trim().toLowerCase() : ""
+    const date = dateIndex !== -1 ? row[dateIndex] || "" : ""
+
+    let fee = 0
+    try {
+      const feeStr = row[feeIndex]?.toString().trim() || "0"
+      const cleanedFee = feeStr.replace(/[$,]/g, "")
+      fee = Number.parseFloat(cleanedFee)
+
+      if (Number.isNaN(fee)) {
+        fee = 0
+      }
+    } catch (error) {
+      console.error("Error parsing fee:", error)
+      fee = 0
+    }
+
+    const record = {
+      date,
+      fee,
+      row,
+    }
+
+    if (!machineGroups.has(machineRef)) {
+      machineGroups.set(machineRef, {})
+    }
+
+    const group = machineGroups.get(machineRef)!
+    if (status === "out") {
+      group.out = record
+    } else if (status === "in") {
+      group.in = record
+    }
+  })
+
+  const machineRentals: MachineRental[] = []
+  let index = 0
+
+  machineGroups.forEach((group, machineRef) => {
+    const machineId = machinesMap.get(machineRef) || machineRef
+
+    const rentalDate = group.out?.date || ""
+    const returnDate = group.in?.date || null
+
+    const fee = group.out?.fee || group.in?.fee || 0
+
+    let status = "Unknown"
+    if (group.out && group.in) {
+      status = "Returned"
+    } else if (group.out && !group.in) {
+      status = "Out"
+    } else if (!group.out && group.in) {
+      status = "In"
+    }
+
+    machineRentals.push({
+      id: `MR-${index++}`,
+      machineId: machineId,
+      rentalDate: rentalDate,
+      returnDate: returnDate,
+      status: status,
+      fee: fee,
+    })
+  })
+
+  return machineRentals
+}
+
+function processLinksTransactionsGrouped(rows: string[][], userId: string, language: string): Transaction[] {
   if (rows.length === 0) return []
 
   const hdr = rows[0].map((h) => h.toLowerCase().trim())
 
-  const iPerson = hdr.indexOf("personid")
-  const iDate = hdr.indexOf("date")
-  const iName = hdr.indexOf("name")
-  const iAmount = hdr.indexOf("amount")
-  const iDesc = hdr.indexOf("description")
-  const iResult = hdr.indexOf("result")
-  const iType = hdr.indexOf("type")
-  const iMid = hdr.indexOf("mid")
+  const iPerson = hdr.indexOf("personid") // L
+  const iDate = hdr.indexOf("date") // B
+  const iName = hdr.indexOf("name") // C
+  const iAmount = hdr.indexOf("amount") // E
+  const iDesc = hdr.indexOf("description") // G
+  const iResult = hdr.indexOf("result") // H
+  const iType = hdr.indexOf("type") // J
+  const iMid = hdr.indexOf("mid") // K
 
   if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some((i) => i === -1)) {
     console.error("Missing one or more required columns in LinksandPhone")
     return []
   }
 
-  return rows
+  const details = rows
     .slice(1)
     .filter((r) => r[iPerson]?.trim() === userId)
     .filter((r) => r[iResult]?.trim() === "Approved")
     .filter((r) => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
     .map((r, index) => {
       const date = r[iDate]
+      const yearMonth = date.slice(0, 7)
       const amt = Number.parseFloat(r[iAmount].replace(/[$,]/g, "")) || 0
       const type = r[iType]?.trim()
       let net = 0
-
       switch (type) {
         case "CC:Sale":
           net = roundToTwo(amt * 0.965)
@@ -482,7 +646,7 @@ function processLinksAndPhone(rows: string[][], userId: string, language: string
           net = roundToTwo(amt)
           break
         case "Check:Sale":
-          net = roundToTwo(amt * 0.9985)
+          net = amt * 0.9985
           break
         case "Grant:Recommendation":
           net = roundToTwo(amt * 0.965)
@@ -491,7 +655,7 @@ function processLinksAndPhone(rows: string[][], userId: string, language: string
           net = roundToTwo(amt * -0.965)
           break
         default:
-          net = 0
+          net = 0 // or amt — depends on desired behavior
           break
       }
 
@@ -500,23 +664,55 @@ function processLinksAndPhone(rows: string[][], userId: string, language: string
       return {
         id: `LINK-${index}`,
         date,
-        description: `${r[iName]} - ${r[iDesc] || ""} (${source})`,
-        reference: r[iName],
+        name: r[iName],
         amount: amt,
         net,
-        type: "Links/Phone",
-        notCleared: "",
-        cardknox: "",
-        source: "LinksandPhone",
+        description: r[iDesc] || "",
+        source,
+        yearMonth,
       }
     })
+
+  // Group by month
+  const grouped = new Map<string, Transaction>()
+  for (const d of details) {
+    const key = d.yearMonth
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        id: `LINKS-${key}`,
+        date: `${key}-01`,
+        description: getMonthName(key, language),
+        reference: `LINKS-${key}`,
+        amount: 0,
+        net: 0,
+        type: language === "he" ? "תרומות קישורים / טלפון" : "Links/Phone Donations",
+        notCleared: language === "he" ? "זמין" : "Cleared",
+        source: "LinksandPhone",
+        details: [],
+      })
+    }
+
+    const tx = grouped.get(key)!
+    tx.amount += d.amount
+    tx.net = roundToTwo(tx.net + d.net)
+    if (!tx.date || d.date < tx.date) tx.date = d.date
+
+    tx.details!.push({
+      date: d.date,
+      name: d.name,
+      amount: d.amount,
+      net: d.net,
+      description: d.description,
+      source: d.source,
+    })
+  }
+
+  return Array.from(grouped.values())
 }
 
-export const maxDuration = 60 // Allow up to 60 seconds for Vercel Pro
-
 export async function POST(request: NextRequest) {
-  const requestId = request.headers.get("x-request-id") || crypto.randomUUID()
-  const startTime = Date.now()
+  const requestId = request.headers.get("x-request-id") || "unknown"
 
   try {
     let body
@@ -530,19 +726,10 @@ export async function POST(request: NextRequest) {
         message: "Failed to parse request body",
         metadata: JSON.stringify({ error: String(parseError) }),
         requestId,
-      }).catch(console.error)
+      })
 
-      return NextResponse.json(
-        {
-          error: "Invalid request format",
-          code: "PARSE_ERROR",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        },
-      )
+      console.error("[v0] Failed to parse request body:", parseError)
+      return NextResponse.json({ error: "Invalid request format" }, { status: 400 })
     }
 
     const { userEmail, userId, language } = body
@@ -560,43 +747,29 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
+    const transactionLimit = getTransactionLimit()
+    const cutoffDate = getCutoffDate(transactionLimit)
+
+    if (cutoffDate) {
+      console.log(`[v0] Transaction limit enabled: ${transactionLimit.limitType} = ${transactionLimit.limitValue}`)
+      console.log(`[v0] Cutoff date: ${cutoffDate.toISOString()}`)
+    }
+
+    if (!userEmail && !userId) {
+      return NextResponse.json({ error: "User email or ID is required" }, { status: 400 })
+    }
+
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
     const spreadsheetId = process.env.SPREADSHEET_ID
 
     if (!credentials) {
       console.error("[v0] Missing GOOGLE_APPLICATION_CREDENTIALS_JSON")
-      await writeLogToSheet({
-        timestamp: new Date().toISOString(),
-        level: "ERROR",
-        event: "CONFIG_ERROR",
-        message: "Missing Google credentials",
-        requestId,
-      }).catch(console.error)
-
-      return NextResponse.json(
-        {
-          error: "Server configuration error",
-          code: "MISSING_CREDENTIALS",
-        },
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      )
+      return NextResponse.json({ error: "Server configuration error: Missing credentials" }, { status: 500 })
     }
 
     if (!spreadsheetId) {
       console.error("[v0] Missing SPREADSHEET_ID")
-      return NextResponse.json(
-        {
-          error: "Server configuration error",
-          code: "MISSING_SPREADSHEET_ID",
-        },
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      )
+      return NextResponse.json({ error: "Server configuration error: Missing spreadsheet ID" }, { status: 500 })
     }
 
     const tempFilePath = join(os.tmpdir(), "google-credentials.json")
@@ -609,32 +782,21 @@ export async function POST(request: NextRequest) {
 
     const sheets = google.sheets({ version: "v4", auth })
 
-    console.log("Fetching Percentages table")
-    let percentagesMap: Map<string, number> = new Map()
+    console.log("Fetching Percentages table first")
+    let percentagesMap = new Map<string, number>()
 
     try {
-      const percentagesResponse = (await Promise.race([
-        sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Percentages!A:D",
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Percentages fetch timeout")), 15000)),
-      ])) as any
+      const percentagesResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Percentages!A:D",
+      })
 
       const percentagesData = percentagesResponse.data.values || []
       percentagesMap = processPercentages(percentagesData)
-      console.log("Percentages map loaded:", percentagesMap.size, "entries")
+      console.log("Percentages map:", Object.fromEntries(percentagesMap))
     } catch (error) {
       console.error("Error fetching percentages data:", error)
-      await writeLogToSheet({
-        timestamp: new Date().toISOString(),
-        level: "WARN",
-        event: "PERCENTAGES_FETCH_ERROR",
-        message: "Failed to fetch percentages, using defaults",
-        metadata: JSON.stringify({ error: String(error) }),
-        requestId,
-      }).catch(console.error)
-
+      console.log("Will proceed with hardcoded percentage adjustments")
       percentagesMap = getHardcodedPercentages()
     }
 
@@ -642,195 +804,159 @@ export async function POST(request: NextRequest) {
     let machinesMap = new Map<string, string>()
 
     try {
-      const machinesResponse = (await Promise.race([
-        sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Machines!A:G",
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Machines fetch timeout")), 15000)),
-      ])) as any
+      const machinesResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Machines!A:G",
+      })
 
       const machinesData = machinesResponse.data.values || []
-      machinesMap = processDonors(machinesData) // Process machines as donors for now
-      console.log("Machines map loaded:", machinesMap.size, "entries")
+      machinesMap = processMachines(machinesData)
+      console.log("Machines map:", Object.fromEntries(machinesMap))
     } catch (error) {
       console.error("Error fetching machines data:", error)
-      await writeLogToSheet({
-        timestamp: new Date().toISOString(),
-        level: "WARN",
-        event: "MACHINES_FETCH_ERROR",
-        message: "Failed to fetch machines data",
-        metadata: JSON.stringify({ error: String(error) }),
-        requestId,
-      }).catch(console.error)
+      console.log("Will proceed without machine ID mapping")
     }
 
     console.log("Fetching Donors table")
     let donorsMap = new Map<string, string>()
 
     try {
-      const donorsResponse = (await Promise.race([
-        sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Donors!A:F",
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Donors fetch timeout")), 15000)),
-      ])) as any
+      const donorsResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Donors!A:F",
+      })
 
       const donorsData = donorsResponse.data.values || []
       donorsMap = processDonors(donorsData)
-      console.log("Donors map loaded:", donorsMap.size, "entries")
+      console.log("Donors map:", Object.fromEntries(donorsMap))
     } catch (error) {
       console.error("Error fetching donors data:", error)
-      await writeLogToSheet({
-        timestamp: new Date().toISOString(),
-        level: "WARN",
-        event: "DONORS_FETCH_ERROR",
-        message: "Failed to fetch donors data",
-        metadata: JSON.stringify({ error: String(error) }),
-        user: userEmail,
-        requestId,
-      }).catch(console.error)
+      console.log("Will proceed without donor name mapping")
     }
 
-    console.log("Fetching transaction tables")
-
-    const fetchWithTimeout = (range: string, timeout = 20000) => {
-      return Promise.race([
-        sheets.spreadsheets.values.get({ spreadsheetId, range }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`${range} fetch timeout after ${timeout}ms`)), timeout),
-        ),
-      ])
-    }
-
-    const responses = await Promise.allSettled([
-      fetchWithTimeout("Current Transactions!A:S", 20000),
-      fetchWithTimeout("2024 Transactions!A:R", 20000),
-      fetchWithTimeout("Old transactions!A:R", 20000),
-      fetchWithTimeout("Donations!A:O", 20000),
-      fetchWithTimeout("Links And Phone!A:L", 20000),
+    const [
+      currentTransactionsResponse,
+      transactions2024Response,
+      oldTransactionsResponse,
+      donationsResponse,
+      machineRentalsResponse,
+      linksAndPhoneResponse,
+    ] = await Promise.allSettled([
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Money!A:M",
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Money_2024!A:M",
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Money_Old!A:M",
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Donations!A:F",
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "Machine Records!A:G",
+      }),
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "LinksandPhone!A:N", // 👈 add this
+      }),
     ])
 
-    responses.forEach((result, index) => {
-      if (result.status === "rejected") {
-        const sheetNames = [
-          "Current Transactions",
-          "2024 Transactions",
-          "Old transactions",
-          "Donations",
-          "Links And Phone",
-        ]
-        console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
-        writeLogToSheet({
-          timestamp: new Date().toISOString(),
-          level: "ERROR",
-          event: "SHEET_FETCH_TIMEOUT",
-          message: `Failed to fetch ${sheetNames[index]}`,
-          metadata: JSON.stringify({ error: String(result.reason), userId }),
-          user: userEmail,
-          requestId,
-        }).catch(console.error)
-      }
-    })
+    const responses = [
+      currentTransactionsResponse,
+      transactions2024Response,
+      oldTransactionsResponse,
+      donationsResponse,
+      machineRentalsResponse,
+      linksAndPhoneResponse,
+    ]
 
-    const currentTransactionsData =
-      responses[0].status === "fulfilled" ? (responses[0].value as any).data.values || [] : []
-    const transactions2024Data =
-      responses[1].status === "fulfilled" ? (responses[1].value as any).data.values || [] : []
-    const oldTransactionsData = responses[2].status === "fulfilled" ? (responses[2].value as any).data.values || [] : []
-    const donationsData = responses[3].status === "fulfilled" ? (responses[3].value as any).data.values || [] : []
-    const linksAndPhoneData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
+    const currentTransactionsData = responses[0].status === "fulfilled" ? responses[0].value.data.values || [] : []
+    const transactions2024Data = responses[1].status === "fulfilled" ? responses[1].value.data.values || [] : []
+    const oldTransactionsData = responses[2].status === "fulfilled" ? responses[2].value.data.values || [] : []
+    const donationsData = responses[3].status === "fulfilled" ? responses[3].value.data.values || [] : []
+    const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
+    const linksAndPhoneData = responses[5].status === "fulfilled" ? responses[5].value.data.values || [] : []
 
-    const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
+    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
+
+    const currentTransactions = [...processTransactions(currentTransactionsData, userId, percentagesMap)]
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
-    const linksAndPhone = processLinksAndPhone(linksAndPhoneData, userId, lang)
+    const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
 
     console.log(`Found ${currentTransactions.length} current transactions (total)`)
     console.log(`Found ${transactions2024.length} transactions from 2024 (total)`)
     console.log(`Found ${oldTransactions.length} old transactions (total)`)
     console.log(`Found ${donations.length} donations (total)`)
-    console.log(`Found ${linksAndPhone.length} links and phone transactions`)
+    console.log(`Found ${machineRentals.length} machine rentals (total)`)
 
-    const transactionLimit = await getTransactionLimit()
-    const cutoffDate = getCutoffDate(transactionLimit)
+    const filteredCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
+    const filteredTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
+    const filteredOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
+    const filteredDonations = filterTransactionsByDate(donations, cutoffDate)
+    const filteredMachineRentals = filterTransactionsByDate(
+      machineRentals.map((mr) => ({ ...mr, date: mr.rentalDate })),
+      cutoffDate,
+    ).map(({ date, ...rest }) => ({ ...rest, rentalDate: date }))
 
-    let displayCurrentTransactions = currentTransactions
-    let displayTransactions2024 = transactions2024
-    let displayOldTransactions = oldTransactions
-    let displayDonations = donations
-    let displayLinksAndPhone = linksAndPhone
-
-    if (transactionLimit.enabled) {
-      displayCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
-      displayTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
-      displayOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
-      displayDonations = filterTransactionsByDate(donations, cutoffDate)
-      displayLinksAndPhone = filterTransactionsByDate(linksAndPhone, cutoffDate)
-    }
+    console.log(`Displaying ${filteredCurrentTransactions.length} current transactions (after filtering)`)
+    console.log(`Displaying ${filteredTransactions2024.length} transactions from 2024 (after filtering)`)
+    console.log(`Displaying ${filteredOldTransactions.length} old transactions (after filtering)`)
+    console.log(`Displaying ${filteredDonations.length} donations (after filtering)`)
+    console.log(`Displaying ${filteredMachineRentals.length} machine rentals (after filtering)`)
 
     const customerData: CustomerData = {
       id: userId,
-      name: userEmail,
-      email: userEmail,
-      currentTransactions: currentTransactions || [],
-      transactions2024: transactions2024 || [],
-      oldTransactions: oldTransactions || [],
-      donations: donations || [],
-      linksAndPhone: linksAndPhone || [],
-      displayCurrentTransactions,
-      displayTransactions2024,
-      displayOldTransactions,
-      displayDonations,
-      displayLinksAndPhone,
+      // Full data for total calculations
+      currentTransactions: currentTransactions,
+      transactions2024: transactions2024,
+      oldTransactions: oldTransactions,
+      donations: donations,
+      machineRentals: machineRentals,
+      linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap((t) => t.details || []),
+      // Filtered data for display
+      displayCurrentTransactions: filteredCurrentTransactions,
+      displayTransactions2024: filteredTransactions2024,
+      displayOldTransactions: filteredOldTransactions,
+      displayDonations: filteredDonations,
+      displayMachineRentals: filteredMachineRentals,
     }
-
-    const duration = Date.now() - startTime
-    console.log(`[v0] Data fetch completed in ${duration}ms`)
 
     await writeLogToSheet({
       timestamp: new Date().toISOString(),
       level: "INFO",
       event: "DATA_FETCH_SUCCESS",
-      message: `Customer data fetched successfully`,
+      message: `Customer data fetched successfully for user: ${userEmail}`,
       metadata: JSON.stringify({
         userId,
-        duration,
-        transactionCounts: {
-          current: displayCurrentTransactions.length,
-          transactions2024: displayTransactions2024.length,
-          old: displayOldTransactions.length,
-          donations: displayDonations.length,
-          linksAndPhone: displayLinksAndPhone.length,
-        },
+        currentTransactions: currentTransactions.length,
+        transactions2024: transactions2024.length,
+        oldTransactions: oldTransactions.length,
+        donations: donations.length,
+        machineRentals: machineRentals.length,
       }),
       user: userEmail,
       requestId,
-    }).catch(console.error)
-
-    return NextResponse.json(customerData, {
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": "no-store, must-revalidate",
-      },
     })
-  } catch (error) {
-    const duration = Date.now() - startTime
 
+    return NextResponse.json(customerData)
+  } catch (error) {
     await writeLogToSheet({
       timestamp: new Date().toISOString(),
       level: "ERROR",
       event: "DATA_FETCH_ERROR",
       message: "Failed to fetch customer data",
-      metadata: JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        duration,
-      }),
+      metadata: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       requestId,
-    }).catch(console.error)
+    })
 
     console.error("[v0] Error fetching customer data:", error)
 
@@ -839,14 +965,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Failed to fetch customer data",
-        code: "DATA_FETCH_ERROR",
         details: errorMessage,
-        timestamp: new Date().toISOString(),
       },
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
+      { status: 500 },
     )
   }
 }
