@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import nodemailer from "nodemailer"
+// import { generatePDFfromHTML } from "@/lib/generatePDF" // Removed import
 
 export async function POST(req: NextRequest) {
   try {
@@ -138,6 +139,16 @@ export async function POST(req: NextRequest) {
     </div>
     `
 
+    // console.log("📄 Generating PDF attachment...")
+    // let pdfBuffer: Buffer | null = null
+    // try {
+    //   pdfBuffer = await generatePDFfromHTML(html)
+    //   console.log("✅ PDF generated successfully, size:", pdfBuffer.length, "bytes")
+    // } catch (pdfError) {
+    //   console.error("⚠️ PDF generation failed, continuing without attachment:", pdfError)
+    //   // Continue without PDF attachment if generation fails
+    // }
+
     console.log("🔧 Creating SMTP transporter...")
 
     // Create Gmail transporter
@@ -193,6 +204,18 @@ export async function POST(req: NextRequest) {
       `,
     }
 
+    // // Add PDF attachment if available
+    // if (pdfBuffer) {
+    //   mailOptions.attachments = [
+    //     {
+    //       filename: `Donation-Instructions-${accountNumber}.pdf`,
+    //       content: pdfBuffer,
+    //       contentType: "application/pdf",
+    //     },
+    //   ]
+    //   console.log("📎 PDF attachment added to email")
+    // }
+
     // Send email
     const info = await transporter.sendMail(mailOptions)
 
@@ -204,6 +227,7 @@ export async function POST(req: NextRequest) {
       success: true,
       messageId: info.messageId,
       message: "Donation instructions sent successfully!",
+      // attachmentIncluded: !!pdfBuffer, // Removed attachmentIncluded field
     })
   } catch (error) {
     console.error("❌ Email sending failed:", error)

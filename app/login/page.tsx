@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,7 +29,7 @@ const translations = {
     rememberMe: "זכור אותי",
     english: "English",
     noAccount: "?אין לך חשבון",
-    contactAdmin: "LTR: To open a new account, please contact the system administrator",
+    contactAdmin: "לרישום חשבון חדש נא פנה למנהל המערכת",
     showPassword: "הצג סיסמה",
     hidePassword: "הסתר סיסמה",
     accountNotSetup: "צור קשר עם מנהל המערכת כדי לסיים את הגדרת החשבון שלך",
@@ -72,39 +72,12 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [language, setLanguage] = useState<"en" | "he">("he") // Default to Hebrew
-  const [isMaintenance, setIsMaintenance] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const { signIn } = useAuth()
 
   const t = translations[language]
   const isRTL = language === "he"
-
-  useEffect(() => {
-    const checkMaintenanceMode = async () => {
-      try {
-        const response = await fetch("/api/admin/maintenance-mode")
-        if (response.ok) {
-          const result = await response.json()
-          if (result.data?.enabled) {
-            setIsMaintenance(true)
-          }
-        }
-      } catch (error) {
-        console.error("Error checking maintenance mode:", error)
-      }
-    }
-
-    checkMaintenanceMode()
-  }, [])
-
-  if (isMaintenance) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
-      </div>
-    )
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
