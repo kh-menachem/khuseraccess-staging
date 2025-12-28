@@ -14,7 +14,6 @@ async function checkMaintenanceMode(): Promise<boolean> {
   }
 
   try {
-    // Construct the full URL for the API call
     const protocol = process.env.NODE_ENV === "production" ? "https" : "http"
     const host = process.env.VERCEL_URL || "localhost:3000"
     const apiUrl = `${protocol}://${host}/api/admin/maintenance-mode`
@@ -24,7 +23,6 @@ async function checkMaintenanceMode(): Promise<boolean> {
       headers: {
         "Content-Type": "application/json",
       },
-      // Set a timeout for the fetch request
       signal: AbortSignal.timeout(5000),
     })
 
@@ -44,12 +42,11 @@ async function checkMaintenanceMode(): Promise<boolean> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Always allow admin login path
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin/") || pathname === "/admin") {
     return NextResponse.next()
   }
 
-  // Check maintenance mode for root and login paths
+  // Check maintenance mode only for customer-facing paths
   if (pathname === "/" || pathname === "/login") {
     const isMaintenanceEnabled = await checkMaintenanceMode()
 
@@ -72,8 +69,7 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - landing (landing page itself)
-     * - maintenance (maintenance page itself)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|landing|maintenance).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|landing).*)",
   ],
 }
