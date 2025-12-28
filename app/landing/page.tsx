@@ -1,118 +1,87 @@
 "use client"
-
-import { useState, useEffect } from "react"
 import Image from "next/image"
 
 export default function MaintenanceLanding() {
-  const [language, setLanguage] = useState<"en" | "he">("en")
-  const [isRTL, setIsRTL] = useState(false)
-
-  useEffect(() => {
-    setIsRTL(language === "he")
-  }, [language])
-
-  const messages = {
-    en: {
-      title: "Site Under Maintenance",
-      description: "We're currently performing updates to improve your experience.",
-      backOnline: "The site will be back online shortly.",
-      status: "Status: Maintenance in progress",
-      contact: "For urgent issues, contact us at:",
-      email: "6301926@gmail.com",
-      switchLanguage: "עברית",
-    },
-    he: {
-      title: "האתר בתחזוקה",
-      description: "אנו מבצעים כעת עדכונים לשיפור חווית המשתמש.",
-      backOnline: "האתר יחזור לפעילות השלמה בקרוב.",
-      status: "סטטוס: תחזוקה פעילה",
-      contact: "לשאלות דחופות, אנא פנו אלינו:",
-      email: "6301926@gmail.com",
-      switchLanguage: "English",
-    },
-  }
-
-  const t = messages[language]
-
   return (
-    <div className={`min-h-screen flex flex-col ${isRTL ? "rtl" : "ltr"}`} style={{ backgroundColor: "#f8fafc" }}>
-      <div className="flex flex-1">
-        {/* Left Illustration Side */}
-        <div
-          className={`hidden lg:flex lg:w-1/2 items-center justify-center p-8 ${isRTL ? "lg:order-last" : ""}`}
-          style={{
-            background: "linear-gradient(135deg, #20B2AA 0%, #48D1CC 100%)",
-          }}
-        >
-          <div className="max-w-lg">
-            <Image
-              src="/images/login-security-bg.png"
-              alt="Maintenance Illustration"
-              width={500}
-              height={400}
-              className="object-contain"
-              priority
-            />
-          </div>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "#0f172a" }}>
+      <div className="w-full max-w-5xl">
+        {/* Warning Triangle Icon */}
+        <div className="flex justify-center mb-12">
+          <svg className="w-24 h-24 text-amber-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+          </svg>
         </div>
 
-        {/* Right Content Side */}
-        <div className={`w-full lg:w-1/2 flex items-center justify-center px-6 py-4 ${isRTL ? "lg:order-first" : ""}`}>
-          <div className="w-full max-w-sm">
-            {/* Language Toggle */}
-            <div className={`mb-8 ${isRTL ? "text-right" : "text-left"}`}>
-              <button
-                onClick={() => setLanguage(language === "en" ? "he" : "en")}
-                className="px-4 py-2 border border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-800 font-medium rounded text-sm transition-colors"
-              >
-                {t.switchLanguage}
-              </button>
-            </div>
+        {/* Main Content Container */}
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+          {/* English Section */}
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10">
+            <div className="space-y-6">
+              <h1 className="text-3xl md:text-4xl font-bold text-amber-400">Site Under Maintenance</h1>
 
-            {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <div className="w-20 h-20 relative">
-                <Image
-                  src="/images/kh-hand-logo.png"
-                  alt="Keren Hatzedakah Logo"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </div>
-
-            {/* Maintenance Message Card */}
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-8 space-y-6">
-              {/* Title */}
-              <div className={`text-center ${isRTL ? "text-right" : "text-left"}`}>
-                <h1 className="text-3xl font-bold text-teal-600 mb-4">{t.title}</h1>
-              </div>
-
-              {/* Messages */}
-              <div className={`space-y-4 text-gray-700 ${isRTL ? "text-right" : "text-left"}`}>
-                <p className="leading-relaxed">{t.description}</p>
-                <p className="leading-relaxed">{t.backOnline}</p>
-              </div>
-
-              {/* Status */}
-              <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border-l-4 border-teal-500 p-4 rounded">
-                <p className={`text-sm font-semibold text-teal-700 ${isRTL ? "text-right" : "text-left"}`}>
-                  {t.status}
+              <div className="space-y-4 text-slate-300">
+                <p className="text-base md:text-lg leading-relaxed">
+                  We're currently performing updates to improve your experience.
                 </p>
+
+                <p className="text-base md:text-lg leading-relaxed">The site will be back online shortly.</p>
               </div>
 
-              {/* Contact Info */}
-              <div className={`pt-4 border-t border-gray-200 ${isRTL ? "text-right" : "text-left"}`}>
-                <p className="text-sm text-gray-600 mb-2">{t.contact}</p>
+              {/* Status Badge */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                <p className="text-amber-400 font-semibold text-center">Status: Maintenance in progress</p>
+              </div>
+
+              {/* Contact Section */}
+              <div className="pt-4 border-t border-slate-700">
+                <p className="text-slate-400 text-sm mb-2">For urgent issues, contact us at:</p>
                 <a
-                  href={`mailto:${t.email}`}
-                  className="text-teal-600 font-semibold hover:text-teal-700 hover:underline transition-colors"
+                  href="mailto:6301926@gmail.com"
+                  className="text-amber-400 font-semibold hover:text-amber-300 transition-colors text-lg"
                 >
-                  {t.email}
+                  6301926@gmail.com
                 </a>
               </div>
             </div>
+          </div>
+
+          {/* Hebrew Section */}
+          <div
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10"
+            dir="rtl"
+          >
+            <div className="space-y-6">
+              <h1 className="text-3xl md:text-4xl font-bold text-amber-400 text-right">האתר בתחזוקה</h1>
+
+              <div className="space-y-4 text-slate-300 text-right">
+                <p className="text-base md:text-lg leading-relaxed">אנו מבצעים כעת עדכונים לשיפור חווית המשתמש.</p>
+
+                <p className="text-base md:text-lg leading-relaxed">האתר יחזור לפעילות המלאה בקרוב.</p>
+              </div>
+
+              {/* Status Badge */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                <p className="text-amber-400 font-semibold text-center">סטטוס: תחזוקה פעילה</p>
+              </div>
+
+              {/* Contact Section */}
+              <div className="pt-4 border-t border-slate-700">
+                <p className="text-slate-400 text-sm mb-2">לשאלות דחופות, אנא פנו אלינו:</p>
+                <a
+                  href="mailto:6301926@gmail.com"
+                  className="text-amber-400 font-semibold hover:text-amber-300 transition-colors text-lg"
+                >
+                  6301926@gmail.com
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Logo at bottom */}
+        <div className="flex justify-center mt-12">
+          <div className="w-16 h-16 relative opacity-60">
+            <Image src="/images/logo.jpg" alt="Keren Hatzedakah Logo" fill className="object-contain" priority />
           </div>
         </div>
       </div>
