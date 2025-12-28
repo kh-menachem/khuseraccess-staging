@@ -4,18 +4,18 @@ import Image from "next/image"
 export default function MaintenanceLanding() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "#0f172a" }}>
-      <div className="w-full max-w-5xl">
+      <div className="w-full max-w-6xl">
         {/* Warning Triangle Icon */}
-        <div className="flex justify-center mb-12">
+        <div className="flex justify-center mb-16">
           <svg className="w-24 h-24 text-amber-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
             <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
           </svg>
         </div>
 
-        {/* Main Content Container */}
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          {/* English Section */}
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10">
+        {/* Main Content Container - Better Left/Right Alignment */}
+        <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+          {/* English Section - Left Side */}
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10 flex flex-col justify-between h-full">
             <div className="space-y-6">
               <h1 className="text-3xl md:text-4xl font-bold text-amber-400">Site Under Maintenance</h1>
 
@@ -45,9 +45,9 @@ export default function MaintenanceLanding() {
             </div>
           </div>
 
-          {/* Hebrew Section */}
+          {/* Hebrew Section - Right Side */}
           <div
-            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10"
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10 flex flex-col justify-between h-full"
             dir="rtl"
           >
             <div className="space-y-6">
@@ -79,9 +79,15 @@ export default function MaintenanceLanding() {
         </div>
 
         {/* Logo at bottom */}
-        <div className="flex justify-center mt-12">
-          <div className="w-16 h-16 relative opacity-60">
-            <Image src="/images/logo.jpg" alt="Keren Hatzedakah Logo" fill className="object-contain" priority />
+        <div className="flex justify-center mt-16">
+          <div className="w-20 h-20 relative opacity-70 hover:opacity-100 transition-opacity">
+            <Image
+              src="/images/kh-hand-logo.png"
+              alt="Keren Hatzedakah Hand Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
         </div>
       </div>
