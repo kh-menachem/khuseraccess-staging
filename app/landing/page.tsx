@@ -21,7 +21,7 @@ export default function MaintenanceLanding() {
 
               <div className="space-y-4 text-slate-300">
                 <p className="text-base md:text-lg leading-relaxed">
-                  We're currently performing updates to improve your experience.
+                  We're currently performing updates<br>to improve your experience.
                 </p>
 
                 <p className="text-base md:text-lg leading-relaxed">The site will be back online shortly.</p>
@@ -54,7 +54,7 @@ export default function MaintenanceLanding() {
               <h1 className="text-3xl md:text-4xl font-bold text-amber-400 text-right">האתר בתחזוקה</h1>
 
               <div className="space-y-4 text-slate-300 text-right">
-                <p className="text-base md:text-lg leading-relaxed">אנו מבצעים כעת עדכונים לשיפור חווית המשתמש.</p>
+                <p className="text-base md:text-lg leading-relaxed">אנו מבצעים כעת עדכונים <br>לשיפור חווית המשתמש.</p>
 
                 <p className="text-base md:text-lg leading-relaxed">האתר יחזור לפעילות המלאה בקרוב.</p>
               </div>
@@ -70,6 +70,7 @@ export default function MaintenanceLanding() {
                 <a
                   href="mailto:6301926@gmail.com"
                   className="text-amber-400 font-semibold hover:text-amber-300 transition-colors text-lg"
+                  dir="ltr"
                 >
                   6301926@gmail.com
                 </a>
