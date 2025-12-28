@@ -73,7 +73,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [language, setLanguage] = useState<"en" | "he">("he") // Default to Hebrew
   const [isMaintenance, setIsMaintenance] = useState(false)
-  const [checkingMaintenance, setCheckingMaintenance] = useState(true)
   const router = useRouter()
   const { toast } = useToast()
   const { signIn } = useAuth()
@@ -93,8 +92,6 @@ export default function LoginPage() {
         }
       } catch (error) {
         console.error("Error checking maintenance mode:", error)
-      } finally {
-        setCheckingMaintenance(false)
       }
     }
 
@@ -102,14 +99,6 @@ export default function LoginPage() {
   }, [])
 
   if (isMaintenance) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
-      </div>
-    )
-  }
-
-  if (checkingMaintenance) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
