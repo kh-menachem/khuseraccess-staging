@@ -1,60 +1,101 @@
-export const metadata = {
-  title: "Landing",
-  description: "Landing page",
-}
+"use client"
+import Image from "next/image"
 
-export default function LandingPage() {
+export default function MaintenanceLanding() {
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col items-center justify-center px-4 py-8">
-      {/* Warning Triangle Icon */}
-      <div className="mb-12 animate-pulse">
-        <svg width="80" height="80" viewBox="0 0 80 80" className="fill-amber-400">
-          <polygon points="40,10 70,65 10,65" />
-          <circle cx="40" cy="45" r="3" fill="currentColor" className="fill-slate-900" />
-          <rect x="38" y="35" width="4" height="8" fill="currentColor" className="fill-slate-900" />
-        </svg>
-      </div>
-
-      {/* Main Content Container */}
-      <div className="flex flex-col lg:flex-row gap-8 max-w-5xl w-full mb-12">
-        {/* English Box */}
-        <div className="flex-1 bg-slate-800/40 border border-amber-500/30 rounded-lg p-8 backdrop-blur-sm">
-          <h2 className="text-4xl font-bold text-amber-400 mb-6">Site Under Maintenance</h2>
-          <p className="text-slate-300 text-lg mb-4">We're currently performing updates to improve your experience.</p>
-          <p className="text-slate-300 text-lg mb-6">The site will be back online shortly.</p>
-
-          {/* Status Box */}
-          <div className="border border-amber-500/50 rounded-lg p-4 mb-6 bg-slate-900/20">
-            <p className="text-amber-400 font-semibold text-center">Status: Maintenance in progress</p>
-          </div>
-
-          <p className="text-slate-400 text-sm mb-2">For urgent issues, contact us at:</p>
-          <p className="text-amber-400 text-lg font-semibold">6301926@gmail.com</p>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "#0f172a" }}>
+      <div className="w-full max-w-6xl">
+        {/* Warning Triangle Icon */}
+        <div className="flex justify-center mb-16">
+          <svg className="w-24 h-24 text-amber-400 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+          </svg>
         </div>
 
-        {/* Hebrew Box */}
-        <div className="flex-1 bg-slate-800/40 border border-amber-500/30 rounded-lg p-8 backdrop-blur-sm" dir="rtl">
-          <h2 className="text-4xl font-bold text-amber-400 mb-6 text-right">האתר בתחזוקה</h2>
-          <p className="text-slate-300 text-lg mb-4 text-right">אנו מבצעים כעת עדכונים לשיפור חווית המשתמש.</p>
-          <p className="text-slate-300 text-lg mb-6 text-right">האתר יחזור לפעילות המלאה בקרוב.</p>
+        {/* Main Content Container - Better Left/Right Alignment */}
+        <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
+          {/* English Section - Left Side */}
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10 flex flex-col justify-between h-full">
+            <div className="space-y-6">
+              <h1 className="text-3xl md:text-4xl font-bold text-amber-400">Site Under Maintenance</h1>
 
-          {/* Status Box */}
-          <div className="border border-amber-500/50 rounded-lg p-4 mb-6 bg-slate-900/20">
-            <p className="text-amber-400 font-semibold text-center">סטטוס: תחזוקה פעילה</p>
+              <div className="space-y-4 text-slate-300">
+                <p className="text-base md:text-lg leading-relaxed">
+                  We're currently performing updates
+                  <br />
+                  to improve your experience.
+                </p>
+
+                <p className="text-base md:text-lg leading-relaxed">The site will be back online shortly.</p>
+              </div>
+
+              {/* Status Badge */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                <p className="text-amber-400 font-semibold text-center">Status: Maintenance in progress</p>
+              </div>
+
+              {/* Contact Section */}
+              <div className="pt-4 border-t border-slate-700">
+                <p className="text-slate-400 text-sm mb-2">For urgent issues, contact us at:</p>
+                <a
+                  href="mailto:6301926@gmail.com"
+                  className="text-amber-400 font-semibold hover:text-amber-300 transition-colors text-lg"
+                >
+                  6301926@gmail.com
+                </a>
+              </div>
+            </div>
           </div>
 
-          <p className="text-slate-400 text-sm mb-2 text-right">לשאלות דחופות, צור איתנו קשר:</p>
-          <p className="text-amber-400 text-lg font-semibold">6301926@gmail.com</p>
-        </div>
-      </div>
+          {/* Hebrew Section - Right Side */}
+          <div
+            className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-amber-500/20 p-8 md:p-10 flex flex-col justify-between h-full"
+            dir="rtl"
+          >
+            <div className="space-y-6">
+              <h1 className="text-3xl md:text-4xl font-bold text-amber-400 text-right">האתר בתחזוקה</h1>
 
-      {/* Hand Logo */}
-      <div className="mt-auto pt-8">
-        <img
-          src="/images/kh-hand-logo.png"
-          alt="KH Logo"
-          className="h-20 w-20 opacity-80 hover:opacity-100 transition-opacity"
-        />
+              <div className="space-y-4 text-slate-300 text-right">
+                <p className="text-base md:text-lg leading-relaxed">
+                  אנו מבצעים כעת עדכונים <br />
+                  לשיפור חווית המשתמש.
+                </p>
+
+                <p className="text-base md:text-lg leading-relaxed">האתר יחזור לפעילות המלאה בקרוב.</p>
+              </div>
+
+              {/* Status Badge */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                <p className="text-amber-400 font-semibold text-center">סטטוס: תחזוקה פעילה</p>
+              </div>
+
+              {/* Contact Section */}
+              <div className="pt-4 border-t border-slate-700">
+                <p className="text-slate-400 text-sm mb-2">לשאלות דחופות, אנא פנו אלינו:</p>
+                <a
+                  href="mailto:6301926@gmail.com"
+                  className="text-amber-400 font-semibold hover:text-amber-300 transition-colors text-lg"
+                  dir="ltr"
+                >
+                  6301926@gmail.com
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Logo at bottom */}
+        <div className="flex justify-center mt-16">
+          <div className="w-20 h-20 relative opacity-70 hover:opacity-100 transition-opacity">
+            <Image
+              src="/images/kh-hand-logo.png"
+              alt="Keren Hatzedakah Hand Logo"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
       </div>
     </div>
   )
