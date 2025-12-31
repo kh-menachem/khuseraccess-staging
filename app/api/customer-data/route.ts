@@ -910,6 +910,25 @@ export async function POST(request: NextRequest) {
     console.log(`Displaying ${filteredDonations.length} donations (after filtering)`)
     console.log(`Displaying ${filteredMachineRentals.length} machine rentals (after filtering)`)
 
+    const finalDonations = donations
+    let cardknoxUrl = null
+
+    if (finalDonations.length > 0) {
+      // Get customer name and account number from donations
+      const firstDonation = finalDonations[0]
+      if (firstDonation) {
+        // Extract name and account number from the transaction
+        // The cardknox value is stored in cardknoxValue field
+        // Generate the full Cardknox URL with the same format as send-donation-instructions
+        const nameAndAccount = firstDonation.cardknoxValue || ""
+        const accountEmail = userEmail || ""
+
+        if (nameAndAccount) {
+          cardknoxUrl = `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(nameAndAccount)}&xCustom04=${encodeURIComponent(accountEmail)}`
+        }
+      }
+    }
+
     const customerData: CustomerData = {
       id: userId,
       // Full data for total calculations
@@ -919,10 +938,7 @@ export async function POST(request: NextRequest) {
       donations: donations,
       machineRentals: machineRentals,
       linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap((t) => t.details || []),
-      cardknox:
-        donations.length > 0 && donations[0]?.description?.includes("http")
-          ? donations[0].description.split(" - ").pop()
-          : null,
+      cardknox: cardknoxUrl,
       // Filtered data for display
       displayCurrentTransactions: filteredCurrentTransactions,
       displayTransactions2024: filteredTransactions2024,
