@@ -77,6 +77,7 @@ interface Account {
   name: string
   firstName?: string
   lastName?: string
+  FundDisplayName?: string // Add FundDisplayName to account interface
 }
 
 // Translation object
@@ -307,6 +308,7 @@ export default function DashboardPage() {
     language?: "en" | "he"
     isSimulation?: boolean // Added for simulation mode
     simulatedBy?: string // Added for simulation mode
+    FundDisplayName?: string // Added to user state
   } | null>(null)
   const [customerData, setCustomerData] = useState<CustomerData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -492,7 +494,7 @@ export default function DashboardPage() {
       console.log("[v0] Switching to account:", account.userId)
       await logger.info(
         "DASHBOARD_ACCOUNT_SWITCH",
-        `Switching to account: ${account.name}`,
+        `Switching to account: ${account.FundDisplayName || account.name}`, // Use FundDisplayName for logging
         { newAccountId: account.userId, currentUserId: user?.id },
         user?.email,
       )
@@ -505,6 +507,7 @@ export default function DashboardPage() {
         firstName: account.firstName,
         lastName: account.lastName,
         accountNumber: account.accountNumber,
+        FundDisplayName: account.FundDisplayName, // Update user's FundDisplayName when switching accounts
       }
 
       setUser(updatedUser)
@@ -575,13 +578,13 @@ export default function DashboardPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-        FundDisplayName: user.FundDisplayName, // People!AK (authoritative)
-        firstName: user.firstName,
-        lastName: user.lastName,
-        name: user.name, // legacy fallback
-        accountNumber: user.accountNumber || user.id,
-        email: user.email,
-      }),
+          FundDisplayName: user.FundDisplayName, // People!AK (authoritative)
+          firstName: user.firstName,
+          lastName: user.lastName,
+          name: user.name, // legacy fallback
+          accountNumber: user.accountNumber || user.id,
+          email: user.email,
+        }),
       })
 
       if (!response.ok) {
@@ -1014,10 +1017,10 @@ export default function DashboardPage() {
   }
 
   const handleOpenCardknox = () => {
-    const link = getCardknoxLink()
-    if (link) {
-      window.open(link, "_blank")
-    }
+    const cardknoxURL = `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
+      `${user?.FundDisplayName || user?.firstName || ""} ${user?.lastName || ""} / ${user?.accountNumber || ""}`.trim(),
+    )}&xCustom04=${encodeURIComponent(user?.email || "")}`
+    window.open(cardknoxURL, "_blank")
   }
 
   return (
@@ -1102,7 +1105,8 @@ export default function DashboardPage() {
                 <div className="text-sm font-medium text-white min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate">
-                      {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name}
+                      {user.FundDisplayName ||
+                        (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name)}
                     </span>
                     {user.accounts && user.accounts.length > 1 && (
                       <DropdownMenu>
@@ -1121,7 +1125,7 @@ export default function DashboardPage() {
                                 account.userId === user.id ? "bg-teal-50" : ""
                               }`}
                             >
-                              <div className="font-medium">{account.name}</div>
+                              <div className="font-medium">{account.FundDisplayName || account.name}</div>
                               <div className="text-sm text-gray-500">Account #{account.accountNumber}</div>
                             </DropdownMenuItem>
                           ))}

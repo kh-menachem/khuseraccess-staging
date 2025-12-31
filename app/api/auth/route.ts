@@ -3,6 +3,7 @@ import { google } from "googleapis"
 import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
+import crypto from "crypto"
 
 export const maxDuration = 30
 
@@ -391,6 +392,7 @@ export async function POST(request: NextRequest) {
             email: email,
             accounts: accounts,
             hasMultipleAccounts: accounts.length > 1,
+            FundDisplayName: accounts[0]?.FundDisplayName || "", // Use fund display name for primary account
           },
         },
         {
