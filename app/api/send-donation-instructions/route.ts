@@ -91,7 +91,9 @@ export async function POST(req: NextRequest) {
           <strong>Bank Wire Transfer - העברה בנקאית</strong><br>
           Congregation Tiferes Yaakov<br>
           Account #: 4392635765<br>
-          Fedwire #: 031201360<br>
+          ACH Routing #: 031201360<br>
+          ABA Wire #: 031201360<br>
+          TD Bank<br>
           Memo: ${name} / ${accountNumber}
         </li>
 
