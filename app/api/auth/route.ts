@@ -251,7 +251,6 @@ export async function POST(request: NextRequest) {
 
       const FundDisplayNameIndex = 36 // AK (0-based)
 
-
       console.log("Name column index:", nameIndex)
 
       if (userAccessIndex === -1) {
@@ -374,13 +373,14 @@ export async function POST(request: NextRequest) {
         }
 
         return {
-        userId,
-        accountNumber,
-        name: fullName,                // display name
-        firstName,
-        lastName,
-        FundDisplayName,             // 👈 THIS IS THE KEY
-      }
+          userId,
+          accountNumber,
+          name: fullName, // display name
+          firstName,
+          lastName,
+          FundDisplayName, // 👈 THIS IS THE KEY
+        }
+      })
 
       console.log("Processed accounts:", accounts)
 
