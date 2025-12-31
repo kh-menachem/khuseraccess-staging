@@ -364,13 +364,9 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       }
     }
     // Prepare description (notes) and optionally include cardknox value
-    let description = notesIndex !== -1 ? row[notesIndex] || "" : ""
+    const description = notesIndex !== -1 ? row[notesIndex] || "" : ""
     const cardknoxValue = cardknoxIndex !== -1 ? row[cardknoxIndex]?.toString().trim() : ""
 
-    // Append Cardknox value to description if available
-    if (cardknoxValue) {
-      description = `${description ? description + " - " : ""}${cardknoxValue}`
-    }
     return {
       id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
@@ -380,6 +376,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       net: netAmount,
       type: transactionType || "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
+      cardknoxValue,
     }
   })
 }
@@ -922,6 +919,10 @@ export async function POST(request: NextRequest) {
       donations: donations,
       machineRentals: machineRentals,
       linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap((t) => t.details || []),
+      cardknox:
+        donations.length > 0 && donations[0]?.description?.includes("http")
+          ? donations[0].description.split(" - ").pop()
+          : null,
       // Filtered data for display
       displayCurrentTransactions: filteredCurrentTransactions,
       displayTransactions2024: filteredTransactions2024,
