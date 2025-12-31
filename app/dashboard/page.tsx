@@ -19,6 +19,7 @@ import {
   Mail,
   Send,
   Eye,
+  ExternalLink,
 } from "lucide-react"
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
@@ -1144,6 +1145,17 @@ export default function DashboardPage() {
                   </>
                 )}
               </Button>
+              {customerData?.cardknox && (
+                <Button
+                  onClick={() => {
+                    window.open(customerData.cardknox, "_blank")
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white min-w-[180px]"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  {t.cardknox}
+                </Button>
+              )}
             </div>
           </div>
 
