@@ -47,10 +47,9 @@ export async function POST(request: Request) {
     const sheets = google.sheets({ version: "v4", auth })
     const spreadsheetId = process.env.SPREADSHEET_ID
 
-    // Get People sheet data - columns B (Last Name), C (First Name), and U (Unique Number/Account Number)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "People!A:AN", // full columns so we never get trimmed rows
+      range: "People!A:AK",
     })
 
     const data = response.data.values || []
@@ -65,15 +64,17 @@ export async function POST(request: Request) {
 
     const headerRow = data[0]
 
-    // Dynamically get index for "Unique Number", "First Name", and "Last Name"
+    // Dynamically get index for "Unique Number", "First Name", "Last Name", and "FundDisplayName"
     const accountNumberIndex = headerRow.findIndex((h: string) => h?.trim() === "Unique Number")
     const firstNameIndex = headerRow.findIndex((h: string) => h?.trim() === "First Name")
     const lastNameIndex = headerRow.findIndex((h: string) => h?.trim() === "Last Name")
+    const fundDisplayNameIndex = 36 // AK column (0-based)
 
     console.log("Column indexes:", {
       accountNumberIndex,
       firstNameIndex,
       lastNameIndex,
+      fundDisplayNameIndex,
     })
 
     // Process accounts data
@@ -85,12 +86,14 @@ export async function POST(request: Request) {
       const accountNumber = row[accountNumberIndex]?.toString().trim() || ""
       const firstName = row[firstNameIndex]?.toString().trim() || ""
       const lastName = row[lastNameIndex]?.toString().trim() || ""
+      const fundDisplayName = row[fundDisplayNameIndex]?.toString().trim() || ""
 
       // Only include rows that have an account number
       if (accountNumber) {
+        const displayName = fundDisplayName || `${firstName} ${lastName}`.trim()
         accounts.push({
           value: accountNumber,
-          label: `${accountNumber} - ${firstName} ${lastName}`.trim(),
+          label: `${accountNumber} - ${displayName}`,
         })
       }
     }
