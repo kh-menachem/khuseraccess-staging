@@ -263,6 +263,26 @@ const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "a
   return false
 }
 
+const getCardknoxLink = () => {
+  const storedUser = localStorage.getItem("user")
+  if (!storedUser) return null
+
+  try {
+    const user = JSON.parse(storedUser)
+    const name = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
+    const accountNumber = user.accountNumber || user.id
+    const email = user.email
+
+    return `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
+      `${name} / ${accountNumber}`,
+    )}&xCustom04=${encodeURIComponent(email)}`
+  } catch (error) {
+    console.error("Error getting Cardknox link:", error)
+    logger.error("DASHBOARD_CARDKNOX_LINK_ERROR", "Error constructing Cardknox URL", { error: String(error) })
+    return null
+  }
+}
+
 // Use DashboardPage instead of Dashboard as per the updates
 export default function DashboardPage() {
   const [user, setUser] = useState<{
@@ -979,6 +999,13 @@ export default function DashboardPage() {
     }
   }
 
+  const handleOpenCardknox = () => {
+    const link = getCardknoxLink()
+    if (link) {
+      window.open(link, "_blank")
+    }
+  }
+
   return (
     // Changed background and direction based on language
     <div
@@ -1146,15 +1173,18 @@ export default function DashboardPage() {
                   </>
                 )}
               </Button>
-              {customerData?.cardknox && (
+              {user && (
                 <Button
-                  onClick={() => {
-                    window.open(customerData.cardknox, "_blank")
+                  onClick={handleOpenCardknox}
+                  variant="outline"
+                  className="ml-2 border-white text-white hover:text-black transition-colors min-w-[180px] h-10 bg-transparent"
+                  style={{
+                    background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
+                    borderColor: "#FFD700",
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white min-w-[180px]"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  {t.cardknox}
+                  {t.cardknox || "Open Cardknox"}
                 </Button>
               )}
             </div>
