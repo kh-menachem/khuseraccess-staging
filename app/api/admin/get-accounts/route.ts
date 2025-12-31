@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
     const headerRow = data[0]
 
-    // Dynamically get index for "Unique Number", "First Name", "Last Name", and "FundDisplayName"
+    // Dynamically get index for "Unique Number", "First Name", "Last Name", and "fundDisplayName"
     const accountNumberIndex = headerRow.findIndex((h: string) => h?.trim() === "Unique Number")
     const firstNameIndex = headerRow.findIndex((h: string) => h?.trim() === "First Name")
     const lastNameIndex = headerRow.findIndex((h: string) => h?.trim() === "Last Name")
