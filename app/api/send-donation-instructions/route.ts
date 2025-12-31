@@ -59,9 +59,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Create email content
-    const subject = `Donation Instructions - ${name} / ${accountNumber}`
+    const subject = `Donation Instructions - ${resolvedName} / ${accountNumber}`
     const donationURL = `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
-      `${name} / ${accountNumber}`,
+      `${resolvedName} / ${accountNumber}`,
     )}&xCustom04=${encodeURIComponent(email)}`
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(donationURL)}`
@@ -77,11 +77,11 @@ export async function POST(req: NextRequest) {
       <div style="text-align: center; margin-bottom: 30px;">
         <img src="/images/logo-20transparent-20backgrond-page-0001.jpeg" alt="Keren Hatzedakah Logo" width="130" style="margin-bottom: 10px;" />
         <h2 style="color: #000; margin: 0; text-transform: uppercase;">KEREN HATZEDAKAH</h2>
-        <p style="color: #000; font-size: 16px; font-weight: bold;">Donation Instructions for Fund: ${accountNumber} - ${name}</p>
+        <p style="color: #000; font-size: 16px; font-weight: bold;">Donation Instructions for Fund: ${accountNumber} - ${resolvedName}</p>
       </div>
 
       <p style="color: red; font-size: 14px; font-weight: bold; margin-top: -10px; margin-bottom: 30px; text-align: center;">
-        IMPORTANT: Please include the note "<em>In honor of ${name} / ${accountNumber}</em>" with your donation. Without this, we cannot guarantee it will be credited to the correct fund.
+        IMPORTANT: Please include the note "<em>In honor of ${resolvedName} / ${accountNumber}</em>" with your donation. Without this, we cannot guarantee it will be credited to the correct fund.
       </p>
 
       <ol style="padding-left: 20px; font-size: 14px; line-height: 2;">
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
           ACH Routing #: 031201360<br>
           ABA Wire #: 031101266<br>
           TD Bank<br>
-          Memo: ${name} / ${accountNumber}
+          Memo: ${resolvedName} / ${accountNumber}
         </li>
 
         <li style="margin-bottom: 25px;">
@@ -203,16 +203,16 @@ export async function POST(req: NextRequest) {
       subject: subject,
       html: html,
       text: `
-    Donation Instructions for ${name} (Account: ${accountNumber})
+    Donation Instructions for ${resolvedName} (Account: ${accountNumber})
 
     Here's How To Donate:
 
     1. Chase Quickpay / Zelle: kerenhatzedaka@gmail.com
-      You MUST note it's in honor of ${name} / ${accountNumber}
+      You MUST note it's in honor of ${resolvedName} / ${accountNumber}
 
     2. Checks: Written out to Congregation Tiferes Yaakov
       422 Monmouth Ave, Lakewood NJ 08701
-      You MUST note it's in honor of ${name} / ${accountNumber}
+      You MUST note it's in honor of ${resolvedName} / ${accountNumber}
 
     3. Credit Card: ${donationURL}
 

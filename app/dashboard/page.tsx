@@ -575,10 +575,13 @@ export default function DashboardPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name,
-          accountNumber: user.accountNumber || user.id,
-          email: user.email,
-        }),
+        FundDisplayName: user.FundDisplayName, // People!AK (authoritative)
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: user.name, // legacy fallback
+        accountNumber: user.accountNumber || user.id,
+        email: user.email,
+      }),
       })
 
       if (!response.ok) {
