@@ -1159,7 +1159,7 @@ export default function DashboardPage() {
               <Button
                 onClick={() => setShowEmailConfirmDialog(true)}
                 disabled={isSendingEmail}
-                className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
+                className="bg-green-600 hover:bg-green-700 text-white min-w-[200px] h-10"
               >
                 {isSendingEmail ? (
                   <>
@@ -1173,15 +1173,11 @@ export default function DashboardPage() {
                   </>
                 )}
               </Button>
+
               {user && (
                 <Button
                   onClick={handleOpenCardknox}
-                  variant="outline"
-                  className="ml-2 border-white text-white hover:text-black transition-colors min-w-[180px] h-10 bg-transparent"
-                  style={{
-                    background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
-                    borderColor: "#FFD700",
-                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white min-w-[200px] h-10"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   {t.cardknox || "Open Cardknox"}
