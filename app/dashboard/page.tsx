@@ -395,6 +395,7 @@ export default function DashboardPage() {
           }
 
           console.log("[v0] Successfully loaded customer data")
+          console.log("[v0] Customer data cardknox:", data.cardknox)
           await logger.info(
             "DASHBOARD_FETCH_SUCCESS",
             `Customer data loaded successfully for user: ${parsedUser.email}`,
