@@ -263,13 +263,13 @@ const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "a
   return false
 }
 const getDisplayName = (user: {
-  fundDisplayName?: string
+  FundDisplayName?: string
   firstName?: string
   lastName?: string
   name?: string
 }) => {
   return (
-    user.fundDisplayName ||
+    user.FundDisplayName ||
     (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name) ||
     "Unknown"
   )
