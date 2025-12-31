@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
           Congregation Tiferes Yaakov<br>
           Account #: 4392635765<br>
           ACH Routing #: 031201360<br>
-          ABA Wire #: 031201360<br>
+          ABA Wire #: 031101266<br>
           TD Bank<br>
           Memo: ${name} / ${accountNumber}
         </li>
