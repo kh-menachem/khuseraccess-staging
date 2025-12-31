@@ -271,7 +271,7 @@ const getCardknoxLink = () => {
     const user = JSON.parse(storedUser)
     const name = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
     const accountNumber = user.accountNumber || user.id
-    const email = user.email
+    const email = user.email || ""
 
     return `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
       `${name} / ${accountNumber}`,
