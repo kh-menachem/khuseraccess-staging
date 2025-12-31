@@ -262,14 +262,25 @@ const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "a
 
   return false
 }
-
+const getDisplayName = (user: {
+  fundDisplayName?: string
+  firstName?: string
+  lastName?: string
+  name?: string
+}) => {
+  return (
+    user.fundDisplayName ||
+    (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name) ||
+    "Unknown"
+  )
+}
 const getCardknoxLink = () => {
   const storedUser = localStorage.getItem("user")
   if (!storedUser) return null
 
   try {
     const user = JSON.parse(storedUser)
-    const name = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
+    const name = getDisplayName(user)
     const accountNumber = user.accountNumber || user.id
     const email = user.email || ""
 

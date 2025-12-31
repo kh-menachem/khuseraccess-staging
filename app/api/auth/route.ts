@@ -249,6 +249,9 @@ export async function POST(request: NextRequest) {
           header?.toLowerCase().trim() === "fullname",
       )
 
+      const FundDisplayNameIndex = 36 // AK (0-based)
+
+
       console.log("Name column index:", nameIndex)
 
       if (userAccessIndex === -1) {
@@ -337,10 +340,18 @@ export async function POST(request: NextRequest) {
           accountNumber = userId
         }
 
-        // Get first and last name, with fallbacks
+        let FundDisplayName = ""
+
+        if (userRow[FundDisplayNameIndex]) {
+          FundDisplayName = userRow[FundDisplayNameIndex].trim()
+        }
+
+        // 1️⃣ People!AK override
+        let fullName = ""
+
+        // First + Last (still needed as fallback)
         let firstName = ""
         let lastName = ""
-        let fullName = ""
 
         if (firstNameIndex !== -1 && userRow[firstNameIndex]) {
           firstName = userRow[firstNameIndex].trim()
@@ -350,29 +361,26 @@ export async function POST(request: NextRequest) {
           lastName = userRow[lastNameIndex].trim()
         }
 
-        // If we have both first and last name, use them
-        if (firstName && lastName) {
+        if (FundDisplayName) {
+          fullName = FundDisplayName
+        } else if (firstName && lastName) {
           fullName = `${firstName} ${lastName}`
-        } else if (firstName) {
-          fullName = firstName
-        } else if (lastName) {
-          fullName = lastName
+        } else if (firstName || lastName) {
+          fullName = firstName || lastName
         } else if (nameIndex !== -1 && userRow[nameIndex]) {
-          // Fallback to full name column
           fullName = userRow[nameIndex].trim()
         } else {
-          // Final fallback to email username
           fullName = email.split("@")[0]
         }
 
         return {
-          userId: userId,
-          accountNumber: accountNumber,
-          name: fullName,
-          firstName: firstName,
-          lastName: lastName,
-        }
-      })
+        userId,
+        accountNumber,
+        name: fullName,                // display name
+        firstName,
+        lastName,
+        FundDisplayName,             // 👈 THIS IS THE KEY
+      }
 
       console.log("Processed accounts:", accounts)
 

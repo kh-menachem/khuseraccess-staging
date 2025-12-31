@@ -4,12 +4,30 @@ import nodemailer from "nodemailer"
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, accountNumber, email } = await req.json()
+    const {
+      fundDisplayName,
+      firstName,
+      lastName,
+      name,
+      accountNumber,
+      email,
+    } = await req.json()
 
-    console.log("📧 Email request received:", { name, accountNumber, email })
+    const resolvedName =
+      fundDisplayName ||
+      (firstName && lastName ? `${firstName} ${lastName}` : name)
 
-    if (!name || !accountNumber || !email) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
+    console.log("📧 Email request received:", {
+      resolvedName,
+      accountNumber,
+      email,
+    })
+
+    if (!resolvedName || !accountNumber || !email) {
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      )
     }
 
     // Validate environment variables
