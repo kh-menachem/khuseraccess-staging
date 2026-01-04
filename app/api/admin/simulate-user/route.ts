@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     // Fetch account details from People sheet
     const peopleResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "People!A:AK", // Extend range to include AK (FundDisplayName)
+      range: "People!A:AO",
     })
 
     const peopleRows = peopleResponse.data.values || []
@@ -130,22 +130,15 @@ export async function POST(request: NextRequest) {
     const firstNameIndex = headers.findIndex((h) => h === "First Name")
     const lastNameIndex = headers.findIndex((h) => h === "Last Name")
     const userAccessIndex = headers.findIndex((h) => h === "User Access")
-    const fundDisplayNameIndex = 36 // AK column
 
     const uniqueId = accountRow[uniqueIdIndex]?.toString().trim() || accountNumber
-
-    const fundDisplayName = accountRow[fundDisplayNameIndex]?.toString().trim() || ""
-    const firstName = accountRow[firstNameIndex]?.toString().trim() || ""
-    const lastName = accountRow[lastNameIndex]?.toString().trim() || ""
-    const displayName = fundDisplayName || `${firstName} ${lastName}`.trim()
 
     const simulatedUser = {
       id: uniqueId, // This is the UNIQUEID used for transaction matching
       accountNumber: accountNumber, // This is the Unique Number for display
-      firstName: firstName,
-      lastName: lastName,
-      FundDisplayName: fundDisplayName, // Add FundDisplayName to simulated user
-      name: displayName, // Use FundDisplayName-aware name
+      firstName: accountRow[firstNameIndex] || "",
+      lastName: accountRow[lastNameIndex] || "",
+      name: `${accountRow[firstNameIndex] || ""} ${accountRow[lastNameIndex] || ""}`.trim(),
       email: accountRow[userAccessIndex] || adminEmail,
       isSimulation: true,
       simulatedBy: adminEmail,

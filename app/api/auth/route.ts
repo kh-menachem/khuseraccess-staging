@@ -3,7 +3,6 @@ import { google } from "googleapis"
 import { writeFileSync } from "fs"
 import { join } from "path"
 import * as os from "os"
-import crypto from "crypto"
 
 export const maxDuration = 30
 
@@ -250,8 +249,6 @@ export async function POST(request: NextRequest) {
           header?.toLowerCase().trim() === "fullname",
       )
 
-      const FundDisplayNameIndex = 36 // AK (0-based)
-
       console.log("Name column index:", nameIndex)
 
       if (userAccessIndex === -1) {
@@ -340,18 +337,10 @@ export async function POST(request: NextRequest) {
           accountNumber = userId
         }
 
-        let FundDisplayName = ""
-
-        if (userRow[FundDisplayNameIndex]) {
-          FundDisplayName = userRow[FundDisplayNameIndex].trim()
-        }
-
-        // 1️⃣ People!AK override
-        let fullName = ""
-
-        // First + Last (still needed as fallback)
+        // Get first and last name, with fallbacks
         let firstName = ""
         let lastName = ""
+        let fullName = ""
 
         if (firstNameIndex !== -1 && userRow[firstNameIndex]) {
           firstName = userRow[firstNameIndex].trim()
@@ -361,25 +350,27 @@ export async function POST(request: NextRequest) {
           lastName = userRow[lastNameIndex].trim()
         }
 
-        if (FundDisplayName) {
-          fullName = FundDisplayName
-        } else if (firstName && lastName) {
+        // If we have both first and last name, use them
+        if (firstName && lastName) {
           fullName = `${firstName} ${lastName}`
-        } else if (firstName || lastName) {
-          fullName = firstName || lastName
+        } else if (firstName) {
+          fullName = firstName
+        } else if (lastName) {
+          fullName = lastName
         } else if (nameIndex !== -1 && userRow[nameIndex]) {
+          // Fallback to full name column
           fullName = userRow[nameIndex].trim()
         } else {
+          // Final fallback to email username
           fullName = email.split("@")[0]
         }
 
         return {
-          userId,
-          accountNumber,
-          name: fullName, // display name
-          firstName,
-          lastName,
-          FundDisplayName, // 👈 THIS IS THE KEY
+          userId: userId,
+          accountNumber: accountNumber,
+          name: fullName,
+          firstName: firstName,
+          lastName: lastName,
         }
       })
 
@@ -392,7 +383,6 @@ export async function POST(request: NextRequest) {
             email: email,
             accounts: accounts,
             hasMultipleAccounts: accounts.length > 1,
-            FundDisplayName: accounts[0]?.FundDisplayName || "", // Use fund display name for primary account
           },
         },
         {

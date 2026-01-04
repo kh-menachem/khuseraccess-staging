@@ -77,7 +77,6 @@ interface Account {
   name: string
   firstName?: string
   lastName?: string
-  fundDisplayName?: string // Add fundDisplayName to account interface
 }
 
 // Translation object
@@ -108,7 +107,7 @@ const translations = {
     amount: "Amount",
     net: "Net",
     status: "Status",
-    cardknox: "Donation Link",
+    cardknox: "Cardknox",
     noTransactionsFound: "No transactions found matching your filters",
     showingRecords: "Showing",
     ofRecords: "of",
@@ -187,7 +186,7 @@ const translations = {
     amount: "סכום",
     net: "נטו",
     status: "מצב",
-    cardknox: "קישור תרומה",
+    cardknox: "Cardknox",
     noTransactionsFound: "לא נמצאו עסקאות התואמות למסננים שלך",
     showingRecords: "מציג",
     ofRecords: "מתוך",
@@ -263,27 +262,16 @@ const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "a
 
   return false
 }
-const getDisplayName = (user: {
-  fundDisplayName?: string
-  firstName?: string
-  lastName?: string
-  name?: string
-}) => {
-  return (
-    user.fundDisplayName ||
-    (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name) ||
-    "Unknown"
-  )
-}
+
 const getCardknoxLink = () => {
   const storedUser = localStorage.getItem("user")
   if (!storedUser) return null
 
   try {
     const user = JSON.parse(storedUser)
-    const name = getDisplayName(user)
+    const name = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
     const accountNumber = user.accountNumber || user.id
-    const email = user.email || ""
+    const email = user.email
 
     return `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
       `${name} / ${accountNumber}`,
@@ -308,7 +296,6 @@ export default function DashboardPage() {
     language?: "en" | "he"
     isSimulation?: boolean // Added for simulation mode
     simulatedBy?: string // Added for simulation mode
-    fundDisplayName?: string // Added to user state
   } | null>(null)
   const [customerData, setCustomerData] = useState<CustomerData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -494,7 +481,7 @@ export default function DashboardPage() {
       console.log("[v0] Switching to account:", account.userId)
       await logger.info(
         "DASHBOARD_ACCOUNT_SWITCH",
-        `Switching to account: ${account.fundDisplayName || account.name}`, // Use fundDisplayName for logging
+        `Switching to account: ${account.name}`,
         { newAccountId: account.userId, currentUserId: user?.id },
         user?.email,
       )
@@ -507,7 +494,6 @@ export default function DashboardPage() {
         firstName: account.firstName,
         lastName: account.lastName,
         accountNumber: account.accountNumber,
-        fundDisplayName: account.fundDisplayName, // Update user's fundDisplayName when switching accounts
       }
 
       setUser(updatedUser)
@@ -578,10 +564,7 @@ export default function DashboardPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          fundDisplayName: user.fundDisplayName, // People!AK (authoritative)
-          firstName: user.firstName,
-          lastName: user.lastName,
-          name: user.name, // legacy fallback
+          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name,
           accountNumber: user.accountNumber || user.id,
           email: user.email,
         }),
@@ -1017,9 +1000,10 @@ export default function DashboardPage() {
   }
 
   const handleOpenCardknox = () => {
-    const url = getCardknoxLink()
-    if (!url) return
-    window.open(url, "_blank")
+    const link = getCardknoxLink()
+    if (link) {
+      window.open(link, "_blank")
+    }
   }
 
   return (
@@ -1096,22 +1080,15 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <Avatar className="h-8 w-8 border-2 border-white">
                   <AvatarFallback className="bg-white text-teal-600 font-semibold">
-                    {user.fundDisplayName
-                      ? user.fundDisplayName
-                          .split(" ")
-                          .slice(0, 2)
-                          .map((word) => word.charAt(0).toUpperCase())
-                          .join("")
-                      : user.firstName && user.lastName
-                        ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-                        : user.name.charAt(0)}
+                    {user.firstName && user.lastName
+                      ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
+                      : user.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-sm font-medium text-white min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="truncate">
-                      {user.fundDisplayName ||
-                        (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name)}
+                      {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name}
                     </span>
                     {user.accounts && user.accounts.length > 1 && (
                       <DropdownMenu>
@@ -1130,7 +1107,7 @@ export default function DashboardPage() {
                                 account.userId === user.id ? "bg-teal-50" : ""
                               }`}
                             >
-                              <div className="font-medium">{account.fundDisplayName || account.name}</div>
+                              <div className="font-medium">{account.name}</div>
                               <div className="text-sm text-gray-500">Account #{account.accountNumber}</div>
                             </DropdownMenuItem>
                           ))}
@@ -1172,7 +1149,8 @@ export default function DashboardPage() {
             >
               <h2 className="text-3xl font-bold tracking-tight text-gray-800">{t.dashboard}</h2>
               <p className="text-gray-600">
-                {t.welcomeBack}, {getDisplayName(user)}({user?.email})
+                {t.welcomeBack}, {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.name}{" "}
+                ({user?.email})
               </p>
             </div>
 
@@ -1181,7 +1159,7 @@ export default function DashboardPage() {
               <Button
                 onClick={() => setShowEmailConfirmDialog(true)}
                 disabled={isSendingEmail}
-                className="bg-green-600 hover:bg-green-700 text-white min-w-[200px] h-10"
+                className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
               >
                 {isSendingEmail ? (
                   <>
@@ -1195,11 +1173,15 @@ export default function DashboardPage() {
                   </>
                 )}
               </Button>
-
               {user && (
                 <Button
                   onClick={handleOpenCardknox}
-                  className="bg-green-600 hover:bg-green-700 text-white min-w-[200px] h-10"
+                  variant="outline"
+                  className="ml-2 border-white text-white hover:text-black transition-colors min-w-[180px] h-10 bg-transparent"
+                  style={{
+                    background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
+                    borderColor: "#FFD700",
+                  }}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   {t.cardknox || "Open Cardknox"}
