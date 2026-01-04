@@ -107,7 +107,7 @@ const translations = {
     amount: "Amount",
     net: "Net",
     status: "Status",
-    cardknox: "Cardknox",
+    donationLink: "Donation Link",
     noTransactionsFound: "No transactions found matching your filters",
     showingRecords: "Showing",
     ofRecords: "of",
@@ -186,7 +186,7 @@ const translations = {
     amount: "סכום",
     net: "נטו",
     status: "מצב",
-    cardknox: "Cardknox",
+    donationLink: "קישור תרומה",
     noTransactionsFound: "לא נמצאו עסקאות התואמות למסננים שלך",
     showingRecords: "מציג",
     ofRecords: "מתוך",
@@ -1176,15 +1176,10 @@ export default function DashboardPage() {
               {user && (
                 <Button
                   onClick={handleOpenCardknox}
-                  variant="outline"
-                  className="ml-2 border-white text-white hover:text-black transition-colors min-w-[180px] h-10 bg-transparent"
-                  style={{
-                    background: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
-                    borderColor: "#FFD700",
-                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white min-w-[180px]"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  {t.cardknox || "Open Cardknox"}
+                  {t.donationLink}
                 </Button>
               )}
             </div>
