@@ -1096,9 +1096,15 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <Avatar className="h-8 w-8 border-2 border-white">
                   <AvatarFallback className="bg-white text-teal-600 font-semibold">
-                    {user.firstName && user.lastName
-                      ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-                      : user.name.charAt(0)}
+                    {user.fundDisplayName
+                      ? user.fundDisplayName
+                          .split(" ")
+                          .slice(0, 2)
+                          .map((word) => word.charAt(0).toUpperCase())
+                          .join("")
+                      : user.firstName && user.lastName
+                        ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
+                        : user.name.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-sm font-medium text-white min-w-0">
@@ -1166,8 +1172,7 @@ export default function DashboardPage() {
             >
               <h2 className="text-3xl font-bold tracking-tight text-gray-800">{t.dashboard}</h2>
               <p className="text-gray-600">
-                {t.welcomeBack}, {getDisplayName(user)}
-                ({user?.email})
+                {t.welcomeBack}, {getDisplayName(user)}({user?.email})
               </p>
             </div>
 
