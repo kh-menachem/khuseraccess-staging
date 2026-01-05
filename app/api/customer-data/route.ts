@@ -5,6 +5,7 @@ import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 import { writeLogToSheet } from "@/lib/server-logger"
+import { crypto } from "crypto"
 
 const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
 
@@ -18,7 +19,7 @@ interface TransactionLimit {
   limitValue: string
 }
 
-function getTransactionLimit(): TransactionLimit {
+async function getTransactionLimit(): Promise<TransactionLimit> {
   try {
     if (existsSync(TRANSACTION_LIMIT_FILE)) {
       const data = readFileSync(TRANSACTION_LIMIT_FILE, "utf-8")
@@ -364,9 +365,13 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       }
     }
     // Prepare description (notes) and optionally include cardknox value
-    const description = notesIndex !== -1 ? row[notesIndex] || "" : ""
+    let description = notesIndex !== -1 ? row[notesIndex] || "" : ""
     const cardknoxValue = cardknoxIndex !== -1 ? row[cardknoxIndex]?.toString().trim() : ""
 
+    // Append Cardknox value to description if available
+    if (cardknoxValue) {
+      description = `${description ? description + " - " : ""}${cardknoxValue}`
+    }
     return {
       id: referenceIndex !== -1 ? row[referenceIndex] || `TX-${index}` : `TX-${index}`,
       date: dateIndex !== -1 ? row[dateIndex] || "" : "",
@@ -376,7 +381,6 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       net: netAmount,
       type: transactionType || "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
-      cardknoxValue,
     }
   })
 }
@@ -708,8 +712,11 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
   return Array.from(grouped.values())
 }
 
+export const maxDuration = 60 // Allow up to 60 seconds for Vercel Pro
+
 export async function POST(request: NextRequest) {
-  const requestId = request.headers.get("x-request-id") || "unknown"
+  const requestId = request.headers.get("x-request-id") || crypto.randomUUID()
+  const startTime = Date.now()
 
   try {
     let body
@@ -723,10 +730,19 @@ export async function POST(request: NextRequest) {
         message: "Failed to parse request body",
         metadata: JSON.stringify({ error: String(parseError) }),
         requestId,
-      })
+      }).catch(console.error)
 
-      console.error("[v0] Failed to parse request body:", parseError)
-      return NextResponse.json({ error: "Invalid request format" }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Invalid request format",
+          code: "PARSE_ERROR",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
     }
 
     const { userEmail, userId, language } = body
@@ -744,29 +760,43 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
-    const transactionLimit = getTransactionLimit()
-    const cutoffDate = getCutoffDate(transactionLimit)
-
-    if (cutoffDate) {
-      console.log(`[v0] Transaction limit enabled: ${transactionLimit.limitType} = ${transactionLimit.limitValue}`)
-      console.log(`[v0] Cutoff date: ${cutoffDate.toISOString()}`)
-    }
-
-    if (!userEmail && !userId) {
-      return NextResponse.json({ error: "User email or ID is required" }, { status: 400 })
-    }
-
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
     const spreadsheetId = process.env.SPREADSHEET_ID
 
     if (!credentials) {
       console.error("[v0] Missing GOOGLE_APPLICATION_CREDENTIALS_JSON")
-      return NextResponse.json({ error: "Server configuration error: Missing credentials" }, { status: 500 })
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "ERROR",
+        event: "CONFIG_ERROR",
+        message: "Missing Google credentials",
+        requestId,
+      }).catch(console.error)
+
+      return NextResponse.json(
+        {
+          error: "Server configuration error",
+          code: "MISSING_CREDENTIALS",
+        },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
     }
 
     if (!spreadsheetId) {
       console.error("[v0] Missing SPREADSHEET_ID")
-      return NextResponse.json({ error: "Server configuration error: Missing spreadsheet ID" }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: "Server configuration error",
+          code: "MISSING_SPREADSHEET_ID",
+        },
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
     }
 
     const tempFilePath = join(os.tmpdir(), "google-credentials.json")
@@ -779,21 +809,32 @@ export async function POST(request: NextRequest) {
 
     const sheets = google.sheets({ version: "v4", auth })
 
-    console.log("Fetching Percentages table first")
-    let percentagesMap = new Map<string, number>()
+    console.log("Fetching Percentages table")
+    let percentagesMap: Map<string, number> = new Map()
 
     try {
-      const percentagesResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Percentages!A:D",
-      })
+      const percentagesResponse = (await Promise.race([
+        sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "Percentages!A:D",
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Percentages fetch timeout")), 15000)),
+      ])) as any
 
       const percentagesData = percentagesResponse.data.values || []
       percentagesMap = processPercentages(percentagesData)
-      console.log("Percentages map:", Object.fromEntries(percentagesMap))
+      console.log("Percentages map loaded:", percentagesMap.size, "entries")
     } catch (error) {
       console.error("Error fetching percentages data:", error)
-      console.log("Will proceed with hardcoded percentage adjustments")
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "WARN",
+        event: "PERCENTAGES_FETCH_ERROR",
+        message: "Failed to fetch percentages, using defaults",
+        metadata: JSON.stringify({ error: String(error) }),
+        requestId,
+      }).catch(console.error)
+
       percentagesMap = getHardcodedPercentages()
     }
 
@@ -801,93 +842,115 @@ export async function POST(request: NextRequest) {
     let machinesMap = new Map<string, string>()
 
     try {
-      const machinesResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Machines!A:G",
-      })
+      const machinesResponse = (await Promise.race([
+        sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "Machines!A:G",
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Machines fetch timeout")), 15000)),
+      ])) as any
 
       const machinesData = machinesResponse.data.values || []
       machinesMap = processMachines(machinesData)
-      console.log("Machines map:", Object.fromEntries(machinesMap))
+      console.log("Machines map loaded:", machinesMap.size, "entries")
     } catch (error) {
       console.error("Error fetching machines data:", error)
-      console.log("Will proceed without machine ID mapping")
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "WARN",
+        event: "MACHINES_FETCH_ERROR",
+        message: "Failed to fetch machines data",
+        metadata: JSON.stringify({ error: String(error) }),
+        requestId,
+      }).catch(console.error)
     }
 
     console.log("Fetching Donors table")
     let donorsMap = new Map<string, string>()
 
     try {
-      const donorsResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Donors!A:F",
-      })
+      const donorsResponse = (await Promise.race([
+        sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: "Donors!A:F",
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Donors fetch timeout")), 15000)),
+      ])) as any
 
       const donorsData = donorsResponse.data.values || []
       donorsMap = processDonors(donorsData)
-      console.log("Donors map:", Object.fromEntries(donorsMap))
+      console.log("Donors map loaded:", donorsMap.size, "entries")
     } catch (error) {
       console.error("Error fetching donors data:", error)
-      console.log("Will proceed without donor name mapping")
+      await writeLogToSheet({
+        timestamp: new Date().toISOString(),
+        level: "WARN",
+        event: "DONORS_FETCH_ERROR",
+        message: "Failed to fetch donors data",
+        metadata: JSON.stringify({ error: String(error) }),
+        user: userEmail,
+        requestId,
+      }).catch(console.error)
     }
 
-    const [
-      currentTransactionsResponse,
-      transactions2024Response,
-      oldTransactionsResponse,
-      donationsResponse,
-      machineRentalsResponse,
-      linksAndPhoneResponse,
-    ] = await Promise.allSettled([
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Money!A:M",
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Money_2024!A:M",
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Money_Old!A:M",
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Donations!A:F",
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "Machine Records!A:G",
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: "LinksandPhone!A:N", // 👈 add this
-      }),
+    console.log("Fetching transaction tables")
+
+    const fetchWithTimeout = (range: string, timeout = 20000) => {
+      return Promise.race([
+        sheets.spreadsheets.values.get({ spreadsheetId, range }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`${range} fetch timeout after ${timeout}ms`)), timeout),
+        ),
+      ])
+    }
+
+    const responses = await Promise.allSettled([
+      fetchWithTimeout("Current Transactions!A:S", 20000),
+      fetchWithTimeout("2024 Transactions!A:R", 20000),
+      fetchWithTimeout("Old transactions!A:R", 20000),
+      fetchWithTimeout("Donations!A:O", 20000),
+      fetchWithTimeout("Machine Rentals!A:I", 20000),
+      fetchWithTimeout("Links And Phone!A:L", 20000),
     ])
 
-    const responses = [
-      currentTransactionsResponse,
-      transactions2024Response,
-      oldTransactionsResponse,
-      donationsResponse,
-      machineRentalsResponse,
-      linksAndPhoneResponse,
-    ]
+    responses.forEach((result, index) => {
+      if (result.status === "rejected") {
+        const sheetNames = [
+          "Current Transactions",
+          "2024 Transactions",
+          "Old transactions",
+          "Donations",
+          "Machine Rentals",
+          "Links And Phone",
+        ]
+        console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
+        writeLogToSheet({
+          timestamp: new Date().toISOString(),
+          level: "ERROR",
+          event: "SHEET_FETCH_TIMEOUT",
+          message: `Failed to fetch ${sheetNames[index]}`,
+          metadata: JSON.stringify({ error: String(result.reason), userId }),
+          user: userEmail,
+          requestId,
+        }).catch(console.error)
+      }
+    })
 
-    const currentTransactionsData = responses[0].status === "fulfilled" ? responses[0].value.data.values || [] : []
-    const transactions2024Data = responses[1].status === "fulfilled" ? responses[1].value.data.values || [] : []
-    const oldTransactionsData = responses[2].status === "fulfilled" ? responses[2].value.data.values || [] : []
-    const donationsData = responses[3].status === "fulfilled" ? responses[3].value.data.values || [] : []
-    const machineRentalsData = responses[4].status === "fulfilled" ? responses[4].value.data.values || [] : []
-    const linksAndPhoneData = responses[5].status === "fulfilled" ? responses[5].value.data.values || [] : []
+    const currentTransactionsData =
+      responses[0].status === "fulfilled" ? (responses[0].value as any).data.values || [] : []
+    const transactions2024Data =
+      responses[1].status === "fulfilled" ? (responses[1].value as any).data.values || [] : []
+    const oldTransactionsData = responses[2].status === "fulfilled" ? (responses[2].value as any).data.values || [] : []
+    const donationsData = responses[3].status === "fulfilled" ? (responses[3].value as any).data.values || [] : []
+    const machineRentalsData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
+    const linksAndPhoneData = responses[5].status === "fulfilled" ? (responses[5].value as any).data.values || [] : []
 
-    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
-
-    const currentTransactions = [...processTransactions(currentTransactionsData, userId, percentagesMap)]
+    const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
     const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
     const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
+    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
 
     console.log(`Found ${currentTransactions.length} current transactions (total)`)
     console.log(`Found ${transactions2024.length} transactions from 2024 (total)`)
@@ -895,85 +958,84 @@ export async function POST(request: NextRequest) {
     console.log(`Found ${donations.length} donations (total)`)
     console.log(`Found ${machineRentals.length} machine rentals (total)`)
 
-    const filteredCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
-    const filteredTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
-    const filteredOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
-    const filteredDonations = filterTransactionsByDate(donations, cutoffDate)
-    const filteredMachineRentals = filterTransactionsByDate(
-      machineRentals.map((mr) => ({ ...mr, date: mr.rentalDate })),
-      cutoffDate,
-    ).map(({ date, ...rest }) => ({ ...rest, rentalDate: date }))
+    const transactionLimit = await getTransactionLimit()
+    const cutoffDate = getCutoffDate(transactionLimit)
 
-    console.log(`Displaying ${filteredCurrentTransactions.length} current transactions (after filtering)`)
-    console.log(`Displaying ${filteredTransactions2024.length} transactions from 2024 (after filtering)`)
-    console.log(`Displaying ${filteredOldTransactions.length} old transactions (after filtering)`)
-    console.log(`Displaying ${filteredDonations.length} donations (after filtering)`)
-    console.log(`Displaying ${filteredMachineRentals.length} machine rentals (after filtering)`)
+    let displayCurrentTransactions = currentTransactions
+    let displayTransactions2024 = transactions2024
+    let displayOldTransactions = oldTransactions
+    let displayDonations = donations
+    let displayMachineRentals = machineRentals
 
-    const finalDonations = donations
-    let cardknoxUrl = null
-
-    if (finalDonations.length > 0) {
-      // Get customer name and account number from donations
-      const firstDonation = finalDonations[0]
-      if (firstDonation) {
-        // Extract name and account number from the transaction
-        // The cardknox value is stored in cardknoxValue field
-        // Generate the full Cardknox URL with the same format as send-donation-instructions
-        const nameAndAccount = firstDonation.cardknoxValue || ""
-        const accountEmail = userEmail || ""
-
-        if (nameAndAccount) {
-          cardknoxUrl = `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(nameAndAccount)}&xCustom04=${encodeURIComponent(accountEmail)}`
-        }
-      }
+    if (transactionLimit.enabled) {
+      displayCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
+      displayTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
+      displayOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
+      displayDonations = filterTransactionsByDate(donations, cutoffDate)
+      displayMachineRentals = filterTransactionsByDate(machineRentals, cutoffDate)
     }
 
     const customerData: CustomerData = {
       id: userId,
-      // Full data for total calculations
-      currentTransactions: currentTransactions,
-      transactions2024: transactions2024,
-      oldTransactions: oldTransactions,
-      donations: donations,
-      machineRentals: machineRentals,
-      linksAndPhoneTransactions: linksAndPhoneGrouped.flatMap((t) => t.details || []),
-      cardknox: cardknoxUrl,
-      // Filtered data for display
-      displayCurrentTransactions: filteredCurrentTransactions,
-      displayTransactions2024: filteredTransactions2024,
-      displayOldTransactions: filteredOldTransactions,
-      displayDonations: filteredDonations,
-      displayMachineRentals: filteredMachineRentals,
+      name: userEmail,
+      email: userEmail,
+      currentTransactions: currentTransactions || [],
+      transactions2024: transactions2024 || [],
+      oldTransactions: oldTransactions || [],
+      donations: donations || [],
+      machineRentals: machineRentals || [],
+      linksAndPhoneGrouped: linksAndPhoneGrouped || [],
+      displayCurrentTransactions,
+      displayTransactions2024,
+      displayOldTransactions,
+      displayDonations,
+      displayMachineRentals,
     }
+
+    const duration = Date.now() - startTime
+    console.log(`[v0] Data fetch completed in ${duration}ms`)
 
     await writeLogToSheet({
       timestamp: new Date().toISOString(),
       level: "INFO",
       event: "DATA_FETCH_SUCCESS",
-      message: `Customer data fetched successfully for user: ${userEmail}`,
+      message: `Customer data fetched successfully`,
       metadata: JSON.stringify({
         userId,
-        currentTransactions: currentTransactions.length,
-        transactions2024: transactions2024.length,
-        oldTransactions: oldTransactions.length,
-        donations: donations.length,
-        machineRentals: machineRentals.length,
+        duration,
+        transactionCounts: {
+          current: displayCurrentTransactions.length,
+          transactions2024: displayTransactions2024.length,
+          old: displayOldTransactions.length,
+          donations: displayDonations.length,
+          machineRentals: displayMachineRentals.length,
+        },
       }),
       user: userEmail,
       requestId,
-    })
+    }).catch(console.error)
 
-    return NextResponse.json(customerData)
+    return NextResponse.json(customerData, {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, must-revalidate",
+      },
+    })
   } catch (error) {
+    const duration = Date.now() - startTime
+
     await writeLogToSheet({
       timestamp: new Date().toISOString(),
       level: "ERROR",
       event: "DATA_FETCH_ERROR",
       message: "Failed to fetch customer data",
-      metadata: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      metadata: JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        duration,
+      }),
       requestId,
-    })
+    }).catch(console.error)
 
     console.error("[v0] Error fetching customer data:", error)
 
@@ -982,9 +1044,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Failed to fetch customer data",
+        code: "DATA_FETCH_ERROR",
         details: errorMessage,
+        timestamp: new Date().toISOString(),
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
     )
   }
 }

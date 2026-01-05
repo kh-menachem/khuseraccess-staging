@@ -19,8 +19,6 @@ import {
   Mail,
   Send,
   Eye,
-  ExternalLink,
-  Printer,
 } from "lucide-react"
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
@@ -108,7 +106,7 @@ const translations = {
     amount: "Amount",
     net: "Net",
     status: "Status",
-    donationLink: "Donation Link",
+    cardknox: "Cardknox",
     noTransactionsFound: "No transactions found matching your filters",
     showingRecords: "Showing",
     ofRecords: "of",
@@ -130,7 +128,6 @@ const translations = {
     send: "Send",
     emailSentSuccess: "Email sent successfully!",
     emailSentError: "Failed to send email. Please try again.",
-    printDonationCard: "Print Donation Instructions", // Added translation for print button
     types: {
       check: "Check",
       "credit card": "Credit Card",
@@ -188,7 +185,7 @@ const translations = {
     amount: "סכום",
     net: "נטו",
     status: "מצב",
-    donationLink: "קישור תרומה",
+    cardknox: "Cardknox",
     noTransactionsFound: "לא נמצאו עסקאות התואמות למסננים שלך",
     showingRecords: "מציג",
     ofRecords: "מתוך",
@@ -202,14 +199,13 @@ const translations = {
     clearDateRange: "נקה",
     switchAccount: "החלף חשבון",
     sendDonationInstructions: "שלח הוראות תרומה",
-    sendingEmail: "שולח...", // Updated translation
+    sendingEmail: "שולח אימייל...",
     confirmSendEmail: "?לשלוח הוראות תרומה",
     confirmSendEmailDescription: "זה ישלח הוראות תרומה עם QR קוד ושיטות תשלום לכתובת האימייל שלך.",
     cancel: "ביטול",
     send: "שלח",
     emailSentSuccess: "!האימייל נשלח בהצלחה",
     emailSentError: "שליחת האימייל נכשלה. אנא נסה שוב.",
-    printDonationCard: "הדפס הוראות תרומה", // Added translation for print button
     types: {
       check: "צ'ק",
       "credit card": "כרטיס אשראי",
@@ -264,31 +260,6 @@ const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "a
   }
 
   return false
-}
-
-const getCardknoxLink = () => {
-  const storedUser = localStorage.getItem("user")
-  if (!storedUser) return null
-
-  try {
-    const user = JSON.parse(storedUser)
-    const name = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
-    const accountNumber = user.accountNumber || user.id
-    const email = user.email
-
-    return `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
-      `${name} / ${accountNumber}`,
-    )}&xCustom04=${encodeURIComponent(email)}`
-  } catch (error) {
-    console.error("Error getting Cardknox link:", error)
-    logger.error("DASHBOARD_CARDKNOX_LINK_ERROR", "Error constructing Cardknox URL", { error: String(error) })
-    return null
-  }
-}
-
-// Function to get display name for print card
-const getDisplayName = (user: { firstName?: string; lastName?: string; name: string }) => {
-  return user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
 }
 
 // Use DashboardPage instead of Dashboard as per the updates
@@ -423,7 +394,6 @@ export default function DashboardPage() {
           }
 
           console.log("[v0] Successfully loaded customer data")
-          console.log("[v0] Customer data cardknox:", data.cardknox)
           await logger.info(
             "DASHBOARD_FETCH_SUCCESS",
             `Customer data loaded successfully for user: ${parsedUser.email}`,
@@ -546,7 +516,7 @@ export default function DashboardPage() {
     if (user) {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
-      localStorage.setItem("user", JSON.stringify(updatedUser))
+      localStorage.setItem("user", JSON.JSON.stringify(updatedUser))
       logger.info("DASHBOARD_LANGUAGE_CHANGE", `Language changed to ${newLanguage}`, { userId: user.id }, user.email)
     }
   }
@@ -623,247 +593,6 @@ export default function DashboardPage() {
     }
   }
 
-  const handlePrintDonationCard = (layoutVersion: "full-size" | "card" = "full-size") => {
-    if (!user) return
-
-    const displayName = getDisplayName(user)
-    const accountNumber = user.accountNumber || user.id
-
-    const donationURL = `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
-      `${displayName} / ${accountNumber}`,
-    )}&xCustom04=${encodeURIComponent(user.email)}`
-
-    const qrSize = layoutVersion === "card" ? "120x120" : "200x200"
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}&data=${encodeURIComponent(donationURL)}`
-
-    const printWindow = window.open("", "_blank")
-    if (!printWindow) return
-
-    const cardStyles =
-      layoutVersion === "card"
-        ? `
-      .content-wrapper {
-        display: flex;
-        gap: 20px;
-        align-items: flex-start;
-      }
-      .methods {
-        flex: 1;
-      }
-      .qr-section {
-        flex-shrink: 0;
-        width: 140px;
-        padding: 0;
-        background: transparent;
-        border: none;
-        border-radius: 0;
-      }
-      .qr-section img {
-        border: none;
-        border-radius: 0;
-      }
-    `
-        : ""
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${displayName} - ${accountNumber}</title>
-        <style>
-          @media print {
-            body { margin: 0; }
-            @page { size: letter; margin: ${layoutVersion === "full-size" ? "0.5in" : "0.3in"}; }
-          }
-          body {
-            font-family: Arial, sans-serif;
-            padding: ${layoutVersion === "full-size" ? "20px" : "15px"};
-            max-width: ${layoutVersion === "full-size" ? "100%" : "600px"};
-            margin: 0 auto;
-            background: white;
-            font-size: ${layoutVersion === "full-size" ? "16px" : "14px"};
-          }
-          .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: ${layoutVersion === "full-size" ? "20px" : "15px"};
-            border-bottom: 3px solid #20B2AA;
-            padding-bottom: 15px;
-          }
-          .logo {
-            height: ${layoutVersion === "full-size" ? "70px" : "55px"};
-            width: auto;
-          }
-          .header-text {
-            flex: 1;
-            text-align: center;
-          }
-          .title {
-            font-size: ${layoutVersion === "full-size" ? "28px" : "22px"};
-            font-weight: bold;
-            color: #000;
-            margin: 5px 0;
-          }
-          .subtitle {
-            font-size: ${layoutVersion === "full-size" ? "20px" : "16px"};
-            color: #20B2AA;
-            font-weight: 600;
-            margin: 5px 0;
-          }
-          .address {
-            font-size: ${layoutVersion === "full-size" ? "14px" : "12px"};
-            color: #666;
-            margin: 3px 0;
-          }
-          .collecting {
-            font-size: ${layoutVersion === "full-size" ? "15px" : "13px"};
-            color: #555;
-            margin: 5px 0;
-          }
-          .important-note {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 6px;
-            padding: ${layoutVersion === "full-size" ? "15px" : "10px"};
-            margin: ${layoutVersion === "full-size" ? "20px 0" : "15px 0"};
-            text-align: center;
-          }
-          .important-note strong {
-            color: #d32f2f;
-            font-size: ${layoutVersion === "full-size" ? "18px" : "15px"};
-          }
-          .section-title {
-            font-size: ${layoutVersion === "full-size" ? "22px" : "18px"};
-            font-weight: bold;
-            margin: ${layoutVersion === "full-size" ? "25px 0 15px 0" : "20px 0 12px 0"};
-            color: #000;
-          }
-          .methods {
-            margin: ${layoutVersion === "full-size" ? "20px 0" : "15px 0"};
-            padding: 0 ${layoutVersion === "full-size" ? "20px" : "10px"};
-          }
-          .method {
-            margin: ${layoutVersion === "full-size" ? "12px 0" : "8px 0"};
-            font-size: ${layoutVersion === "full-size" ? "16px" : "14px"};
-            line-height: 1.6;
-            color: #333;
-          }
-          .qr-section {
-            text-align: center;
-            margin: ${layoutVersion === "full-size" ? "30px 0" : "20px 0"};
-            padding: ${layoutVersion === "full-size" ? "20px" : "12px"};
-            background: ${layoutVersion === "card" ? "transparent" : "#f0f8ff"};
-            border-radius: ${layoutVersion === "card" ? "0" : "8px"};
-            border: ${layoutVersion === "card" ? "none" : "2px solid #20B2AA"};
-          }
-          .qr-section .qr-title {
-            font-size: ${layoutVersion === "full-size" ? "20px" : "16px"};
-            font-weight: bold;
-            margin-bottom: ${layoutVersion === "full-size" ? "15px" : "10px"};
-            color: #000;
-          }
-          .qr-section img {
-            border: ${layoutVersion === "card" ? "none" : "2px solid #20B2AA"};
-            border-radius: ${layoutVersion === "card" ? "0" : "6px"};
-            margin: ${layoutVersion === "full-size" ? "10px 0" : "8px 0"};
-          }
-          .qr-section .qr-caption {
-            font-size: ${layoutVersion === "full-size" ? "14px" : "12px"};
-            color: #666;
-            margin-top: ${layoutVersion === "full-size" ? "10px" : "6px"};
-          }
-          .footer {
-            text-align: center;
-            margin-top: ${layoutVersion === "full-size" ? "30px" : "20px"};
-            padding-top: ${layoutVersion === "full-size" ? "20px" : "15px"};
-            border-top: 2px solid #20B2AA;
-            color: #555;
-          }
-          .footer .blessing {
-            font-size: ${layoutVersion === "full-size" ? "20px" : "16px"};
-            font-weight: bold;
-            color: #20B2AA;
-            margin-bottom: ${layoutVersion === "full-size" ? "8px" : "5px"};
-          }
-          .footer .message {
-            font-size: ${layoutVersion === "full-size" ? "14px" : "12px"};
-            color: #666;
-          }
-          .print-button {
-            display: block;
-            margin: 20px auto;
-            padding: 12px 30px;
-            background: #20B2AA;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: 600;
-          }
-          .print-button:hover {
-            background: #188a7a;
-          }
-          @media print {
-            .print-button { display: none; }
-          }
-          ${cardStyles}
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <img src="/images/logo-new.png" alt="Keren Hatzedaka Logo" class="logo" />
-          <div class="header-text">
-            <div class="title">${displayName} / ${accountNumber}</div>
-            <div class="subtitle">Keren Hatzedaka</div>
-            <div class="address">422 Monmouth Ave Lakewood NJ 08701</div>
-            <div class="collecting">Collecting fund for ${displayName}</div>
-          </div>
-          <img src="/images/logo-new.png" alt="Keren Hatzedaka Logo" class="logo" style="visibility: hidden;" />
-        </div>
-
-        <div class="important-note">
-          <strong>* IMPORTANT! Please Write for ${displayName} / ${accountNumber}</strong>
-        </div>
-
-        <div class="section-title">To Donate:</div>
-
-        ${layoutVersion === "card" ? '<div class="content-wrapper">' : ""}
-        
-        <div class="methods">
-          <div class="method">1. QP or Zelle - ozerdalimlakewood@gmail.com *</div>
-          <div class="method">2. Checks - Cong. Tiferes Yaakov *</div>
-          <div class="method">3. 6 Shoshana Dr. Lakewood NJ 08701 *</div>
-          <div class="method">4. OJC, Donor Fund, Fidelity -83-4411630 *</div>
-          <div class="method">5. Call/Text 7328009840 code (${accountNumber}) *</div>
-        </div>
-
-        <div class="qr-section">
-          <div class="qr-title">By Credit Card</div>
-          <img src="${qrCodeUrl}" alt="QR Code" width="${layoutVersion === "card" ? "120" : "200"}" height="${layoutVersion === "card" ? "120" : "200"}" />
-          <div class="qr-caption">Scan to donate via credit card</div>
-        </div>
-
-        ${layoutVersion === "card" ? "</div>" : ""}
-
-        <div class="important-note">
-          <strong>* IMPORTANT! Please Write for ${displayName} / ${accountNumber}</strong>
-        </div>
-
-        <div class="footer">
-          <div class="blessing">Tizku L'Mitzvos!</div>
-          <div class="message">Your support helps bring comfort and strength to those in need</div>
-        </div>
-
-        <button class="print-button" onclick="window.print()">Print This Page</button>
-      </body>
-      </html>
-    `)
-
-    printWindow.document.close()
-  }
-
   // Combine all money transactions (including donations) into a single array
   const allMoneyTransactions = useMemo(() => {
     if (!customerData) return []
@@ -904,7 +633,7 @@ export default function DashboardPage() {
           cardknox: "", // Donations don't have cardknox
         })),
         // Add LinksandPhone transactions if they exist
-        ...(customerData.displayLinksAndPhone || customerData.linksAndPhone || []).map((tx) => ({
+        ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
           id: tx.id || `LINK-${Math.random()}`,
           date: tx.date,
           description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
@@ -1248,13 +977,6 @@ export default function DashboardPage() {
     }
   }
 
-  const handleOpenCardknox = () => {
-    const link = getCardknoxLink()
-    if (link) {
-      window.open(link, "_blank")
-    }
-  }
-
   return (
     // Changed background and direction based on language
     <div
@@ -1403,7 +1125,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* Send Donation Instructions Button and Print Card Button */}
+            {/* Send Donation Instructions Button */}
             <div className="flex gap-2">
               <Button
                 onClick={() => setShowEmailConfirmDialog(true)}
@@ -1421,30 +1143,6 @@ export default function DashboardPage() {
                     {t.sendDonationInstructions}
                   </>
                 )}
-              </Button>
-              {user && (
-                <Button
-                  onClick={handleOpenCardknox}
-                  className="bg-green-600 hover:bg-green-700 text-white min-w-[180px]"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  {t.donationLink}
-                </Button>
-              )}
-              {/* Updated button labels to match new layout names */}
-              <Button
-                onClick={() => handlePrintDonationCard("full-size")}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                {t.printDonationCard}
-              </Button>
-              <Button
-                onClick={() => handlePrintDonationCard("card")}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                {t.printDonationCard} (Card)
               </Button>
             </div>
           </div>
