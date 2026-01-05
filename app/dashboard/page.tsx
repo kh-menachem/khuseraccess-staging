@@ -623,7 +623,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handlePrintDonationCard = () => {
+  const handlePrintDonationCard = (layoutVersion: "compact" | "side-by-side" = "compact") => {
     if (!user) return
 
     const displayName = getDisplayName(user)
@@ -633,10 +633,37 @@ export default function DashboardPage() {
       `${displayName} / ${accountNumber}`,
     )}&xCustom04=${encodeURIComponent(user.email)}`
 
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(donationURL)}`
+    const qrSize = layoutVersion === "side-by-side" ? "120x120" : "150x150"
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}&data=${encodeURIComponent(donationURL)}`
 
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
+
+    const sideBySideStyles =
+      layoutVersion === "side-by-side"
+        ? `
+      .content-wrapper {
+        display: flex;
+        gap: 15px;
+        align-items: flex-start;
+      }
+      .methods {
+        flex: 1;
+      }
+      .qr-section {
+        flex-shrink: 0;
+        width: 140px;
+        padding: 8px;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+      }
+      .qr-section img {
+        border: none;
+        border-radius: 0;
+      }
+    `
+        : ""
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -646,35 +673,45 @@ export default function DashboardPage() {
         <style>
           @media print {
             body { margin: 0; }
-            @page { size: 5.5in 8.5in; margin: 5mm; }
+            @page { size: ${layoutVersion === "compact" ? "5.5in 8.5in" : "letter"}; margin: 10mm; }
           }
           body {
             font-family: Arial, sans-serif;
-            padding: 10px;
-            max-width: 500px;
+            padding: ${layoutVersion === "compact" ? "10px" : "20px"};
+            max-width: ${layoutVersion === "compact" ? "500px" : "650px"};
             margin: 0 auto;
             background: white;
-            font-size: 11px;
+            font-size: 13px;
           }
           .header {
-            text-align: center;
-            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 12px;
             border-bottom: 2px solid #20B2AA;
-            padding-bottom: 6px;
+            padding-bottom: 10px;
+          }
+          .logo {
+            height: 50px;
+            width: auto;
+          }
+          .header-text {
+            text-align: center;
           }
           .title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             color: #000;
             margin: 3px 0;
           }
           .subtitle {
-            font-size: 12px;
+            font-size: 14px;
             color: #555;
             margin: 2px 0;
           }
           .address {
-            font-size: 10px;
+            font-size: 11px;
             color: #666;
             margin: 1px 0;
           }
@@ -682,70 +719,70 @@ export default function DashboardPage() {
             background: #fff3cd;
             border: 1px solid #ffc107;
             border-radius: 4px;
-            padding: 6px;
-            margin: 8px 0;
+            padding: 8px;
+            margin: 10px 0;
             text-align: center;
           }
           .important-note strong {
             color: #d32f2f;
-            font-size: 11px;
+            font-size: 13px;
           }
           .section-title {
-            font-size: 13px;
+            font-size: 15px;
             font-weight: bold;
-            margin: 8px 0 4px 0;
+            margin: 12px 0 8px 0;
             text-align: center;
           }
           .methods {
-            margin: 8px 0;
-            padding: 0 5px;
+            margin: 10px 0;
+            padding: 0 10px;
           }
           .method {
-            margin: 4px 0;
-            font-size: 11px;
-            line-height: 1.4;
+            margin: 6px 0;
+            font-size: 13px;
+            line-height: 1.5;
             color: #333;
           }
           .qr-section {
             text-align: center;
-            margin: 10px 0;
-            padding: 8px;
+            margin: 12px 0;
+            padding: 10px;
             background: #f0f8ff;
             border-radius: 4px;
             border: 1px solid #20B2AA;
           }
           .qr-section .qr-title {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
           }
           .qr-section img {
             border: 1px solid #20B2AA;
             border-radius: 4px;
-            margin: 4px 0;
+            margin: 6px 0;
           }
           .qr-section .qr-caption {
-            font-size: 9px;
+            font-size: 11px;
             color: #666;
-            margin-top: 3px;
+            margin-top: 4px;
           }
           .footer {
             text-align: center;
-            margin-top: 10px;
-            padding-top: 6px;
+            margin-top: 15px;
+            padding-top: 10px;
             border-top: 1px solid #20B2AA;
             color: #555;
-            font-size: 10px;
+            font-size: 12px;
           }
           .print-button {
             display: block;
-            margin: 15px auto;
-            padding: 8px 20px;
+            margin: 20px auto;
+            padding: 10px 25px;
             background: #20B2AA;
             color: white;
             border: none;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 14px;
             cursor: pointer;
           }
           .print-button:hover {
@@ -754,14 +791,18 @@ export default function DashboardPage() {
           @media print {
             .print-button { display: none; }
           }
+          ${sideBySideStyles}
         </style>
       </head>
       <body>
         <div class="header">
-          <div class="title">${displayName} / ${accountNumber}</div>
-          <div class="subtitle">Keren Hatzedaka</div>
-          <div class="address">422 Monmouth Ave Lakewood NJ 08701</div>
-          <div class="address">Collecting fund for ${displayName}</div>
+          <img src="/images/logo-new.png" alt="Keren Hatzedaka Logo" class="logo" />
+          <div class="header-text">
+            <div class="title">${displayName} / ${accountNumber}</div>
+            <div class="subtitle">Keren Hatzedaka</div>
+            <div class="address">422 Monmouth Ave Lakewood NJ 08701</div>
+            <div class="address">Collecting fund for ${displayName}</div>
+          </div>
         </div>
 
         <div class="important-note">
@@ -770,6 +811,8 @@ export default function DashboardPage() {
 
         <div class="section-title">To Donate:</div>
 
+        ${layoutVersion === "side-by-side" ? '<div class="content-wrapper">' : ""}
+        
         <div class="methods">
           <div class="method">1. QP or Zelle - ozerdalimlakewood@gmail.com *</div>
           <div class="method">2. Checks - Cong. Tiferes Yaakov *</div>
@@ -780,9 +823,11 @@ export default function DashboardPage() {
 
         <div class="qr-section">
           <div class="qr-title">By Credit Card</div>
-          <img src="${qrCodeUrl}" alt="QR Code" width="150" height="150" />
+          <img src="${qrCodeUrl}" alt="QR Code" width="${layoutVersion === "side-by-side" ? "120" : "150"}" height="${layoutVersion === "side-by-side" ? "120" : "150"}" />
           <div class="qr-caption">Scan to donate via credit card</div>
         </div>
+
+        ${layoutVersion === "side-by-side" ? "</div>" : ""}
 
         <div class="important-note">
           <strong>* IMPORTANT! Please Write for ${displayName} / ${accountNumber}</strong>
@@ -790,7 +835,7 @@ export default function DashboardPage() {
 
         <div class="footer">
           <div>Tizku L'Mitzvos!</div>
-          <div style="margin-top: 2px;">Your support helps bring comfort and strength to those in need</div>
+          <div style="margin-top: 3px;">Your support helps bring comfort and strength to those in need</div>
         </div>
 
         <button class="print-button" onclick="window.print()">Print This Page</button>
@@ -1369,13 +1414,22 @@ export default function DashboardPage() {
                 </Button>
               )}
               {user && (
-                <Button
-                  onClick={handlePrintDonationCard}
-                  className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  {t.printDonationCard}
-                </Button>
+                <>
+                  <Button
+                    onClick={() => handlePrintDonationCard("compact")}
+                    className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    {t.printDonationCard} (Compact)
+                  </Button>
+                  <Button
+                    onClick={() => handlePrintDonationCard("side-by-side")}
+                    className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    {t.printDonationCard} (Side-by-Side)
+                  </Button>
+                </>
               )}
             </div>
           </div>
