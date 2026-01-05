@@ -623,7 +623,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handlePrintDonationCard = (layoutVersion: "compact" | "side-by-side" = "compact") => {
+  const handlePrintDonationCard = (layoutVersion: "full-size" | "card" = "full-size") => {
     if (!user) return
 
     const displayName = getDisplayName(user)
@@ -633,18 +633,18 @@ export default function DashboardPage() {
       `${displayName} / ${accountNumber}`,
     )}&xCustom04=${encodeURIComponent(user.email)}`
 
-    const qrSize = layoutVersion === "side-by-side" ? "120x120" : "150x150"
+    const qrSize = layoutVersion === "card" ? "120x120" : "200x200"
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}&data=${encodeURIComponent(donationURL)}`
 
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
 
-    const sideBySideStyles =
-      layoutVersion === "side-by-side"
+    const cardStyles =
+      layoutVersion === "card"
         ? `
       .content-wrapper {
         display: flex;
-        gap: 15px;
+        gap: 20px;
         align-items: flex-start;
       }
       .methods {
@@ -653,7 +653,7 @@ export default function DashboardPage() {
       .qr-section {
         flex-shrink: 0;
         width: 140px;
-        padding: 8px;
+        padding: 0;
         background: transparent;
         border: none;
         border-radius: 0;
@@ -673,117 +673,134 @@ export default function DashboardPage() {
         <style>
           @media print {
             body { margin: 0; }
-            @page { size: ${layoutVersion === "compact" ? "5.5in 8.5in" : "letter"}; margin: 10mm; }
+            @page { size: letter; margin: ${layoutVersion === "full-size" ? "0.5in" : "0.3in"}; }
           }
           body {
             font-family: Arial, sans-serif;
-            padding: ${layoutVersion === "compact" ? "10px" : "20px"};
-            max-width: ${layoutVersion === "compact" ? "500px" : "650px"};
+            padding: ${layoutVersion === "full-size" ? "20px" : "15px"};
+            max-width: ${layoutVersion === "full-size" ? "100%" : "600px"};
             margin: 0 auto;
             background: white;
-            font-size: 13px;
+            font-size: ${layoutVersion === "full-size" ? "16px" : "14px"};
           }
           .header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 12px;
-            border-bottom: 2px solid #20B2AA;
-            padding-bottom: 10px;
+            justify-content: space-between;
+            margin-bottom: ${layoutVersion === "full-size" ? "20px" : "15px"};
+            border-bottom: 3px solid #20B2AA;
+            padding-bottom: 15px;
           }
           .logo {
-            height: 50px;
+            height: ${layoutVersion === "full-size" ? "70px" : "55px"};
             width: auto;
           }
           .header-text {
+            flex: 1;
             text-align: center;
           }
           .title {
-            font-size: 20px;
+            font-size: ${layoutVersion === "full-size" ? "28px" : "22px"};
             font-weight: bold;
             color: #000;
-            margin: 3px 0;
+            margin: 5px 0;
           }
           .subtitle {
-            font-size: 14px;
-            color: #555;
-            margin: 2px 0;
+            font-size: ${layoutVersion === "full-size" ? "20px" : "16px"};
+            color: #20B2AA;
+            font-weight: 600;
+            margin: 5px 0;
           }
           .address {
-            font-size: 11px;
+            font-size: ${layoutVersion === "full-size" ? "14px" : "12px"};
             color: #666;
-            margin: 1px 0;
+            margin: 3px 0;
+          }
+          .collecting {
+            font-size: ${layoutVersion === "full-size" ? "15px" : "13px"};
+            color: #555;
+            margin: 5px 0;
           }
           .important-note {
             background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 4px;
-            padding: 8px;
-            margin: 10px 0;
+            border: 2px solid #ffc107;
+            border-radius: 6px;
+            padding: ${layoutVersion === "full-size" ? "15px" : "10px"};
+            margin: ${layoutVersion === "full-size" ? "20px 0" : "15px 0"};
             text-align: center;
           }
           .important-note strong {
             color: #d32f2f;
-            font-size: 13px;
+            font-size: ${layoutVersion === "full-size" ? "18px" : "15px"};
           }
           .section-title {
-            font-size: 15px;
+            font-size: ${layoutVersion === "full-size" ? "22px" : "18px"};
             font-weight: bold;
-            margin: 12px 0 8px 0;
-            text-align: center;
+            margin: ${layoutVersion === "full-size" ? "25px 0 15px 0" : "20px 0 12px 0"};
+            color: #000;
           }
           .methods {
-            margin: 10px 0;
-            padding: 0 10px;
+            margin: ${layoutVersion === "full-size" ? "20px 0" : "15px 0"};
+            padding: 0 ${layoutVersion === "full-size" ? "20px" : "10px"};
           }
           .method {
-            margin: 6px 0;
-            font-size: 13px;
-            line-height: 1.5;
+            margin: ${layoutVersion === "full-size" ? "12px 0" : "8px 0"};
+            font-size: ${layoutVersion === "full-size" ? "16px" : "14px"};
+            line-height: 1.6;
             color: #333;
           }
           .qr-section {
             text-align: center;
-            margin: 12px 0;
-            padding: 10px;
-            background: #f0f8ff;
-            border-radius: 4px;
-            border: 1px solid #20B2AA;
+            margin: ${layoutVersion === "full-size" ? "30px 0" : "20px 0"};
+            padding: ${layoutVersion === "full-size" ? "20px" : "12px"};
+            background: ${layoutVersion === "card" ? "transparent" : "#f0f8ff"};
+            border-radius: ${layoutVersion === "card" ? "0" : "8px"};
+            border: ${layoutVersion === "card" ? "none" : "2px solid #20B2AA"};
           }
           .qr-section .qr-title {
-            font-size: 14px;
+            font-size: ${layoutVersion === "full-size" ? "20px" : "16px"};
             font-weight: bold;
-            margin-bottom: 6px;
+            margin-bottom: ${layoutVersion === "full-size" ? "15px" : "10px"};
+            color: #000;
           }
           .qr-section img {
-            border: 1px solid #20B2AA;
-            border-radius: 4px;
-            margin: 6px 0;
+            border: ${layoutVersion === "card" ? "none" : "2px solid #20B2AA"};
+            border-radius: ${layoutVersion === "card" ? "0" : "6px"};
+            margin: ${layoutVersion === "full-size" ? "10px 0" : "8px 0"};
           }
           .qr-section .qr-caption {
-            font-size: 11px;
+            font-size: ${layoutVersion === "full-size" ? "14px" : "12px"};
             color: #666;
-            margin-top: 4px;
+            margin-top: ${layoutVersion === "full-size" ? "10px" : "6px"};
           }
           .footer {
             text-align: center;
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid #20B2AA;
+            margin-top: ${layoutVersion === "full-size" ? "30px" : "20px"};
+            padding-top: ${layoutVersion === "full-size" ? "20px" : "15px"};
+            border-top: 2px solid #20B2AA;
             color: #555;
-            font-size: 12px;
+          }
+          .footer .blessing {
+            font-size: ${layoutVersion === "full-size" ? "20px" : "16px"};
+            font-weight: bold;
+            color: #20B2AA;
+            margin-bottom: ${layoutVersion === "full-size" ? "8px" : "5px"};
+          }
+          .footer .message {
+            font-size: ${layoutVersion === "full-size" ? "14px" : "12px"};
+            color: #666;
           }
           .print-button {
             display: block;
             margin: 20px auto;
-            padding: 10px 25px;
+            padding: 12px 30px;
             background: #20B2AA;
             color: white;
             border: none;
-            border-radius: 4px;
-            font-size: 14px;
+            border-radius: 6px;
+            font-size: 16px;
             cursor: pointer;
+            font-weight: 600;
           }
           .print-button:hover {
             background: #188a7a;
@@ -791,7 +808,7 @@ export default function DashboardPage() {
           @media print {
             .print-button { display: none; }
           }
-          ${sideBySideStyles}
+          ${cardStyles}
         </style>
       </head>
       <body>
@@ -801,8 +818,9 @@ export default function DashboardPage() {
             <div class="title">${displayName} / ${accountNumber}</div>
             <div class="subtitle">Keren Hatzedaka</div>
             <div class="address">422 Monmouth Ave Lakewood NJ 08701</div>
-            <div class="address">Collecting fund for ${displayName}</div>
+            <div class="collecting">Collecting fund for ${displayName}</div>
           </div>
+          <img src="/images/logo-new.png" alt="Keren Hatzedaka Logo" class="logo" style="visibility: hidden;" />
         </div>
 
         <div class="important-note">
@@ -811,7 +829,7 @@ export default function DashboardPage() {
 
         <div class="section-title">To Donate:</div>
 
-        ${layoutVersion === "side-by-side" ? '<div class="content-wrapper">' : ""}
+        ${layoutVersion === "card" ? '<div class="content-wrapper">' : ""}
         
         <div class="methods">
           <div class="method">1. QP or Zelle - ozerdalimlakewood@gmail.com *</div>
@@ -823,19 +841,19 @@ export default function DashboardPage() {
 
         <div class="qr-section">
           <div class="qr-title">By Credit Card</div>
-          <img src="${qrCodeUrl}" alt="QR Code" width="${layoutVersion === "side-by-side" ? "120" : "150"}" height="${layoutVersion === "side-by-side" ? "120" : "150"}" />
+          <img src="${qrCodeUrl}" alt="QR Code" width="${layoutVersion === "card" ? "120" : "200"}" height="${layoutVersion === "card" ? "120" : "200"}" />
           <div class="qr-caption">Scan to donate via credit card</div>
         </div>
 
-        ${layoutVersion === "side-by-side" ? "</div>" : ""}
+        ${layoutVersion === "card" ? "</div>" : ""}
 
         <div class="important-note">
           <strong>* IMPORTANT! Please Write for ${displayName} / ${accountNumber}</strong>
         </div>
 
         <div class="footer">
-          <div>Tizku L'Mitzvos!</div>
-          <div style="margin-top: 3px;">Your support helps bring comfort and strength to those in need</div>
+          <div class="blessing">Tizku L'Mitzvos!</div>
+          <div class="message">Your support helps bring comfort and strength to those in need</div>
         </div>
 
         <button class="print-button" onclick="window.print()">Print This Page</button>
@@ -1413,24 +1431,21 @@ export default function DashboardPage() {
                   {t.donationLink}
                 </Button>
               )}
-              {user && (
-                <>
-                  <Button
-                    onClick={() => handlePrintDonationCard("compact")}
-                    className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    {t.printDonationCard} (Compact)
-                  </Button>
-                  <Button
-                    onClick={() => handlePrintDonationCard("side-by-side")}
-                    className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    {t.printDonationCard} (Side-by-Side)
-                  </Button>
-                </>
-              )}
+              {/* Updated button labels to match new layout names */}
+              <Button
+                onClick={() => handlePrintDonationCard("full-size")}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                {t.printDonationCard}
+              </Button>
+              <Button
+                onClick={() => handlePrintDonationCard("card")}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                {t.printDonationCard} (Card)
+              </Button>
             </div>
           </div>
 
