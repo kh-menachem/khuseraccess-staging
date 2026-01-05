@@ -633,7 +633,7 @@ export default function DashboardPage() {
       `${displayName} / ${accountNumber}`,
     )}&xCustom04=${encodeURIComponent(user.email)}`
 
-    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(donationURL)}`
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(donationURL)}`
 
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
@@ -646,95 +646,106 @@ export default function DashboardPage() {
         <style>
           @media print {
             body { margin: 0; }
-            @page { size: auto; margin: 10mm; }
+            @page { size: 5.5in 8.5in; margin: 5mm; }
           }
           body {
             font-family: Arial, sans-serif;
-            padding: 20px;
-            max-width: 800px;
+            padding: 10px;
+            max-width: 500px;
             margin: 0 auto;
             background: white;
+            font-size: 11px;
           }
           .header {
             text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #20B2AA;
-            padding-bottom: 15px;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #20B2AA;
+            padding-bottom: 6px;
           }
           .title {
-            font-size: 28px;
+            font-size: 18px;
             font-weight: bold;
             color: #000;
-            margin: 10px 0;
+            margin: 3px 0;
           }
           .subtitle {
-            font-size: 18px;
+            font-size: 12px;
             color: #555;
-            margin: 5px 0;
+            margin: 2px 0;
+          }
+          .address {
+            font-size: 10px;
+            color: #666;
+            margin: 1px 0;
           }
           .important-note {
             background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 6px;
+            margin: 8px 0;
             text-align: center;
           }
           .important-note strong {
             color: #d32f2f;
-            font-size: 16px;
+            font-size: 11px;
+          }
+          .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 8px 0 4px 0;
+            text-align: center;
           }
           .methods {
-            margin: 20px 0;
+            margin: 8px 0;
+            padding: 0 5px;
           }
           .method {
-            margin: 15px 0;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #f9f9f9;
-          }
-          .method-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #20B2AA;
-            margin-bottom: 8px;
-          }
-          .method-content {
-            font-size: 14px;
-            line-height: 1.6;
+            margin: 4px 0;
+            font-size: 11px;
+            line-height: 1.4;
             color: #333;
           }
           .qr-section {
             text-align: center;
-            margin: 30px 0;
-            padding: 20px;
+            margin: 10px 0;
+            padding: 8px;
             background: #f0f8ff;
-            border-radius: 8px;
-            border: 2px solid #20B2AA;
+            border-radius: 4px;
+            border: 1px solid #20B2AA;
+          }
+          .qr-section .qr-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 4px;
           }
           .qr-section img {
-            border: 2px solid #20B2AA;
-            border-radius: 8px;
-            margin: 10px 0;
+            border: 1px solid #20B2AA;
+            border-radius: 4px;
+            margin: 4px 0;
+          }
+          .qr-section .qr-caption {
+            font-size: 9px;
+            color: #666;
+            margin-top: 3px;
           }
           .footer {
             text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #20B2AA;
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #20B2AA;
             color: #555;
-            font-size: 14px;
+            font-size: 10px;
           }
           .print-button {
             display: block;
-            margin: 20px auto;
-            padding: 12px 30px;
+            margin: 15px auto;
+            padding: 8px 20px;
             background: #20B2AA;
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 16px;
+            border-radius: 4px;
+            font-size: 13px;
             cursor: pointer;
           }
           .print-button:hover {
@@ -749,42 +760,28 @@ export default function DashboardPage() {
         <div class="header">
           <div class="title">${displayName} / ${accountNumber}</div>
           <div class="subtitle">Keren Hatzedaka</div>
-          <div style="font-size: 14px; color: #666; margin-top: 5px;">422 Monmouth Ave Lakewood NJ 08701</div>
-          <div style="font-size: 14px; color: #666;">Collecting fund for ${displayName}</div>
+          <div class="address">422 Monmouth Ave Lakewood NJ 08701</div>
+          <div class="address">Collecting fund for ${displayName}</div>
         </div>
 
         <div class="important-note">
           <strong>* IMPORTANT! Please Write for ${displayName} / ${accountNumber}</strong>
         </div>
 
-        <div style="font-size: 18px; font-weight: bold; margin: 20px 0; text-align: center;">To Donate:</div>
+        <div class="section-title">To Donate:</div>
 
         <div class="methods">
-          <div class="method">
-            <div class="method-title">1. QP or Zelle - ozerdalimlakewood@gmail.com *</div>
-          </div>
-
-          <div class="method">
-            <div class="method-title">2. Checks- Cong. Tiferes Yaakov *</div>
-          </div>
-
-          <div class="method">
-            <div class="method-title">3. 6 Shoshana Dr. Lakewood NJ 08701 *</div>
-          </div>
-
-          <div class="method">
-            <div class="method-title">4. OJC, Donor Fund, Fidelity -83-4411630 *</div>
-          </div>
-
-          <div class="method">
-            <div class="method-title">5. Call/Text 7328009840 code (${accountNumber}) *</div>
-          </div>
+          <div class="method">1. QP or Zelle - ozerdalimlakewood@gmail.com *</div>
+          <div class="method">2. Checks - Cong. Tiferes Yaakov *</div>
+          <div class="method">3. 6 Shoshana Dr. Lakewood NJ 08701 *</div>
+          <div class="method">4. OJC, Donor Fund, Fidelity -83-4411630 *</div>
+          <div class="method">5. Call/Text 7328009840 code (${accountNumber}) *</div>
         </div>
 
         <div class="qr-section">
-          <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">By Credit Card</div>
-          <img src="${qrCodeUrl}" alt="QR Code" width="200" height="200" />
-          <div style="font-size: 12px; color: #666; margin-top: 10px;">Scan to donate via credit card</div>
+          <div class="qr-title">By Credit Card</div>
+          <img src="${qrCodeUrl}" alt="QR Code" width="150" height="150" />
+          <div class="qr-caption">Scan to donate via credit card</div>
         </div>
 
         <div class="important-note">
@@ -793,10 +790,10 @@ export default function DashboardPage() {
 
         <div class="footer">
           <div>Tizku L'Mitzvos!</div>
-          <div style="margin-top: 5px;">Your support helps bring comfort and strength to those in need</div>
+          <div style="margin-top: 2px;">Your support helps bring comfort and strength to those in need</div>
         </div>
 
-        <button class="print-button" onclick="window.print()">🖨️ Print This Page</button>
+        <button class="print-button" onclick="window.print()">Print This Page</button>
       </body>
       </html>
     `)
