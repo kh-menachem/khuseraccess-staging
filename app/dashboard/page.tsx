@@ -20,6 +20,7 @@ import {
   Send,
   Eye,
   ExternalLink,
+  Printer,
 } from "lucide-react"
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
@@ -129,6 +130,7 @@ const translations = {
     send: "Send",
     emailSentSuccess: "Email sent successfully!",
     emailSentError: "Failed to send email. Please try again.",
+    printDonationCard: "Print Donation Instructions", // Added translation for print button
     types: {
       check: "Check",
       "credit card": "Credit Card",
@@ -200,13 +202,14 @@ const translations = {
     clearDateRange: "נקה",
     switchAccount: "החלף חשבון",
     sendDonationInstructions: "שלח הוראות תרומה",
-    sendingEmail: "שולח אימייל...",
+    sendingEmail: "שולח...", // Updated translation
     confirmSendEmail: "?לשלוח הוראות תרומה",
     confirmSendEmailDescription: "זה ישלח הוראות תרומה עם QR קוד ושיטות תשלום לכתובת האימייל שלך.",
     cancel: "ביטול",
     send: "שלח",
     emailSentSuccess: "!האימייל נשלח בהצלחה",
     emailSentError: "שליחת האימייל נכשלה. אנא נסה שוב.",
+    printDonationCard: "הדפס הוראות תרומה", // Added translation for print button
     types: {
       check: "צ'ק",
       "credit card": "כרטיס אשראי",
@@ -281,6 +284,11 @@ const getCardknoxLink = () => {
     logger.error("DASHBOARD_CARDKNOX_LINK_ERROR", "Error constructing Cardknox URL", { error: String(error) })
     return null
   }
+}
+
+// Function to get display name for print card
+const getDisplayName = (user: { firstName?: string; lastName?: string; name: string }) => {
+  return user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
 }
 
 // Use DashboardPage instead of Dashboard as per the updates
@@ -538,7 +546,7 @@ export default function DashboardPage() {
     if (user) {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
-      localStorage.setItem("user", JSON.JSON.stringify(updatedUser))
+      localStorage.setItem("user", JSON.stringify(updatedUser))
       logger.info("DASHBOARD_LANGUAGE_CHANGE", `Language changed to ${newLanguage}`, { userId: user.id }, user.email)
     }
   }
@@ -613,6 +621,187 @@ export default function DashboardPage() {
         setEmailStatus(null)
       }, 5000)
     }
+  }
+
+  const handlePrintDonationCard = () => {
+    if (!user) return
+
+    const displayName = getDisplayName(user)
+    const accountNumber = user.accountNumber || user.id
+
+    const donationURL = `https://secure.cardknox.com/kerenhatzedaka?xCustom03=${encodeURIComponent(
+      `${displayName} / ${accountNumber}`,
+    )}&xCustom04=${encodeURIComponent(user.email)}`
+
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(donationURL)}`
+
+    const printWindow = window.open("", "_blank")
+    if (!printWindow) return
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${displayName} - ${accountNumber}</title>
+        <style>
+          @media print {
+            body { margin: 0; }
+            @page { size: auto; margin: 10mm; }
+          }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #20B2AA;
+            padding-bottom: 15px;
+          }
+          .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #000;
+            margin: 10px 0;
+          }
+          .subtitle {
+            font-size: 18px;
+            color: #555;
+            margin: 5px 0;
+          }
+          .important-note {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .important-note strong {
+            color: #d32f2f;
+            font-size: 16px;
+          }
+          .methods {
+            margin: 20px 0;
+          }
+          .method {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+          }
+          .method-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #20B2AA;
+            margin-bottom: 8px;
+          }
+          .method-content {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+          }
+          .qr-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 8px;
+            border: 2px solid #20B2AA;
+          }
+          .qr-section img {
+            border: 2px solid #20B2AA;
+            border-radius: 8px;
+            margin: 10px 0;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #20B2AA;
+            color: #555;
+            font-size: 14px;
+          }
+          .print-button {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 30px;
+            background: #20B2AA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+          }
+          .print-button:hover {
+            background: #188a7a;
+          }
+          @media print {
+            .print-button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">${displayName} / ${accountNumber}</div>
+          <div class="subtitle">Keren Hatzedaka</div>
+          <div style="font-size: 14px; color: #666; margin-top: 5px;">422 Monmouth Ave Lakewood NJ 08701</div>
+          <div style="font-size: 14px; color: #666;">Collecting fund for ${displayName}</div>
+        </div>
+
+        <div class="important-note">
+          <strong>* IMPORTANT! Please Write for ${displayName} / ${accountNumber}</strong>
+        </div>
+
+        <div style="font-size: 18px; font-weight: bold; margin: 20px 0; text-align: center;">To Donate:</div>
+
+        <div class="methods">
+          <div class="method">
+            <div class="method-title">1. QP or Zelle - ozerdalimlakewood@gmail.com *</div>
+          </div>
+
+          <div class="method">
+            <div class="method-title">2. Checks- Cong. Tiferes Yaakov *</div>
+          </div>
+
+          <div class="method">
+            <div class="method-title">3. 6 Shoshana Dr. Lakewood NJ 08701 *</div>
+          </div>
+
+          <div class="method">
+            <div class="method-title">4. OJC, Donor Fund, Fidelity -83-4411630 *</div>
+          </div>
+
+          <div class="method">
+            <div class="method-title">5. Call/Text 7328009840 code (${accountNumber}) *</div>
+          </div>
+        </div>
+
+        <div class="qr-section">
+          <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">By Credit Card</div>
+          <img src="${qrCodeUrl}" alt="QR Code" width="200" height="200" />
+          <div style="font-size: 12px; color: #666; margin-top: 10px;">Scan to donate via credit card</div>
+        </div>
+
+        <div class="important-note">
+          <strong>* IMPORTANT! Please Write for ${displayName} / ${accountNumber}</strong>
+        </div>
+
+        <div class="footer">
+          <div>Tizku L'Mitzvos!</div>
+          <div style="margin-top: 5px;">Your support helps bring comfort and strength to those in need</div>
+        </div>
+
+        <button class="print-button" onclick="window.print()">🖨️ Print This Page</button>
+      </body>
+      </html>
+    `)
+
+    printWindow.document.close()
   }
 
   // Combine all money transactions (including donations) into a single array
@@ -1154,7 +1343,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* Send Donation Instructions Button */}
+            {/* Send Donation Instructions Button and Print Card Button */}
             <div className="flex gap-2">
               <Button
                 onClick={() => setShowEmailConfirmDialog(true)}
@@ -1180,6 +1369,15 @@ export default function DashboardPage() {
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   {t.donationLink}
+                </Button>
+              )}
+              {user && (
+                <Button
+                  onClick={handlePrintDonationCard}
+                  className="bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  {t.printDonationCard}
                 </Button>
               )}
             </div>
