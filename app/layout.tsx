@@ -13,5 +13,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 
 export const metadata = {
-      generator: 'v0.app'
-    };
+  title: "Keren Hatzedaka - Customer Portal",
+  description: "Customer Portal for Keren Hatzedaka",
+  generator: "v0.app",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+}
