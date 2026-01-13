@@ -267,7 +267,12 @@ function processPercentages(rows: string[][]): Map<string, number> {
   return percentagesMap
 }
 
-function processTransactions(rows: string[][], userId: string, percentagesMap: Map<string, number>): Transaction[] {
+function processTransactions(
+  rows: string[][],
+  userId: string,
+  percentagesMap: Map<string, number>,
+  usePrecomputedNet = false,
+): Transaction[] {
   if (rows.length === 0) return []
 
   const headerRow = rows[0]
@@ -309,6 +314,8 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       header?.toLowerCase().trim() === "id",
   )
 
+  const netIndex = 13 // Column N is the 14th column (0-indexed as 13)
+
   if (personIndex === -1) {
     console.log("No Person column found in transaction sheet")
     console.log("Available headers:", headerRow)
@@ -335,7 +342,6 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       const amountStr = row[amountIndex]?.toString().trim() || "0"
       const cleanedAmount = amountStr.replace(/[$,]/g, "")
       originalAmount = Number.parseFloat(cleanedAmount)
-      netAmount = originalAmount
 
       if (Number.isNaN(originalAmount)) {
         console.log(`Invalid amount value: ${amountStr}, defaulting to 0`)
@@ -348,27 +354,51 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       netAmount = 0
     }
 
-    const transactionType = typeIndex !== -1 ? row[typeIndex]?.toString().trim() : ""
+    if (usePrecomputedNet && row[netIndex]) {
+      try {
+        const netStr = row[netIndex]?.toString().trim() || "0"
+        const cleanedNet = netStr.replace(/[$,]/g, "")
+        netAmount = Number.parseFloat(cleanedNet)
 
-    if (transactionType) {
-      const lowerCaseType = transactionType.toLowerCase()
-      if (percentagesMap.has(lowerCaseType)) {
-        const multiplier = percentagesMap.get(lowerCaseType) || 1
-        netAmount = roundToTwo(originalAmount * multiplier)
-
-        console.log(
-          `Applied multiplier ${multiplier} to amount for type ${transactionType}: ${originalAmount} -> ${netAmount}`,
-        )
-      } else {
-        console.log(`No multiplier found for type: ${transactionType}, using 1.0`)
+        if (Number.isNaN(netAmount)) {
+          console.log(`Invalid net amount value in column N: ${netStr}, calculating instead`)
+          netAmount = originalAmount
+          const transactionType = typeIndex !== -1 ? row[typeIndex]?.toString().trim() : ""
+          if (transactionType) {
+            const lowerCaseType = transactionType.toLowerCase()
+            if (percentagesMap.has(lowerCaseType)) {
+              const multiplier = percentagesMap.get(lowerCaseType) || 1
+              netAmount = roundToTwo(originalAmount * multiplier)
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing net amount from column N:", error)
         netAmount = originalAmount
       }
+    } else {
+      netAmount = originalAmount
+      const transactionType = typeIndex !== -1 ? row[typeIndex]?.toString().trim() : ""
+
+      if (transactionType) {
+        const lowerCaseType = transactionType.toLowerCase()
+        if (percentagesMap.has(lowerCaseType)) {
+          const multiplier = percentagesMap.get(lowerCaseType) || 1
+          netAmount = roundToTwo(originalAmount * multiplier)
+
+          console.log(
+            `Applied multiplier ${multiplier} to amount for type ${transactionType}: ${originalAmount} -> ${netAmount}`,
+          )
+        } else {
+          console.log(`No multiplier found for type: ${transactionType}, using 1.0`)
+          netAmount = originalAmount
+        }
+      }
     }
-    // Prepare description (notes) and optionally include cardknox value
+
     let description = notesIndex !== -1 ? row[notesIndex] || "" : ""
     const cardknoxValue = cardknoxIndex !== -1 ? row[cardknoxIndex]?.toString().trim() : ""
 
-    // Append Cardknox value to description if available
     if (cardknoxValue) {
       description = `${description ? description + " - " : ""}${cardknoxValue}`
     }
@@ -379,7 +409,7 @@ function processTransactions(rows: string[][], userId: string, percentagesMap: M
       reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
       amount: originalAmount,
       net: netAmount,
-      type: transactionType || "",
+      type: typeIndex !== -1 ? row[typeIndex]?.toString().trim() : "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
     }
   })
@@ -674,7 +704,6 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       }
     })
 
-  // Group by month
   const grouped = new Map<string, Transaction>()
   for (const d of details) {
     const key = d.yearMonth
@@ -945,16 +974,24 @@ export async function POST(request: NextRequest) {
     const machineRentalsData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
     const linksAndPhoneData = responses[5].status === "fulfilled" ? (responses[5].value as any).data.values || [] : []
 
-    const currentTransactions = processTransactions(currentTransactionsData, userId, percentagesMap)
-    const transactions2024 = processTransactions(transactions2024Data, userId, percentagesMap)
-    const oldTransactions = processTransactions(oldTransactionsData, userId, percentagesMap)
+    const currentTransactions =
+      responses[0].status === "fulfilled"
+        ? processTransactions(currentTransactionsData, userId, percentagesMap, true)
+        : []
+
+    const transactions2024 =
+      responses[1].status === "fulfilled" ? processTransactions(transactions2024Data, userId, percentagesMap, true) : []
+
+    const transactionsOld =
+      responses[2].status === "fulfilled" ? processTransactions(oldTransactionsData, userId, percentagesMap, true) : []
+
     const donations = processDonations(donationsData, userId, donorsMap)
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
     const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
 
     console.log(`Found ${currentTransactions.length} current transactions (total)`)
     console.log(`Found ${transactions2024.length} transactions from 2024 (total)`)
-    console.log(`Found ${oldTransactions.length} old transactions (total)`)
+    console.log(`Found ${transactionsOld.length} old transactions (total)`)
     console.log(`Found ${donations.length} donations (total)`)
     console.log(`Found ${machineRentals.length} machine rentals (total)`)
 
@@ -963,14 +1000,14 @@ export async function POST(request: NextRequest) {
 
     let displayCurrentTransactions = currentTransactions
     let displayTransactions2024 = transactions2024
-    let displayOldTransactions = oldTransactions
+    let displayOldTransactions = transactionsOld
     let displayDonations = donations
     let displayMachineRentals = machineRentals
 
     if (transactionLimit.enabled) {
       displayCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
       displayTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
-      displayOldTransactions = filterTransactionsByDate(oldTransactions, cutoffDate)
+      displayOldTransactions = filterTransactionsByDate(transactionsOld, cutoffDate)
       displayDonations = filterTransactionsByDate(donations, cutoffDate)
       displayMachineRentals = filterTransactionsByDate(machineRentals, cutoffDate)
     }
@@ -981,7 +1018,7 @@ export async function POST(request: NextRequest) {
       email: userEmail,
       currentTransactions: currentTransactions || [],
       transactions2024: transactions2024 || [],
-      oldTransactions: oldTransactions || [],
+      oldTransactions: transactionsOld || [],
       donations: donations || [],
       machineRentals: machineRentals || [],
       linksAndPhoneGrouped: linksAndPhoneGrouped || [],
