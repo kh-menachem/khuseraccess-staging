@@ -394,6 +394,14 @@ export default function DashboardPage() {
           }
 
           console.log("[v0] Successfully loaded customer data")
+          console.log("[v0] Customer data structure:", {
+            currentTransactions: data.currentTransactions?.length || 0,
+            transactions2024: data.transactions2024?.length || 0,
+            oldTransactions: data.oldTransactions?.length || 0,
+            donations: data.donations?.length || 0,
+            linksAndPhoneTransactions: data.linksAndPhoneTransactions?.length || 0,
+          })
+
           await logger.info(
             "DASHBOARD_FETCH_SUCCESS",
             `Customer data loaded successfully for user: ${parsedUser.email}`,

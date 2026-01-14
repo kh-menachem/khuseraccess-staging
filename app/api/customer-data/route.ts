@@ -1021,7 +1021,7 @@ export async function POST(request: NextRequest) {
       oldTransactions: transactionsOld || [],
       donations: donations || [],
       machineRentals: machineRentals || [],
-      linksAndPhoneGrouped: linksAndPhoneGrouped || [],
+      linksAndPhoneTransactions: linksAndPhoneGrouped || [],
       displayCurrentTransactions,
       displayTransactions2024,
       displayOldTransactions,
