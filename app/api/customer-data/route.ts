@@ -277,6 +277,7 @@ function processTransactions(
 
   const headerRow = rows[0]
   console.log("[v0] Transaction sheet headers:", headerRow)
+  console.log("[v0] Total columns in transaction sheet:", headerRow.length)
 
   const personIndex = headerRow.findIndex(
     (header: string) =>
@@ -284,6 +285,14 @@ function processTransactions(
       header?.toLowerCase().trim() === "transactionid" ||
       header?.toLowerCase().trim() === "transaction id",
   )
+
+  console.log("[v0] Person column index in transaction sheet:", personIndex)
+
+  if (personIndex === -1) {
+    console.log("[v0] No Person/TransactionID column found in transaction sheet")
+    console.log("[v0] Available headers:", headerRow)
+    return []
+  }
 
   const amountIndex = headerRow.findIndex(
     (header: string) =>
@@ -321,17 +330,6 @@ function processTransactions(
 
   const netIndex = 13 // Column N is the 14th column (0-indexed as 13)
 
-  if (personIndex === -1) {
-    console.log("[v0] No Person column found in transaction sheet")
-    console.log("[v0] Available headers:", headerRow)
-    return []
-  }
-
-  if (amountIndex === -1) {
-    console.log("[v0] No Amount column found in transaction sheet")
-    return []
-  }
-
   console.log("[v0] Looking for userId:", userId)
   console.log(
     "[v0] Sample Person values from rows:",
@@ -340,13 +338,9 @@ function processTransactions(
 
   const filteredRows = rows.slice(1).filter((row: string[]) => {
     if (!row[personIndex]) return false
-    const rowPersonId = row[personIndex]?.toString().trim().toLowerCase()
-    const searchId = userId?.toString().trim().toLowerCase()
+    const rowPersonId = row[personIndex]?.toString().trim()
+    const searchId = userId?.toString().trim()
     const matches = rowPersonId === searchId
-
-    if (!matches && rowPersonId && rowPersonId.includes(searchId)) {
-      console.log(`[v0] Partial match found: "${rowPersonId}" contains "${searchId}"`)
-    }
 
     return matches
   })
