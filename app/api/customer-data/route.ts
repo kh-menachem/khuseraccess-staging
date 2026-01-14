@@ -276,7 +276,7 @@ function processTransactions(
   if (rows.length === 0) return []
 
   const headerRow = rows[0]
-  console.log("Transaction sheet headers:", headerRow)
+  console.log("[v0] Transaction sheet headers:", headerRow)
 
   const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
 
@@ -317,15 +317,21 @@ function processTransactions(
   const netIndex = 13 // Column N is the 14th column (0-indexed as 13)
 
   if (personIndex === -1) {
-    console.log("No Person column found in transaction sheet")
-    console.log("Available headers:", headerRow)
+    console.log("[v0] No Person column found in transaction sheet")
+    console.log("[v0] Available headers:", headerRow)
     return []
   }
 
   if (amountIndex === -1) {
-    console.log("No Amount column found in transaction sheet")
+    console.log("[v0] No Amount column found in transaction sheet")
     return []
   }
+
+  console.log("[v0] Looking for userId:", userId)
+  console.log(
+    "[v0] Sample Person values from rows:",
+    rows.slice(1, 6).map((row) => row[personIndex]),
+  )
 
   const filteredRows = rows.slice(1).filter((row: string[]) => {
     if (!row[personIndex]) return false
@@ -333,7 +339,12 @@ function processTransactions(
     return rowPersonId === userId
   })
 
-  console.log(`Found ${filteredRows.length} matching transactions for user UNIQUEID ${userId}`)
+  console.log(`[v0] Found ${filteredRows.length} matching transactions for user UNIQUEID ${userId}`)
+  if (filteredRows.length > 0) {
+    console.log("[v0] Sample matching row:", filteredRows[0])
+  } else {
+    console.log("[v0] No rows matched. Total rows in sheet:", rows.length - 1)
+  }
 
   return filteredRows.map((row: string[], index: number) => {
     let originalAmount = 0
@@ -943,15 +954,15 @@ export async function POST(request: NextRequest) {
     ])
 
     responses.forEach((result, index) => {
+      const sheetNames = [
+        "Current Transactions",
+        "2024 Transactions",
+        "Old transactions",
+        "Donations",
+        "Machine Rentals",
+        "Links And Phone",
+      ]
       if (result.status === "rejected") {
-        const sheetNames = [
-          "Current Transactions",
-          "2024 Transactions",
-          "Old transactions",
-          "Donations",
-          "Machine Rentals",
-          "Links And Phone",
-        ]
         console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
         writeLogToSheet({
           timestamp: new Date().toISOString(),
@@ -979,15 +990,26 @@ export async function POST(request: NextRequest) {
         ? processTransactions(currentTransactionsData, userId, percentagesMap, true)
         : []
 
+    console.log("[v0] Processed currentTransactions:", currentTransactions.length, "transactions")
+
     const transactions2024 =
       responses[1].status === "fulfilled" ? processTransactions(transactions2024Data, userId, percentagesMap, true) : []
+
+    console.log("[v0] Processed transactions2024:", transactions2024.length, "transactions")
 
     const transactionsOld =
       responses[2].status === "fulfilled" ? processTransactions(oldTransactionsData, userId, percentagesMap, true) : []
 
+    console.log("[v0] Processed transactionsOld:", transactionsOld.length, "transactions")
+
     const donations = processDonations(donationsData, userId, donorsMap)
+    console.log("[v0] Processed donations:", donations.length, "transactions")
+
     const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
-    const linksAndPhoneGrouped = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
+    console.log("[v0] Processed machineRentals:", machineRentals.length, "transactions")
+
+    const linksAndPhoneTransactions = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
+    console.log("[v0] Processed linksAndPhoneTransactions:", linksAndPhoneTransactions.length, "transactions")
 
     console.log(`Found ${currentTransactions.length} current transactions (total)`)
     console.log(`Found ${transactions2024.length} transactions from 2024 (total)`)
@@ -1021,7 +1043,7 @@ export async function POST(request: NextRequest) {
       oldTransactions: transactionsOld || [],
       donations: donations || [],
       machineRentals: machineRentals || [],
-      linksAndPhoneTransactions: linksAndPhoneGrouped || [],
+      linksAndPhoneTransactions: linksAndPhoneTransactions || [],
       displayCurrentTransactions,
       displayTransactions2024,
       displayOldTransactions,
