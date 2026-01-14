@@ -278,7 +278,12 @@ function processTransactions(
   const headerRow = rows[0]
   console.log("[v0] Transaction sheet headers:", headerRow)
 
-  const personIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "person")
+  const personIndex = headerRow.findIndex(
+    (header: string) =>
+      header?.toLowerCase().trim() === "person" ||
+      header?.toLowerCase().trim() === "transactionid" ||
+      header?.toLowerCase().trim() === "transaction id",
+  )
 
   const amountIndex = headerRow.findIndex(
     (header: string) =>
@@ -335,15 +340,26 @@ function processTransactions(
 
   const filteredRows = rows.slice(1).filter((row: string[]) => {
     if (!row[personIndex]) return false
-    const rowPersonId = row[personIndex]?.toString().trim()
-    return rowPersonId === userId
+    const rowPersonId = row[personIndex]?.toString().trim().toLowerCase()
+    const searchId = userId?.toString().trim().toLowerCase()
+    const matches = rowPersonId === searchId
+
+    if (!matches && rowPersonId && rowPersonId.includes(searchId)) {
+      console.log(`[v0] Partial match found: "${rowPersonId}" contains "${searchId}"`)
+    }
+
+    return matches
   })
 
   console.log(`[v0] Found ${filteredRows.length} matching transactions for user UNIQUEID ${userId}`)
   if (filteredRows.length > 0) {
-    console.log("[v0] Sample matching row:", filteredRows[0])
+    console.log("[v0] Sample matching row Person value:", filteredRows[0][personIndex])
   } else {
     console.log("[v0] No rows matched. Total rows in sheet:", rows.length - 1)
+    console.log(
+      "[v0] First 10 Person column values:",
+      rows.slice(1, 11).map((r) => r[personIndex]),
+    )
   }
 
   return filteredRows.map((row: string[], index: number) => {
