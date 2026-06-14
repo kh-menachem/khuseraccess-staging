@@ -31,7 +31,7 @@ export async function GET() {
     })
 
     const sheets = google.sheets({ version: "v4", auth })
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     if (!spreadsheetId) {
       return NextResponse.json(

@@ -6,7 +6,7 @@ import * as os from "os"
 
 async function getGoogleSheetsClient() {
   const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-  const spreadsheetId = process.env.SPREADSHEET_ID
+  const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
   if (!credentials || !spreadsheetId) {
     throw new Error("Missing credentials or spreadsheet ID")
@@ -27,7 +27,7 @@ async function getGoogleSheetsClient() {
 async function verifyAdmin(email: string): Promise<{ isAdmin: boolean; isSuperAdmin: boolean }> {
   try {
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     if (!credentials || !spreadsheetId) {
       return { isAdmin: false, isSuperAdmin: false }

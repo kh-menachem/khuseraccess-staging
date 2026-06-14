@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     })
 
     const sheets = google.sheets({ version: "v4", auth })
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
     if (!spreadsheetId) {
       return NextResponse.json({ success: false, error: "Spreadsheet ID not found" }, { status: 500 })
     }

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Verify admin is a superadmin
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     if (!credentials || !spreadsheetId) {
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 })

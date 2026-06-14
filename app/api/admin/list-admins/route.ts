@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     })
 
     const sheets = google.sheets({ version: "v4", auth })
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     // First verify the requestor is an admin
     const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/admin/verify`, {

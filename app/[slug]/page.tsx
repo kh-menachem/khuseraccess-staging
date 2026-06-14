@@ -14,7 +14,7 @@ export default async function RedirectSlug({ params }: { params: { slug: string 
   })
 
   const sheets = google.sheets({ version: "v4", auth })
-  const sheetId = process.env.SPREADSHEET_ID
+  const sheetId = process.env.SPREADSHEET_ID?.trim()
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: "People!A:AQ",

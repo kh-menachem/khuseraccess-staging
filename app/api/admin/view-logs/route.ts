@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     })
 
     const sheets = google.sheets({ version: "v4", auth })
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     // Read logs from the Logs sheet
     const response = await sheets.spreadsheets.values.get({
@@ -211,7 +211,7 @@ function generateLogsHTML(logs: any[][], startDate: string, endDate: string) {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🚨 Error & Warning Logs</h1>
+            <h1>ðŸš¨ Error & Warning Logs</h1>
             <div class="date-range">
               ${new Date(startDate).toLocaleString()} - ${new Date(endDate).toLocaleString()}
             </div>

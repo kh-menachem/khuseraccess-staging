@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     })
 
     const sheets = google.sheets({ version: "v4", auth })
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
     console.log("Spreadsheet ID:", spreadsheetId)
 
     if (!spreadsheetId) {

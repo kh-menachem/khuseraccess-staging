@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
 async function fetchErrorLogs() {
   const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-  const spreadsheetId = process.env.SPREADSHEET_ID
+  const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
   if (!credentials || !spreadsheetId) {
     throw new Error("Missing credentials or spreadsheet ID")
@@ -186,7 +186,7 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">🚨🚨 Daily Error & Warning Report</h1>
+        <h1 style="color: white; margin: 0; font-size: 24px;">ðŸš¨ðŸš¨ Daily Error & Warning Report</h1>
         <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">Account: 6301926</p>
       </div>
       
@@ -212,13 +212,13 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
           downloadUrl || viewOnlineUrl
             ? `
         <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
-          <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #333;">📊 Full Report Access</h3>
+          <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #333;">ðŸ“Š Full Report Access</h3>
           <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
             ${
               downloadUrl
                 ? `
             <a href="${downloadUrl}" style="background: #4CAF50; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
-              📥 Download CSV
+              ðŸ“¥ Download CSV
             </a>
             `
                 : ""
@@ -227,7 +227,7 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
               viewOnlineUrl
                 ? `
             <a href="${viewOnlineUrl}" style="background: #2196F3; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
-              🌐 View Online
+              ðŸŒ View Online
             </a>
             `
                 : ""
@@ -243,7 +243,7 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
             ([event, logs]) => `
           <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid ${logs[0].level === "ERROR" ? "#dc3545" : "#f59e0b"};">
             <h3 style="margin: 0 0 10px 0; font-size: 16px; color: ${logs[0].level === "ERROR" ? "#dc3545" : "#f59e0b"};">
-              ${logs[0].level === "ERROR" ? "🔴" : "⚠️"} ${event} 
+              ${logs[0].level === "ERROR" ? "ðŸ”´" : "âš ï¸"} ${event} 
               <span style="background: ${logs[0].level === "ERROR" ? "#dc3545" : "#f59e0b"}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 8px;">
                 ${logs.length}
               </span>
@@ -340,7 +340,7 @@ Check the Logs sheet in Google Sheets for complete details.
   await transporter.sendMail({
     from: `"Keren Hatzedakah System" <${smtpConfig.user}>`,
     to: "kh.menachem@gmail.com",
-    subject: "🚨🚨6301926 ERROR LOGS",
+    subject: "ðŸš¨ðŸš¨6301926 ERROR LOGS",
     html: html,
     text: text,
   })

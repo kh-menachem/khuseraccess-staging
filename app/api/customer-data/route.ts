@@ -130,7 +130,7 @@ function getMonthName(yearMonth: string, language: string): string {
       "November",
       "December",
     ],
-    he: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"],
+    he: ["×™× ×•××¨", "×¤×‘×¨×•××¨", "×ž×¨×¥", "××¤×¨×™×œ", "×ž××™", "×™×•× ×™", "×™×•×œ×™", "××•×’×•×¡×˜", "×¡×¤×˜×ž×‘×¨", "××•×§×˜×•×‘×¨", "× ×•×‘×ž×‘×¨", "×“×¦×ž×‘×¨"],
   }
 
   const names = months[language === "he" ? "he" : "en"]
@@ -721,7 +721,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
           net = roundToTwo(amt * -0.965)
           break
         default:
-          net = 0 // or amt — depends on desired behavior
+          net = 0 // or amt â€” depends on desired behavior
           break
       }
 
@@ -751,8 +751,8 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
         reference: `LINKS-${key}`,
         amount: 0,
         net: 0,
-        type: language === "he" ? "תרומות קישורים / טלפון" : "Links/Phone Donations",
-        notCleared: language === "he" ? "זמין" : "Cleared",
+        type: language === "he" ? "×ª×¨×•×ž×•×ª ×§×™×©×•×¨×™× / ×˜×œ×¤×•×Ÿ" : "Links/Phone Donations",
+        notCleared: language === "he" ? "×–×ž×™×Ÿ" : "Cleared",
         source: "LinksandPhone",
         details: [],
       })
@@ -825,7 +825,7 @@ export async function POST(request: NextRequest) {
     console.log(`[v0] Fetching data for user: ${userEmail}, UNIQUEID: ${userId}`)
 
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     if (!credentials) {
       console.error("[v0] Missing GOOGLE_APPLICATION_CREDENTIALS_JSON")

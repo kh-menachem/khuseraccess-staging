@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     })
 
     const sheets = google.sheets({ version: "v4", auth })
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     // Get People sheet data - columns B (Last Name), C (First Name), and U (Unique Number/Account Number)
     const response = await sheets.spreadsheets.values.get({

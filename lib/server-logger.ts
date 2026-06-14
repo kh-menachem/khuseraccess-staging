@@ -66,7 +66,7 @@ class LogQueue {
 
   private async writeToSheet(logEntry: LogEntry): Promise<void> {
     const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    const spreadsheetId = process.env.SPREADSHEET_ID
+    const spreadsheetId = process.env.SPREADSHEET_ID?.trim()
 
     if (!credentials || !spreadsheetId) {
       throw new Error("Missing credentials or spreadsheet ID")
