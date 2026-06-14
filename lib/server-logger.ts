@@ -87,7 +87,7 @@ class LogQueue {
         spreadsheetId,
         range: "Logs!A:G",
         valueInputOption: "USER_ENTERED",
-        resource: {
+        requestBody: {
           values: [
             [
               logEntry.timestamp,

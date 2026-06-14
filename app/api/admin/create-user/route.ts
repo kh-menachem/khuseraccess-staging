@@ -2,30 +2,33 @@ import { NextResponse } from "next/server"
 import { initializeApp, getApps, cert } from "firebase-admin/app"
 import { getAuth } from "firebase-admin/auth"
 
-// Parse service account once
-const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || "{}")
+function getServiceAccount() {
+  return JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || "{}")
+}
 
-// Initialize Firebase Admin
-if (!getApps().length) {
-  try {
+function ensureFirebaseAdmin() {
+  const serviceAccount = getServiceAccount()
+
+  if (!getApps().length) {
     initializeApp({
       credential: cert(serviceAccount),
       projectId: serviceAccount.project_id,
     })
+
     if (process.env.NODE_ENV !== "production") {
       console.log("Firebase Admin initialized:", serviceAccount.project_id)
     }
-  } catch (err) {
-    console.error("Firebase Admin init error:", err)
   }
+
+  return serviceAccount
 }
 
 export async function POST(request: Request) {
-  if (!getApps().length) {
-    return NextResponse.json({ success: false, error: "Firebase Admin not initialized" }, { status: 500 })
-  }
+  let projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || ""
 
   try {
+    const serviceAccount = ensureFirebaseAdmin()
+    projectId = serviceAccount.project_id || projectId
     const { email, password, language = "he" } = await request.json()
     if (!email || !password) {
       return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
       message: `User created successfully. Can now login with ${email}`,
       userId: userRecord.uid,
       email: userRecord.email,
-      projectId: serviceAccount.project_id,
+      projectId,
       createdAt: new Date().toISOString(),
     })
   } catch (err: any) {
@@ -71,11 +74,11 @@ export async function POST(request: Request) {
     }
 
     if (msg.includes("Identity Toolkit API") || msg.includes("identitytoolkit.googleapis.com") || msg.includes("SERVICE_DISABLED")) {
-      const apiLink = `https://console.developers.google.com/apis/api/identitytoolkit.googleapis.com/overview?project=${serviceAccount.project_id}`
+      const apiLink = `https://console.developers.google.com/apis/api/identitytoolkit.googleapis.com/overview?project=${projectId}`
       return NextResponse.json({
         success: false,
         error: "Identity Toolkit API is not enabled",
-        projectId: serviceAccount.project_id,
+        projectId,
         apiEnableLink: apiLink,
         instructions: [
           `1. Click: ${apiLink}`,
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
       success: false,
       error: "Firebase error: " + msg,
       code,
-      projectId: serviceAccount.project_id,
+      projectId,
     }, { status: 500 })
   }
 }

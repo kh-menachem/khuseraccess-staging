@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { initializeApp, getApps, cert } from "firebase-admin/app"
 import { getAuth } from "firebase-admin/auth"
 
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
+function ensureFirebaseAdmin() {
+  if (getApps().length) return
+
   const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || "{}")
 
   initializeApp({
@@ -19,6 +20,8 @@ export async function POST(request: Request) {
     if (!language) {
       return NextResponse.json({ success: false, error: "Language is required" }, { status: 400 })
     }
+
+    ensureFirebaseAdmin()
 
     // Set the language code for Firebase Auth emails
     const auth = getAuth()

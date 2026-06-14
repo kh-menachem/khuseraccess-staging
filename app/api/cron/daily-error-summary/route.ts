@@ -6,6 +6,8 @@ import { writeFileSync } from "fs"
 import { join } from "path"
 import os from "os"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(req: NextRequest) {
   try {
     // Verify cron secret for security
@@ -178,6 +180,7 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
     },
     {} as Record<string, any[]>,
   )
+  const errorEventEntries = Object.entries(errorsByEvent) as [string, any[]][]
 
   // Generate HTML email
   const html = `
@@ -235,7 +238,7 @@ async function sendErrorSummaryEmail(errorLogs: any[]) {
             : ""
         }
 
-        ${Object.entries(errorsByEvent)
+        ${errorEventEntries
           .map(
             ([event, logs]) => `
           <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px; border-left: 4px solid ${logs[0].level === "ERROR" ? "#dc3545" : "#f59e0b"};">
@@ -312,7 +315,7 @@ ${downloadUrl ? `Download CSV: ${downloadUrl}\n` : ""}
 ${viewOnlineUrl ? `View Online: ${viewOnlineUrl}\n` : ""}
 
 ISSUES BY TYPE:
-${Object.entries(errorsByEvent)
+${errorEventEntries
   .map(
     ([event, logs]) => `
 ${event} (${logs.length} occurrences - ${logs[0].level})

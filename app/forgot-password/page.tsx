@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      setError(t.errorsendingemail)
+      setError(t.errorSendingEmail)
       toast({
         variant: "destructive",
         title: t.resetFailed,

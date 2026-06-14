@@ -5,7 +5,7 @@ import { writeFileSync, readFileSync, existsSync } from "fs"
 import { join } from "path"
 import * as os from "os"
 import { writeLogToSheet } from "@/lib/server-logger"
-import { crypto } from "crypto"
+import { randomUUID } from "crypto"
 
 const TRANSACTION_LIMIT_FILE = join(os.tmpdir(), "transaction-limit.json")
 
@@ -61,6 +61,20 @@ function filterTransactionsByDate<T extends { date: string }>(transactions: T[],
       return txDate >= cutoffDate
     } catch (error) {
       console.error("Error parsing transaction date:", tx.date, error)
+      return false
+    }
+  })
+}
+
+function filterMachineRentalsByDate(rentals: MachineRental[], cutoffDate: Date | null): MachineRental[] {
+  if (!cutoffDate) return rentals
+
+  return rentals.filter((rental) => {
+    try {
+      const rentalDate = new Date(rental.rentalDate)
+      return rentalDate >= cutoffDate
+    } catch (error) {
+      console.error("Error parsing machine rental date:", rental.rentalDate, error)
       return false
     }
   })
@@ -239,9 +253,9 @@ function processPercentages(rows: string[][]): Map<string, number> {
   }
 
   const hardcodedMap = getHardcodedPercentages()
-  for (const [key, value] of hardcodedMap) {
+  hardcodedMap.forEach((value, key) => {
     percentagesMap.set(key, value)
-  }
+  })
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i]
@@ -765,7 +779,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
 export const maxDuration = 60 // Allow up to 60 seconds for Vercel Pro
 
 export async function POST(request: NextRequest) {
-  const requestId = request.headers.get("x-request-id") || crypto.randomUUID()
+  const requestId = request.headers.get("x-request-id") || randomUUID()
   const startTime = Date.now()
 
   try {
@@ -1041,7 +1055,7 @@ export async function POST(request: NextRequest) {
       displayTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
       displayOldTransactions = filterTransactionsByDate(transactionsOld, cutoffDate)
       displayDonations = filterTransactionsByDate(donations, cutoffDate)
-      displayMachineRentals = filterTransactionsByDate(machineRentals, cutoffDate)
+      displayMachineRentals = filterMachineRentalsByDate(machineRentals, cutoffDate)
     }
 
     const customerData: CustomerData = {

@@ -524,7 +524,7 @@ export default function DashboardPage() {
     if (user) {
       const updatedUser = { ...user, language: newLanguage }
       setUser(updatedUser)
-      localStorage.setItem("user", JSON.JSON.stringify(updatedUser))
+      localStorage.setItem("user", JSON.stringify(updatedUser))
       logger.info("DASHBOARD_LANGUAGE_CHANGE", `Language changed to ${newLanguage}`, { userId: user.id }, user.email)
     }
   }
@@ -642,13 +642,13 @@ export default function DashboardPage() {
         })),
         // Add LinksandPhone transactions if they exist
         ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
-          id: tx.id || `LINK-${Math.random()}`,
+          id: tx.id,
           date: tx.date,
-          description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
-          reference: tx.name,
+          description: tx.description || "",
+          reference: tx.reference || "",
           amount: tx.amount,
           net: roundToTwo(tx.net), // Round net to 2 decimals
-          type: "Links/Phone",
+          type: tx.type || "Links/Phone",
           source: tx.source || "LinksandPhone",
           notCleared: "",
           cardknox: "",
@@ -699,13 +699,13 @@ export default function DashboardPage() {
           cardknox: "",
         })),
         ...(customerData.linksAndPhoneTransactions || []).map((tx) => ({
-          id: tx.id || `LINK-${Math.random()}`,
+          id: tx.id,
           date: tx.date,
-          description: `${tx.name || ""}${tx.description ? " - " + tx.description : ""} - ${tx.source || "N/A"}`,
-          reference: tx.name,
+          description: tx.description || "",
+          reference: tx.reference || "",
           amount: tx.amount,
           net: roundToTwo(tx.net), // Round net to 2 decimals
-          type: "Links/Phone",
+          type: tx.type || "Links/Phone",
           source: tx.source || "LinksandPhone",
           notCleared: "",
           cardknox: "",
@@ -991,7 +991,7 @@ export default function DashboardPage() {
       className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50"
       dir={language === "he" ? "rtl" : "ltr"}
     >
-      <SystemMessageBanner page="dashboard" />
+      <SystemMessageBanner location="dashboard" />
 
       {isSimulationMode && user && (
         <div className="bg-orange-600 text-white sticky top-0 z-50 shadow-lg">

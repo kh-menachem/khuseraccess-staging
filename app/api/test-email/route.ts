@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import nodemailer from "nodemailer"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
     console.log("🧪 Testing email configuration...")
@@ -35,7 +37,7 @@ export async function GET() {
     }
 
     // Create transporter
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: config.user,

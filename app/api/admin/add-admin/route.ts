@@ -6,17 +6,17 @@ import * as os from "os"
 import { initializeApp, getApps, cert } from "firebase-admin/app"
 import { getAuth } from "firebase-admin/auth"
 
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || "{}")
-    initializeApp({
-      credential: cert(serviceAccount),
-      projectId: serviceAccount.project_id || "khuserappsheet",
-    })
-  } catch (error) {
-    console.error("Error initializing Firebase Admin:", error)
-  }
+export const dynamic = "force-dynamic"
+
+function ensureFirebaseAdmin() {
+  if (getApps().length) return
+
+  const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || "{}")
+
+  initializeApp({
+    credential: cert(serviceAccount),
+    projectId: serviceAccount.project_id || "khuserappsheet",
+  })
 }
 
 export async function POST(request: Request) {
@@ -28,8 +28,14 @@ export async function POST(request: Request) {
     const adminName = body.adminName || body.name
     const adminRole = body.adminRole || "user"
     const requestorEmail = body.requestorEmail
-    const createFirebaseUser = body.createFirebaseUser !== false // default to true
-    console.log("Request to add admin received:", { adminEmail, adminName, adminRole, createFirebaseUser })
+    const createFirebaseUser = body.createFirebaseUser !== false
+    console.log("Request to add admin received:", {
+      adminEmail,
+      adminName,
+      adminRole,
+      requestorEmail,
+      createFirebaseUser,
+    })
 
     if (!adminEmail || !adminName) {
       return NextResponse.json({ success: false, error: "Admin email and name are required" }, { status: 400 })
@@ -63,7 +69,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Spreadsheet ID not found" }, { status: 500 })
     }
 
-    // Ensure Admin sheet exists
     const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId })
     const adminSheet = sheetMetadata.data.sheets?.find((sheet) => sheet.properties?.title?.toLowerCase() === "admin")
     if (!adminSheet) {
@@ -106,17 +111,18 @@ export async function POST(request: Request) {
 
     if (createFirebaseUser) {
       try {
+        ensureFirebaseAdmin()
         console.log("Creating Firebase user for:", adminEmail)
-        const auth = getAuth()
+        const firebaseAuth = getAuth()
         const tempPassword = Math.random().toString(36).slice(-12) + "A1!"
-        const userRecord = await auth.createUser({
+        const userRecord = await firebaseAuth.createUser({
           email: adminEmail,
           password: tempPassword,
           emailVerified: false,
         })
         console.log("Firebase user created:", userRecord.uid)
 
-        const resetLink = await auth.generatePasswordResetLink(adminEmail, {
+        const resetLink = await firebaseAuth.generatePasswordResetLink(adminEmail, {
           url: process.env.NEXT_PUBLIC_SITE_URL + "/admin/login",
           handleCodeInApp: false,
         })

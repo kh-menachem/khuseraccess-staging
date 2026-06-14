@@ -1,11 +1,13 @@
 export interface CustomerData {
   id: string
+  name?: string
+  email?: string
   currentTransactions: Transaction[]
   transactions2024: Transaction[]
   oldTransactions: Transaction[]
   donations: Donation[]
   machineRentals: MachineRental[]
-  linksAndPhoneTransactions?: TransactionDetail[]
+  linksAndPhoneTransactions?: Transaction[]
   displayCurrentTransactions?: Transaction[]
   displayTransactions2024?: Transaction[]
   displayOldTransactions?: Transaction[]
