@@ -651,7 +651,7 @@ export default function DashboardPage() {
           type: tx.type || "Links/Phone",
           source: tx.source ?? "",
           notCleared: "",
-          cardknox: "",
+          cardknox: tx.cardknox || "",
         })),
       ]
 
@@ -708,7 +708,7 @@ export default function DashboardPage() {
           type: tx.type || "Links/Phone",
           source: tx.source ?? "",
           notCleared: "",
-          cardknox: "",
+          cardknox: tx.cardknox || "",
         })),
       ]
 

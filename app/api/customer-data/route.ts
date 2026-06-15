@@ -62,6 +62,21 @@ function getLinksAndPhoneSource(mid: string | undefined): string {
   return ""
 }
 
+function getLastFourDigits(value: string | undefined): string {
+  const digits = value?.replace(/\D/g, "") || ""
+  return digits.length > 4 ? digits.slice(-4) : digits
+}
+
+function buildLinksAndPhoneDescription(source: string, name: string, phone: string, cardknoxDescription: string): string {
+  const phoneLastFour = getLastFourDigits(phone)
+  const donorIdentifier = source === "Phone Donation" ? phoneLastFour || name : name
+
+  return [source, donorIdentifier, cardknoxDescription]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" - ")
+}
+
 interface TransactionLimit {
   enabled: boolean
   limitType: "years" | "date"
@@ -645,12 +660,14 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
   const iPerson = hdr.indexOf("personid") // L
   const iDate = hdr.indexOf("date") // B
   const iName = hdr.indexOf("name") // C
+  const iPhone = findHeaderIndex(rows[0], ["phone"])
   const iAmount = hdr.indexOf("amount") // E
   const iDesc = hdr.indexOf("description") // G
   const iResult = hdr.indexOf("result") // H
   const iType = hdr.indexOf("type") // J
   const iMid = hdr.indexOf("mid") // K
   const iRef = findHeaderIndex(rows[0], ["uniqueid", "unique id", "ref #", "ref", "reference"])
+  const iCardknox = findHeaderIndex(rows[0], ["cardknox"])
 
   console.log("LinksandPhone sheet headers:", rows[0])
 
@@ -669,12 +686,15 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
 
   return filteredRows.map((r, index) => {
     const amount = parseMoneyValue(r[iAmount])
-    const type = r[iType]?.trim() || "Links/Phone"
-    const net = computeLinksAndPhoneNet(r[iResult], type, amount)
+    const transactionType = r[iType]?.trim() || ""
+    const net = computeLinksAndPhoneNet(r[iResult], transactionType, amount)
     const source = getLinksAndPhoneSource(r[iMid])
     const reference = iRef !== -1 ? r[iRef]?.toString().trim() || "" : ""
     const name = r[iName]?.toString().trim() || ""
-    const description = r[iDesc] || name
+    const phone = iPhone !== -1 ? r[iPhone]?.toString().trim() || "" : ""
+    const cardknoxDescription = r[iDesc]?.toString().trim() || ""
+    const description = buildLinksAndPhoneDescription(source, name, phone, cardknoxDescription)
+    const cardknox = iCardknox !== -1 ? r[iCardknox]?.toString().trim() || "" : ""
 
     return {
       id: reference || `LINK-${index}`,
@@ -683,8 +703,9 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       reference,
       amount,
       net: roundToTwo(net),
-      type,
+      type: "Links/Phone",
       notCleared: "Cleared",
+      cardknox,
       source,
     }
   })
