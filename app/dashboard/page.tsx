@@ -239,9 +239,19 @@ const translations = {
 }
 
 // Function to translate type names
+const getTransactionTypeKey = (type: string) => {
+  const lowerType = type.toLowerCase().trim()
+
+  if (lowerType === "links/phone" || lowerType === "links/phone donations") {
+    return "links"
+  }
+
+  return lowerType
+}
+
 const translateType = (type: string, t: any) => {
-  const lowerType = type.toLowerCase()
-  return t.types[lowerType] || type
+  const typeKey = getTransactionTypeKey(type)
+  return t.types[typeKey] || type
 }
 
 // Function to check if donation should be hidden or have restricted info
@@ -780,7 +790,7 @@ export default function DashboardPage() {
 
     // Apply type filter
     if (typeFilter !== "all") {
-      filtered = filtered.filter((tx) => tx.type.toLowerCase() === typeFilter.toLowerCase())
+      filtered = filtered.filter((tx) => getTransactionTypeKey(tx.type) === typeFilter)
     }
 
     // Apply search filter
@@ -836,7 +846,7 @@ export default function DashboardPage() {
   const transactionTypes = useMemo(() => {
     const types = new Set<string>()
     allMoneyTransactions.forEach((tx) => {
-      if (tx.type) types.add(tx.type)
+      if (tx.type) types.add(getTransactionTypeKey(tx.type))
     })
     return Array.from(types).sort()
   }, [allMoneyTransactions])
@@ -1309,8 +1319,8 @@ export default function DashboardPage() {
                     >
                       <option value="all">{t.allTypes}</option>
                       {transactionTypes.map((type) => (
-                        <option key={type} value={type.toLowerCase()}>
-                          {t.types[type.toLowerCase()] || type}
+                        <option key={type} value={type}>
+                          {translateType(type, t)}
                         </option>
                       ))}
                     </select>
@@ -1342,7 +1352,7 @@ export default function DashboardPage() {
                 )}
                 {typeFilter !== "all" && (
                   <Badge variant="secondary">
-                    {t.type}: {t.types[typeFilter] || typeFilter}
+                    {t.type}: {translateType(typeFilter, t)}
                   </Badge>
                 )}
                 {searchTerm && (
