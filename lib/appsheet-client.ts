@@ -16,6 +16,15 @@ export interface AppSheetFindResult {
   tableName: string
   rows: Record<string, unknown>[]
   durationMs: number
+  diagnostics: {
+    status: number
+    rawLength: number
+    parsedType: "array" | "object" | "other"
+    parsedKeys: string[]
+    topLevelArrayCount: number | null
+    rowsKeyCount: number | null
+    rawPreview: string
+  }
 }
 
 export const APPSHEET_TABLES = {
@@ -140,17 +149,33 @@ export async function appSheetFindRows(
     throw new Error(`AppSheet ${tableName} Find failed with ${response.status}: ${text.slice(0, 500)}`)
   }
 
-  let payload: { Rows?: Record<string, unknown>[] }
+  let payload: unknown
   try {
     payload = JSON.parse(text)
   } catch (error) {
     throw new Error(`AppSheet ${tableName} returned non-JSON response: ${String(error)}`)
   }
 
+  const rowsFromRowsKey =
+    payload && !Array.isArray(payload) && typeof payload === "object" && Array.isArray((payload as { Rows?: unknown }).Rows)
+      ? ((payload as { Rows: Record<string, unknown>[] }).Rows)
+      : []
+  const rowsFromTopLevel = Array.isArray(payload) ? (payload as Record<string, unknown>[]) : []
+  const rows = rowsFromRowsKey.length > 0 ? rowsFromRowsKey : rowsFromTopLevel
+
   return {
     tableName,
-    rows: Array.isArray(payload.Rows) ? payload.Rows : [],
+    rows,
     durationMs: Date.now() - startedAt,
+    diagnostics: {
+      status: response.status,
+      rawLength: text.length,
+      parsedType: Array.isArray(payload) ? "array" : payload && typeof payload === "object" ? "object" : "other",
+      parsedKeys: payload && !Array.isArray(payload) && typeof payload === "object" ? Object.keys(payload) : [],
+      topLevelArrayCount: Array.isArray(payload) ? payload.length : null,
+      rowsKeyCount: rowsFromRowsKey.length,
+      rawPreview: text.slice(0, 500),
+    },
   }
 }
 

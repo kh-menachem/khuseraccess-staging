@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
     includeSampleRows?: boolean
     runAsUserEmail?: string
     readAll?: boolean
+    includeDiagnostics?: boolean
   }
 
   try {
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       rowCount: result.rows.length,
       columns,
       durationMs: result.durationMs,
+      diagnostics: body.includeDiagnostics ? result.diagnostics : undefined,
       sampleRows: body.includeSampleRows ? result.rows.slice(0, limit).map(previewRow) : undefined,
     })
   } catch (error) {
