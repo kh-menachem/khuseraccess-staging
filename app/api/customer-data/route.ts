@@ -33,7 +33,7 @@ function parseMoneyValue(value: unknown): number {
 }
 
 function computeLinksAndPhoneNet(result: string | undefined, type: string | undefined, amount: number): number {
-  if (result?.trim() !== "Approved") return 0
+  if (result?.trim().toLowerCase() !== "approved") return 0
 
   switch (type?.trim()) {
     case "CC:Sale":
