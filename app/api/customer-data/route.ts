@@ -893,62 +893,6 @@ export async function POST(request: NextRequest) {
 
     const sheets = google.sheets({ version: "v4", auth })
 
-    console.log("Fetching Percentages table")
-    let percentagesMap: Map<string, number> = new Map()
-
-    try {
-      const percentagesResponse = (await Promise.race([
-        sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Percentages!A:D",
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Percentages fetch timeout")), 15000)),
-      ])) as any
-
-      const percentagesData = percentagesResponse.data.values || []
-      percentagesMap = processPercentages(percentagesData)
-      console.log("Percentages map loaded:", percentagesMap.size, "entries")
-    } catch (error) {
-      console.error("Error fetching percentages data:", error)
-      await writeLogToSheet({
-        timestamp: new Date().toISOString(),
-        level: "WARN",
-        event: "PERCENTAGES_FETCH_ERROR",
-        message: "Failed to fetch percentages, using defaults",
-        metadata: JSON.stringify({ error: String(error) }),
-        requestId,
-      }).catch(console.error)
-
-      percentagesMap = getHardcodedPercentages()
-    }
-
-    console.log("Fetching Machines table")
-    let machinesMap = new Map<string, string>()
-
-    try {
-      const machinesResponse = (await Promise.race([
-        sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range: "Machines!A:G",
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Machines fetch timeout")), 15000)),
-      ])) as any
-
-      const machinesData = machinesResponse.data.values || []
-      machinesMap = processMachines(machinesData)
-      console.log("Machines map loaded:", machinesMap.size, "entries")
-    } catch (error) {
-      console.error("Error fetching machines data:", error)
-      await writeLogToSheet({
-        timestamp: new Date().toISOString(),
-        level: "WARN",
-        event: "MACHINES_FETCH_ERROR",
-        message: "Failed to fetch machines data",
-        metadata: JSON.stringify({ error: String(error) }),
-        requestId,
-      }).catch(console.error)
-    }
-
     console.log("Fetching Donors table")
     let donorsMap = new Map<string, string>()
 
@@ -993,12 +937,11 @@ export async function POST(request: NextRequest) {
       Promise.resolve({ data: { values: [] } }),
       fetchWithTimeout("Money_Old!A:N", 20000),
       fetchWithTimeout("Donations!A:F", 20000),
-      fetchWithTimeout("Machine Records!A:G", 20000),
       fetchWithTimeout("LinksandPhone!A:P", 20000),
     ])
 
     responses.forEach((result, index) => {
-      const sheetNames = ["Money", "Money_2024", "Money_Old", "Donations", "Machine Records", "LinksandPhone"]
+      const sheetNames = ["Money", "Money_2024", "Money_Old", "Donations", "LinksandPhone"]
       if (result.status === "rejected") {
         console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
         writeLogToSheet({
@@ -1019,8 +962,7 @@ export async function POST(request: NextRequest) {
       responses[1].status === "fulfilled" ? (responses[1].value as any).data.values || [] : []
     const oldTransactionsData = responses[2].status === "fulfilled" ? (responses[2].value as any).data.values || [] : []
     const donationsData = responses[3].status === "fulfilled" ? (responses[3].value as any).data.values || [] : []
-    const machineRentalsData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
-    const linksAndPhoneData = responses[5].status === "fulfilled" ? (responses[5].value as any).data.values || [] : []
+    const linksAndPhoneData = responses[4].status === "fulfilled" ? (responses[4].value as any).data.values || [] : []
 
     const currentTransactions =
       responses[0].status === "fulfilled" ? processTransactions(currentTransactionsData, userId, "Money") : []
@@ -1040,8 +982,8 @@ export async function POST(request: NextRequest) {
     const donations = processDonations(donationsData, userId, donorsMap)
     console.log("[v0] Processed donations:", donations.length, "transactions")
 
-    const machineRentals = processMachineRentals(machineRentalsData, userId, machinesMap)
-    console.log("[v0] Processed machineRentals:", machineRentals.length, "transactions")
+    const machineRentals: MachineRental[] = []
+    console.log("[v0] Skipped machine rentals during dashboard load")
 
     const linksAndPhoneTransactions = processLinksTransactionsGrouped(linksAndPhoneData, userId, lang)
     console.log("[v0] Processed linksAndPhoneTransactions:", linksAndPhoneTransactions.length, "transactions")
@@ -1059,14 +1001,13 @@ export async function POST(request: NextRequest) {
     let displayTransactions2024 = transactions2024
     let displayOldTransactions = transactionsOld
     let displayDonations = donations
-    let displayMachineRentals = machineRentals
+    const displayMachineRentals = machineRentals
 
     if (transactionLimit.enabled) {
       displayCurrentTransactions = filterTransactionsByDate(currentTransactions, cutoffDate)
       displayTransactions2024 = filterTransactionsByDate(transactions2024, cutoffDate)
       displayOldTransactions = filterTransactionsByDate(transactionsOld, cutoffDate)
       displayDonations = filterTransactionsByDate(donations, cutoffDate)
-      displayMachineRentals = filterMachineRentalsByDate(machineRentals, cutoffDate)
     }
 
     const customerData: CustomerData = {
