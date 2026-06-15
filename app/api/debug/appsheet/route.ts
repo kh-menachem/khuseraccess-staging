@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     limit?: number
     includeSampleRows?: boolean
     runAsUserEmail?: string
+    readAll?: boolean
   }
 
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
   }
 
   const limit = Math.min(Math.max(Number(body.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT)
-  const selector = body.selector?.trim() || `Top(${filterSelector(tableName)}, ${limit})`
+  const selector = body.readAll ? undefined : body.selector?.trim() || filterSelector(tableName)
 
   try {
     const result = await appSheetFindRows(tableName, {
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       tableName,
-      selector,
+      selector: selector || null,
+      readAll: Boolean(body.readAll),
       rowCount: result.rows.length,
       columns,
       durationMs: result.durationMs,
