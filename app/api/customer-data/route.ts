@@ -13,6 +13,25 @@ function roundToTwo(num: number): number {
   return Math.round(num * 100) / 100
 }
 
+function normalizeHeader(header: string | undefined): string {
+  return header?.toLowerCase().trim().replace(/\s+/g, " ") || ""
+}
+
+function findHeaderIndex(headerRow: string[], headerNames: string[]): number {
+  const normalizedNames = new Set(headerNames.map((name) => normalizeHeader(name)))
+  return headerRow.findIndex((header) => normalizedNames.has(normalizeHeader(header)))
+}
+
+function parseMoneyValue(value: unknown): number {
+  const rawValue = value?.toString().trim() || "0"
+  const isParenthesizedNegative = rawValue.startsWith("(") && rawValue.endsWith(")")
+  const cleanedValue = rawValue.replace(/[$,\s()]/g, "")
+  const parsedValue = Number.parseFloat(cleanedValue)
+
+  if (Number.isNaN(parsedValue)) return 0
+  return isParenthesizedNegative ? -parsedValue : parsedValue
+}
+
 interface TransactionLimit {
   enabled: boolean
   limitType: "years" | "date"
@@ -194,7 +213,9 @@ function processMachines(rows: string[][]): Map<string, string> {
     (header: string) =>
       header?.toLowerCase().trim() === "machine" ||
       header?.toLowerCase().trim() === "machine ref" ||
-      header?.toLowerCase().trim() === "machineref",
+      header?.toLowerCase().trim() === "machineref" ||
+      header?.toLowerCase().trim() === "machine id" ||
+      header?.toLowerCase().trim() === "machineid",
   )
 
   const machineIdIndex = headerRow.findIndex(
@@ -281,24 +302,14 @@ function processPercentages(rows: string[][]): Map<string, number> {
   return percentagesMap
 }
 
-function processTransactions(
-  rows: string[][],
-  userId: string,
-  percentagesMap: Map<string, number>,
-  usePrecomputedNet = false,
-): Transaction[] {
+function processTransactions(rows: string[][], userId: string, sheetLabel: string): Transaction[] {
   if (rows.length === 0) return []
 
   const headerRow = rows[0]
-  console.log("[v0] Transaction sheet headers:", headerRow)
+  console.log(`[v0] ${sheetLabel} sheet headers:`, headerRow)
   console.log("[v0] Total columns in transaction sheet:", headerRow.length)
 
-  const personIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "person" ||
-      header?.toLowerCase().trim() === "transactionid" ||
-      header?.toLowerCase().trim() === "transaction id",
-  )
+  const personIndex = findHeaderIndex(headerRow, ["person", "transactionid", "transaction id"])
 
   console.log("[v0] Person column index in transaction sheet:", personIndex)
 
@@ -308,41 +319,22 @@ function processTransactions(
     return []
   }
 
-  const amountIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "amount" ||
-      header?.toLowerCase().trim() === "value" ||
-      header?.toLowerCase().trim() === "total",
-  )
+  const amountIndex = findHeaderIndex(headerRow, ["amount", "value", "total"])
 
-  const typeIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "type")
+  const typeIndex = findHeaderIndex(headerRow, ["type"])
 
-  const dateIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "date" ||
-      header?.toLowerCase().trim() === "date/time" ||
-      header?.toLowerCase().trim() === "datetime",
-  )
+  const dateIndex = findHeaderIndex(headerRow, ["date", "date/time", "datetime"])
 
-  const notesIndex = headerRow.findIndex(
-    (header: string) => header?.toLowerCase().trim() === "notes" || header?.toLowerCase().trim() === "note",
-  )
+  const notesIndex = findHeaderIndex(headerRow, ["notes", "note"])
 
-  const notClearedIndex = headerRow.findIndex(
-    (header: string) => header?.toLowerCase().trim() === "not cleared" || header?.toLowerCase().trim() === "notcleared",
-  )
+  const notClearedIndex = findHeaderIndex(headerRow, ["not cleared", "notcleared"])
 
-  const cardknoxIndex = headerRow.findIndex((header: string) => header?.toLowerCase().trim() === "cardknox")
+  const cardknoxIndex = findHeaderIndex(headerRow, ["cardknox"])
 
-  const referenceIndex = headerRow.findIndex(
-    (header: string) =>
-      header?.toLowerCase().trim() === "reference" ||
-      header?.toLowerCase().trim() === "ref" ||
-      header?.toLowerCase().trim() === "uniqueid" ||
-      header?.toLowerCase().trim() === "id",
-  )
+  const referenceIndex = findHeaderIndex(headerRow, ["reference", "ref", "uniqueid", "id"])
 
-  const netIndex = 13 // Column N is the 14th column (0-indexed as 13)
+  const computedValueIndex = findHeaderIndex(headerRow, ["computed value", "computed value2", "net", "net amount"])
+  console.log("[v0] Computed value column index:", computedValueIndex)
 
   console.log("[v0] Looking for userId:", userId)
   console.log(
@@ -371,65 +363,9 @@ function processTransactions(
   }
 
   return filteredRows.map((row: string[], index: number) => {
-    let originalAmount = 0
-    let netAmount = 0
-    try {
-      const amountStr = row[amountIndex]?.toString().trim() || "0"
-      const cleanedAmount = amountStr.replace(/[$,]/g, "")
-      originalAmount = Number.parseFloat(cleanedAmount)
-
-      if (Number.isNaN(originalAmount)) {
-        console.log(`Invalid amount value: ${amountStr}, defaulting to 0`)
-        originalAmount = 0
-        netAmount = 0
-      }
-    } catch (error) {
-      console.error("Error parsing amount:", error)
-      originalAmount = 0
-      netAmount = 0
-    }
-
-    if (usePrecomputedNet && row[netIndex]) {
-      try {
-        const netStr = row[netIndex]?.toString().trim() || "0"
-        const cleanedNet = netStr.replace(/[$,]/g, "")
-        netAmount = Number.parseFloat(cleanedNet)
-
-        if (Number.isNaN(netAmount)) {
-          console.log(`Invalid net amount value in column N: ${netStr}, calculating instead`)
-          netAmount = originalAmount
-          const transactionType = typeIndex !== -1 ? row[typeIndex]?.toString().trim() : ""
-          if (transactionType) {
-            const lowerCaseType = transactionType.toLowerCase()
-            if (percentagesMap.has(lowerCaseType)) {
-              const multiplier = percentagesMap.get(lowerCaseType) || 1
-              netAmount = roundToTwo(originalAmount * multiplier)
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error parsing net amount from column N:", error)
-        netAmount = originalAmount
-      }
-    } else {
-      netAmount = originalAmount
-      const transactionType = typeIndex !== -1 ? row[typeIndex]?.toString().trim() : ""
-
-      if (transactionType) {
-        const lowerCaseType = transactionType.toLowerCase()
-        if (percentagesMap.has(lowerCaseType)) {
-          const multiplier = percentagesMap.get(lowerCaseType) || 1
-          netAmount = roundToTwo(originalAmount * multiplier)
-
-          console.log(
-            `Applied multiplier ${multiplier} to amount for type ${transactionType}: ${originalAmount} -> ${netAmount}`,
-          )
-        } else {
-          console.log(`No multiplier found for type: ${transactionType}, using 1.0`)
-          netAmount = originalAmount
-        }
-      }
-    }
+    const originalAmount = amountIndex !== -1 ? parseMoneyValue(row[amountIndex]) : 0
+    const computedRawValue = computedValueIndex !== -1 ? row[computedValueIndex]?.toString().trim() : ""
+    const computedValue = computedRawValue ? parseMoneyValue(computedRawValue) : originalAmount
 
     let description = notesIndex !== -1 ? row[notesIndex] || "" : ""
     const cardknoxValue = cardknoxIndex !== -1 ? row[cardknoxIndex]?.toString().trim() : ""
@@ -443,7 +379,7 @@ function processTransactions(
       description,
       reference: referenceIndex !== -1 ? row[referenceIndex] || "" : "",
       amount: originalAmount,
-      net: netAmount,
+      net: roundToTwo(computedValue),
       type: typeIndex !== -1 ? row[typeIndex]?.toString().trim() : "",
       notCleared: notClearedIndex !== -1 ? row[notClearedIndex] || "" : "",
     }
@@ -684,11 +620,47 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
   const iResult = hdr.indexOf("result") // H
   const iType = hdr.indexOf("type") // J
   const iMid = hdr.indexOf("mid") // K
+  const iRef = findHeaderIndex(rows[0], ["uniqueid", "unique id", "ref #", "ref", "reference"])
+  const iComputed = findHeaderIndex(rows[0], ["computed value2", "computed value", "net", "net amount"])
+
+  console.log("LinksandPhone sheet headers:", rows[0])
+  console.log("LinksandPhone computed value column index:", iComputed)
 
   if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some((i) => i === -1)) {
     console.error("Missing one or more required columns in LinksandPhone")
     return []
   }
+
+  const filteredRows = rows
+    .slice(1)
+    .filter((r) => r[iPerson]?.trim() === userId)
+    .filter((r) => r[iResult]?.trim().toLowerCase() === "approved")
+    .filter((r) => !["CC:Save", "Check:Adjust"].includes(r[iType]?.trim()))
+
+  console.log(`Found ${filteredRows.length} matching LinksandPhone records for user UNIQUEID ${userId}`)
+
+  return filteredRows.map((r, index) => {
+    const amount = parseMoneyValue(r[iAmount])
+    const computedRawValue = iComputed !== -1 ? r[iComputed]?.toString().trim() : ""
+    const net = computedRawValue ? parseMoneyValue(computedRawValue) : amount
+    const mid = r[iMid]?.trim()
+    const source = mid === "31393" ? "Links Donation" : mid === "40939" ? "Phone Donation" : "LinksandPhone"
+    const reference = iRef !== -1 ? r[iRef]?.toString().trim() || "" : ""
+    const name = r[iName]?.toString().trim() || ""
+    const description = r[iDesc] || name
+
+    return {
+      id: reference || `LINK-${index}`,
+      date: r[iDate] || "",
+      description,
+      reference,
+      amount,
+      net: roundToTwo(net),
+      type: r[iType]?.trim() || "Links/Phone",
+      notCleared: "Cleared",
+      source,
+    }
+  })
 
   const details = rows
     .slice(1)
@@ -969,23 +941,16 @@ export async function POST(request: NextRequest) {
     }
 
     const responses = await Promise.allSettled([
-      fetchWithTimeout("Current Transactions!A:S", 20000),
-      fetchWithTimeout("2024 Transactions!A:R", 20000),
-      fetchWithTimeout("Old transactions!A:R", 20000),
-      fetchWithTimeout("Donations!A:O", 20000),
-      fetchWithTimeout("Machine Rentals!A:I", 20000),
-      fetchWithTimeout("Links And Phone!A:L", 20000),
+      fetchWithTimeout("Money!A:N", 20000),
+      Promise.resolve({ data: { values: [] } }),
+      fetchWithTimeout("Money_Old!A:N", 20000),
+      fetchWithTimeout("Donations!A:F", 20000),
+      fetchWithTimeout("Machine Records!A:G", 20000),
+      fetchWithTimeout("LinksandPhone!A:P", 20000),
     ])
 
     responses.forEach((result, index) => {
-      const sheetNames = [
-        "Current Transactions",
-        "2024 Transactions",
-        "Old transactions",
-        "Donations",
-        "Machine Rentals",
-        "Links And Phone",
-      ]
+      const sheetNames = ["Money", "Money_2024", "Money_Old", "Donations", "Machine Records", "LinksandPhone"]
       if (result.status === "rejected") {
         console.error(`Failed to fetch ${sheetNames[index]}:`, result.reason)
         writeLogToSheet({
@@ -1010,19 +975,17 @@ export async function POST(request: NextRequest) {
     const linksAndPhoneData = responses[5].status === "fulfilled" ? (responses[5].value as any).data.values || [] : []
 
     const currentTransactions =
-      responses[0].status === "fulfilled"
-        ? processTransactions(currentTransactionsData, userId, percentagesMap, true)
-        : []
+      responses[0].status === "fulfilled" ? processTransactions(currentTransactionsData, userId, "Money") : []
 
     console.log("[v0] Processed currentTransactions:", currentTransactions.length, "transactions")
 
     const transactions2024 =
-      responses[1].status === "fulfilled" ? processTransactions(transactions2024Data, userId, percentagesMap, true) : []
+      responses[1].status === "fulfilled" ? processTransactions(transactions2024Data, userId, "Money_2024") : []
 
     console.log("[v0] Processed transactions2024:", transactions2024.length, "transactions")
 
     const transactionsOld =
-      responses[2].status === "fulfilled" ? processTransactions(oldTransactionsData, userId, percentagesMap, true) : []
+      responses[2].status === "fulfilled" ? processTransactions(oldTransactionsData, userId, "Money_Old") : []
 
     console.log("[v0] Processed transactionsOld:", transactionsOld.length, "transactions")
 
