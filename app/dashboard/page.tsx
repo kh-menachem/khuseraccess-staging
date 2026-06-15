@@ -647,7 +647,7 @@ export default function DashboardPage() {
           reference: tx.reference || "",
           amount: tx.amount,
           net: roundToTwo(tx.net), // Round net to 2 decimals
-          type: tx.type || "Links/Phone",
+          type: tx.type || "Links/Phone Donations",
           source: tx.source ?? "",
           notCleared: "",
           cardknox: tx.cardknox || "",
@@ -704,7 +704,7 @@ export default function DashboardPage() {
           reference: tx.reference || "",
           amount: tx.amount,
           net: roundToTwo(tx.net), // Round net to 2 decimals
-          type: tx.type || "Links/Phone",
+          type: tx.type || "Links/Phone Donations",
           source: tx.source ?? "",
           notCleared: "",
           cardknox: tx.cardknox || "",

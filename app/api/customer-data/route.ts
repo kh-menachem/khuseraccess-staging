@@ -703,7 +703,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       reference,
       amount,
       net: roundToTwo(net),
-      type: "Links/Phone",
+      type: "Links/Phone Donations",
       notCleared: "Cleared",
       cardknox,
       source,
