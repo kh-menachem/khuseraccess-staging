@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle } from "lucide-react"
+import { logClientError } from "@/lib/logger"
 
 export default function Error({
   error,
@@ -14,6 +15,7 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("[v0] Application error:", error)
+    logClientError("CLIENT_APP_ERROR_BOUNDARY", "Root error boundary rendered", error, { digest: error.digest })
   }, [error])
 
   return (

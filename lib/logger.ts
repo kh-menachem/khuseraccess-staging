@@ -12,6 +12,13 @@ export interface LogEntry {
   requestId?: string
 }
 
+type ErrorLike = {
+  name?: string
+  message?: string
+  stack?: string
+  digest?: string
+}
+
 // Generate a unique request ID for tracking related logs
 let currentRequestId: string | null = null
 
@@ -69,6 +76,97 @@ export async function logToServer(
       console.error("[Logger] Failed to send log:", error.message || error)
     }
   }
+}
+
+function serializeError(error: unknown): Record<string, any> {
+  if (error instanceof Error) {
+    const errorWithDigest = error as ErrorLike
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      digest: errorWithDigest.digest,
+    }
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const errorLike = error as ErrorLike
+    return {
+      name: errorLike.name,
+      message: errorLike.message || String(error),
+      stack: errorLike.stack,
+      digest: errorLike.digest,
+    }
+  }
+
+  return { message: String(error) }
+}
+
+function getStoredUserMetadata(): Record<string, any> {
+  if (typeof window === "undefined") return {}
+
+  try {
+    const storedUser = window.localStorage.getItem("user")
+    if (!storedUser) return {}
+
+    const parsedUser = JSON.parse(storedUser)
+    return {
+      storedUserId: parsedUser?.id,
+      storedUserEmail: parsedUser?.email,
+      storedUserName: parsedUser?.name,
+      storedUserLanguage: parsedUser?.language,
+    }
+  } catch {
+    return { storedUserParseFailed: true }
+  }
+}
+
+export function getClientDiagnostics(extra?: Record<string, any>): Record<string, any> {
+  if (typeof window === "undefined") {
+    return extra || {}
+  }
+
+  const connection = (window.navigator as Navigator & { connection?: any }).connection
+
+  return {
+    ...extra,
+    url: window.location.href,
+    path: window.location.pathname,
+    referrer: document.referrer || undefined,
+    userAgent: window.navigator.userAgent,
+    browserLanguage: window.navigator.language,
+    browserLanguages: window.navigator.languages?.join(","),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    devicePixelRatio: window.devicePixelRatio,
+    online: window.navigator.onLine,
+    connectionEffectiveType: connection?.effectiveType,
+    documentLanguage: document.documentElement.lang,
+    documentTranslate: document.documentElement.getAttribute("translate"),
+    htmlClassName: document.documentElement.className,
+    bodyClassName: document.body?.className,
+    visibilityState: document.visibilityState,
+    ...getStoredUserMetadata(),
+  }
+}
+
+export function logClientError(
+  event: string,
+  message: string,
+  error: unknown,
+  metadata?: Record<string, any>,
+  user?: string,
+): Promise<void> {
+  return logToServer(
+    "ERROR",
+    event,
+    message,
+    getClientDiagnostics({
+      ...metadata,
+      error: serializeError(error),
+    }),
+    user,
+  )
 }
 
 // Convenience functions for different log levels

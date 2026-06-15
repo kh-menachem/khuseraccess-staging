@@ -23,7 +23,6 @@ import {
 import { fetchCustomerData } from "@/lib/data-service"
 import type { CustomerData } from "@/lib/types"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -942,22 +941,22 @@ export default function DashboardPage() {
   }
 
   // Handle date filter change
-  const handleDateFilterChange = async (value: string) => {
+  const handleDateFilterChange = (value: string) => {
     setDateFilter(value)
-    if (user) {
-      await logger.info(
-        "DASHBOARD_FILTER_CHANGE",
-        `User changed date filter to: ${value}`,
-        { filter: value, userId: user.id },
-        user.email,
-      )
-    }
     if (value === "custom") {
       setShowCustomDatePicker(true)
     } else {
       setShowCustomDatePicker(false)
       setCustomDateFrom("")
       setCustomDateTo("")
+    }
+    if (user) {
+      logger.info(
+        "DASHBOARD_FILTER_CHANGE",
+        `User changed date filter to: ${value}`,
+        { filter: value, userId: user.id },
+        user.email,
+      )
     }
   }
 
@@ -1248,25 +1247,25 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <div className="w-40">
-                    <Select value={dateFilter} onValueChange={handleDateFilterChange}>
-                      <SelectTrigger className="border-gray-300 focus:border-teal-500 focus:ring-teal-500">
-                        <SelectValue placeholder={t.dateRange} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">{t.last30Days}</SelectItem>
-                        <SelectItem value="90">{t.last90Days}</SelectItem>
-                        <SelectItem value="180">{t.last6Months}</SelectItem>
-                        <SelectItem value="thisYear">{t.thisYear}</SelectItem>
-                        <SelectItem value="custom">{t.customRange}</SelectItem>
-                        <SelectItem value="all">{t.allTime}</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="w-40" translate="no">
+                    <select
+                      aria-label={t.dateRange}
+                      value={dateFilter}
+                      onChange={(event) => handleDateFilterChange(event.target.value)}
+                      className="flex h-10 w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                    >
+                      <option value="30">{t.last30Days}</option>
+                      <option value="90">{t.last90Days}</option>
+                      <option value="180">{t.last6Months}</option>
+                      <option value="thisYear">{t.thisYear}</option>
+                      <option value="custom">{t.customRange}</option>
+                      <option value="all">{t.allTime}</option>
+                    </select>
                   </div>
                   {dateFilter === "custom" && (
                     <Popover open={showCustomDatePicker} onOpenChange={setShowCustomDatePicker}>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-gray-300 bg-transparent">
+                        <Button variant="outline" size="sm" className="border-gray-300 bg-transparent" translate="no">
                           <Calendar className="h-4 w-4 mr-2" />
                           {customDateFrom && customDateTo ? `${customDateFrom} - ${customDateTo}` : t.customRange}
                         </Button>
@@ -1301,20 +1300,20 @@ export default function DashboardPage() {
                       </PopoverContent>
                     </Popover>
                   )}
-                  <div className="w-40">
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
-                      <SelectTrigger className="border-gray-300 focus:border-teal-500 focus:ring-teal-500">
-                        <SelectValue placeholder={t.type} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t.allTypes}</SelectItem>
-                        {transactionTypes.map((type) => (
-                          <SelectItem key={type} value={type.toLowerCase()}>
-                            {t.types[type.toLowerCase()] || type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="w-40" translate="no">
+                    <select
+                      aria-label={t.type}
+                      value={typeFilter}
+                      onChange={(event) => setTypeFilter(event.target.value)}
+                      className="flex h-10 w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm ring-offset-background focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                    >
+                      <option value="all">{t.allTypes}</option>
+                      {transactionTypes.map((type) => (
+                        <option key={type} value={type.toLowerCase()}>
+                          {t.types[type.toLowerCase()] || type}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle } from "lucide-react"
+import { logClientError } from "@/lib/logger"
 
 export default function DashboardError({
   error,
@@ -14,6 +15,7 @@ export default function DashboardError({
 }) {
   useEffect(() => {
     console.error("[v0] Dashboard error:", error)
+    logClientError("CLIENT_DASHBOARD_ERROR_BOUNDARY", "Dashboard error boundary rendered", error, { digest: error.digest })
   }, [error])
 
   return (
