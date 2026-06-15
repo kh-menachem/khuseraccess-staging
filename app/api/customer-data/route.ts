@@ -32,6 +32,36 @@ function parseMoneyValue(value: unknown): number {
   return isParenthesizedNegative ? -parsedValue : parsedValue
 }
 
+function computeLinksAndPhoneNet(result: string | undefined, type: string | undefined, amount: number): number {
+  if (result?.trim() !== "Approved") return 0
+
+  switch (type?.trim()) {
+    case "CC:Sale":
+      return amount * 0.965
+    case "CC:Refund":
+    case "CC:Credit":
+      return amount
+    case "Check:Sale":
+      return amount * 0.9985
+    case "Grant:Recommendation":
+      return amount * 0.965
+    case "CC:VoidRelease":
+      return amount * -0.965
+    case "Check:Void":
+      return amount * -0.9985
+    default:
+      return 0
+  }
+}
+
+function getLinksAndPhoneSource(mid: string | undefined): string {
+  const normalizedMid = mid?.trim()
+
+  if (normalizedMid === "31393") return "Links Donation"
+  if (normalizedMid === "40939") return "Phone Donation"
+  return ""
+}
+
 interface TransactionLimit {
   enabled: boolean
   limitType: "years" | "date"
@@ -621,10 +651,8 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
   const iType = hdr.indexOf("type") // J
   const iMid = hdr.indexOf("mid") // K
   const iRef = findHeaderIndex(rows[0], ["uniqueid", "unique id", "ref #", "ref", "reference"])
-  const iComputed = findHeaderIndex(rows[0], ["computed value2", "computed value", "net", "net amount"])
 
   console.log("LinksandPhone sheet headers:", rows[0])
-  console.log("LinksandPhone computed value column index:", iComputed)
 
   if ([iPerson, iDate, iName, iAmount, iDesc, iResult, iType, iMid].some((i) => i === -1)) {
     console.error("Missing one or more required columns in LinksandPhone")
@@ -641,10 +669,9 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
 
   return filteredRows.map((r, index) => {
     const amount = parseMoneyValue(r[iAmount])
-    const computedRawValue = iComputed !== -1 ? r[iComputed]?.toString().trim() : ""
-    const net = computedRawValue ? parseMoneyValue(computedRawValue) : amount
-    const mid = r[iMid]?.trim()
-    const source = mid === "31393" ? "Links Donation" : mid === "40939" ? "Phone Donation" : "LinksandPhone"
+    const type = r[iType]?.trim() || "Links/Phone"
+    const net = computeLinksAndPhoneNet(r[iResult], type, amount)
+    const source = getLinksAndPhoneSource(r[iMid])
     const reference = iRef !== -1 ? r[iRef]?.toString().trim() || "" : ""
     const name = r[iName]?.toString().trim() || ""
     const description = r[iDesc] || name
@@ -656,7 +683,7 @@ function processLinksTransactionsGrouped(rows: string[][], userId: string, langu
       reference,
       amount,
       net: roundToTwo(net),
-      type: r[iType]?.trim() || "Links/Phone",
+      type,
       notCleared: "Cleared",
       source,
     }
