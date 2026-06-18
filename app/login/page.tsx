@@ -25,11 +25,11 @@ const translations = {
     enterPassword: "הזן סיסמה",
     signIn: "היכנס",
     signingIn: "מתחבר...",
-    forgotPassword: "?שכחת סיסמה",
+    forgotPassword: "Reset/Forgot Password? הגדרת או איפוס סיסמה",
     rememberMe: "זכור אותי",
     english: "English",
-    noAccount: "?אין לך חשבון",
-    contactAdmin: "לרישום חשבון חדש נא פנה למנהל המערכת",
+    noAccount: "אין לך חשבון?",
+    contactAdmin: "לרישום גישה לחשבון יש לפנות למשרד במייל",
     showPassword: "הצג סיסמה",
     hidePassword: "הסתר סיסמה",
     accountNotSetup: "צור קשר עם מנהל המערכת כדי לסיים את הגדרת החשבון שלך",
@@ -48,11 +48,11 @@ const translations = {
     enterPassword: "Enter your password",
     signIn: "Sign In",
     signingIn: "Signing In...",
-    forgotPassword: "Forgot password?",
+    forgotPassword: "Reset/Forgot Password? הגדרת או איפוס סיסמה",
     rememberMe: "Remember me",
     english: "עברית",
     noAccount: "Don't have an account?",
-    contactAdmin: "To open a new account, please contact the system administrator",
+    contactAdmin: "To register access to an account, please contact the office by email",
     showPassword: "Show password",
     hidePassword: "Hide password",
     accountNotSetup: "Contact the system administrator to finish setting up your account",
@@ -468,14 +468,17 @@ export default function LoginPage() {
                     {isLoading ? t.signingIn : t.signIn}
                   </Button>
 
-                  <div className={`text-center space-y-3`}>
-                    <Link href="/forgot-password" className="text-sm text-teal-600 hover:text-teal-800 block">
+                  <div className="text-center space-y-4">
+                    <Link
+                      href={{ pathname: "/forgot-password", query: { lang: language } }}
+                      className="block rounded-md border-2 border-teal-500 bg-teal-50 px-4 py-3 text-base font-bold text-teal-800 shadow-sm transition-colors hover:bg-teal-100 hover:text-teal-900"
+                    >
                       {t.forgotPassword}
                     </Link>
 
-                    <div className="border-t pt-3">
-                      <p className="text-sm text-gray-600 mb-1">{t.noAccount}</p>
-                      <p className="text-xs text-gray-500">{t.contactAdmin}</p>
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-semibold text-gray-700 mb-1">{t.noAccount}</p>
+                      <p className="text-sm text-gray-600">{t.contactAdmin}</p>
                     </div>
                   </div>
                 </CardContent>

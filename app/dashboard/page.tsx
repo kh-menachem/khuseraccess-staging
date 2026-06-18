@@ -254,23 +254,6 @@ const translateType = (type: string, t: any) => {
   return t.types[typeKey] || type
 }
 
-// Function to check if donation should be hidden or have restricted info
-const shouldHideDonationInfo = (donorName: string, field: "date" | "amount" | "all") => {
-  const lowerDonorName = donorName?.toLowerCase().trim() || ""
-
-  // Anonymous donations - hide all info
-  if (lowerDonorName.includes("anonymous") && lowerDonorName.includes("do not share")) {
-    return field === "all" || field === "date" || field === "amount"
-  }
-
-  // Paskesz donations - hide amount only
-  if (lowerDonorName.includes("paskesz")) {
-    return field === "amount"
-  }
-
-  return false
-}
-
 // Use DashboardPage instead of Dashboard as per the updates
 export default function DashboardPage() {
   const [user, setUser] = useState<{
@@ -1422,9 +1405,7 @@ export default function DashboardPage() {
                             </TableRow>
                             {txs.map((tx) => (
                               <TableRow key={`${tx.source}-${tx.id}`}>
-                                <TableCell>
-                                  {shouldHideDonationInfo(tx.donorName || "", "date") ? "***" : tx.date}
-                                </TableCell>
+                                <TableCell>{tx.date}</TableCell>
                                 <TableCell>
                                   <Badge
                                     variant="outline"
@@ -1438,15 +1419,9 @@ export default function DashboardPage() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell>{tx.description}</TableCell>
-                                <TableCell className="font-medium text-black">
-                                  {shouldHideDonationInfo(tx.donorName || "", "amount")
-                                    ? "***"
-                                    : `$${formatNumber(tx.amount)}`}
-                                </TableCell>
+                                <TableCell className="font-medium text-black">${formatNumber(tx.amount)}</TableCell>
                                 <TableCell className={`font-medium ${tx.net < 0 ? "text-red-600" : "text-green-600"}`}>
-                                  {shouldHideDonationInfo(tx.donorName || "", "amount")
-                                    ? "***"
-                                    : `$${formatNumber(tx.net)}`}
+                                  ${formatNumber(tx.net)}
                                 </TableCell>
                                 <TableCell>
                                   {tx.notCleared && (
