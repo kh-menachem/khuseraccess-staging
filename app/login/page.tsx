@@ -25,7 +25,7 @@ const translations = {
     enterPassword: "הזן סיסמה",
     signIn: "היכנס",
     signingIn: "מתחבר...",
-    forgotPassword: "Reset/Forgot Password? הגדרת או איפוס סיסמה",
+    forgotPassword: "הגדרת או איפוס סיסמה",
     rememberMe: "זכור אותי",
     english: "English",
     noAccount: "אין לך חשבון?",
@@ -48,7 +48,7 @@ const translations = {
     enterPassword: "Enter your password",
     signIn: "Sign In",
     signingIn: "Signing In...",
-    forgotPassword: "Reset/Forgot Password? הגדרת או איפוס סיסמה",
+    forgotPassword: "Reset/Forgot Password?",
     rememberMe: "Remember me",
     english: "עברית",
     noAccount: "Don't have an account?",
@@ -280,15 +280,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col ${isRTL ? "rtl" : "ltr"}`} style={{ backgroundColor: "#f8fafc" }}>
+    <div className={`h-screen overflow-hidden flex flex-col ${isRTL ? "rtl" : "ltr"}`} style={{ backgroundColor: "#f8fafc" }}>
       <SystemMessageBanner location="login" />
 
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1">
         {/* Login Form Side */}
-        <div className={`w-full lg:w-1/2 flex items-center justify-center px-6 py-4 ${isRTL ? "lg:order-last" : ""}`}>
+        <div className={`w-full lg:w-1/2 flex items-center justify-center px-4 py-3 ${isRTL ? "lg:order-last" : ""}`}>
           <div className="w-full max-w-sm">
             {/* Language Toggle */}
-            <div className={`mb-8 ${isRTL ? "text-right" : "text-left"}`}>
+            <div className={`mb-3 ${isRTL ? "text-right" : "text-left"}`}>
               <Button
                 variant="outline"
                 size="sm"
@@ -299,8 +299,8 @@ export default function LoginPage() {
               </Button>
             </div>
             {/* KH Logo on top of login box */}
-            <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 relative">
+            <div className="flex justify-center mb-3">
+              <div className="w-14 h-14 relative">
                 <Image
                   src="/images/kh-hand-logo.png"
                   alt="Keren Hatzedakah Logo"
@@ -311,13 +311,13 @@ export default function LoginPage() {
               </div>
             </div>
             {/* Header */}
-            <div className="mb-8 text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">{t.welcome}</h1>
+            <div className="mb-3 text-center">
+              <h1 className="text-xl font-bold text-gray-900 mb-2">{t.welcome}</h1>
 
-              <div className="border-2 border-red-500 rounded-lg p-4 max-w-md mx-auto bg-white shadow-sm">
-                <div className="flex items-center justify-center text-red-600 text-xl font-bold mb-3">
+              <div className="border-2 border-red-500 rounded-lg p-3 max-w-md mx-auto bg-white shadow-sm">
+                <div className="flex items-center justify-center text-red-600 text-base font-bold mb-2">
                   <svg
-                    className="w-6 h-6 mr-2"
+                    className="w-5 h-5 mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -333,22 +333,22 @@ export default function LoginPage() {
                   {language === "he" ? "!שים לב" : "Notice!"}
                 </div>
 
-                <p className="text-sm text-gray-700">{t.firstTimeLine1}</p>
-                <p className="text-sm text-gray-700">
+                <p className="text-xs leading-5 text-gray-700">{t.firstTimeLine1}</p>
+                <p className="text-xs leading-5 text-gray-700">
                   {t.firstTimeBeforeLink}{" "}
                   <Link href={{ pathname: "/forgot-password", query: { lang: language } }}>
                     <strong className="text-teal-700 hover:underline">{t.forgotPassword2}</strong>
                   </Link>{" "}
                   {t.firstTimeAfterLink}
                 </p>
-                <p className="text-sm text-gray-700">{t.firstTimeLine3}</p>
+                <p className="text-xs leading-5 text-gray-700">{t.firstTimeLine3}</p>
               </div>
             </div>{" "}
-            {/* closes .mb-8.text-center */}
+            {/* closes .mb-3.text-center */}
             {/* Login Form */}
             <Card className="border-0 shadow-lg bg-white">
               <form onSubmit={handleSubmit}>
-                <CardContent className="space-y-6 p-8">
+                <CardContent className="space-y-4 p-5">
                   {error && (
                     <Alert
                       variant={error === "ACCOUNT_NOT_SETUP" ? "default" : "destructive"}
@@ -371,8 +371,8 @@ export default function LoginPage() {
                     </Alert>
                   )}
 
-                  <div className="space-y-4">
-                    <div className="space-y-2">
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
                       <Label htmlFor="email" className={`text-gray-700 font-medium ${isRTL ? "text-right block" : ""}`}>
                         {t.emailAddress}
                       </Label>
@@ -384,7 +384,7 @@ export default function LoginPage() {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          className={`h-12 border-gray-300 focus:border-teal-500 focus:ring-teal-500 ${isRTL ? "text-right pr-10" : "pl-10"}`}
+                          className={`h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500 ${isRTL ? "text-right pr-10" : "pl-10"}`}
                           dir={isRTL ? "rtl" : "ltr"}
                         />
                         <div className={`absolute top-1/2 transform -translate-y-1/2 ${isRTL ? "left-3" : "right-3"}`}>
@@ -400,7 +400,7 @@ export default function LoginPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Label
                         htmlFor="password"
                         className={`text-gray-700 font-medium ${isRTL ? "text-right block" : ""}`}
@@ -415,7 +415,7 @@ export default function LoginPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
-                          className={`h-12 border-gray-300 focus:border-teal-500 focus:ring-teal-500 ${isRTL ? "text-right pr-20" : "pl-10 pr-10"}`}
+                          className={`h-11 border-gray-300 focus:border-teal-500 focus:ring-teal-500 ${isRTL ? "text-right pr-20" : "pl-10 pr-10"}`}
                           dir={isRTL ? "rtl" : "ltr"}
                         />
                         <div className={`absolute top-1/2 transform -translate-y-1/2 ${isRTL ? "right-3" : "left-3"}`}>
@@ -459,7 +459,7 @@ export default function LoginPage() {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 text-white font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="w-full h-11 text-white font-semibold text-base shadow-lg hover:shadow-xl transition-all duration-200"
                     style={{
                       background: "linear-gradient(135deg, #20B2AA 0%, #48D1CC 100%)",
                     }}
@@ -468,17 +468,17 @@ export default function LoginPage() {
                     {isLoading ? t.signingIn : t.signIn}
                   </Button>
 
-                  <div className="text-center space-y-4">
+                  <div className="text-center space-y-3">
                     <Link
                       href={{ pathname: "/forgot-password", query: { lang: language } }}
-                      className="block rounded-md border-2 border-teal-500 bg-teal-50 px-4 py-3 text-base font-bold text-teal-800 shadow-sm transition-colors hover:bg-teal-100 hover:text-teal-900"
+                      className="block rounded-md border-2 border-teal-500 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 shadow-sm transition-colors hover:bg-teal-100 hover:text-teal-900"
                     >
                       {t.forgotPassword}
                     </Link>
 
-                    <div className="border-t pt-4">
+                    <div className="border-t pt-3">
                       <p className="text-sm font-semibold text-gray-700 mb-1">{t.noAccount}</p>
-                      <p className="text-sm text-gray-600">{t.contactAdmin}</p>
+                      <p className="text-xs text-gray-600">{t.contactAdmin}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -489,7 +489,7 @@ export default function LoginPage() {
 
         {/* Illustration Side */}
         <div
-          className={`hidden lg:flex lg:w-1/2 items-center justify-center p-8 ${isRTL ? "lg:order-first" : ""}`}
+          className={`hidden lg:flex lg:w-1/2 items-center justify-center p-4 ${isRTL ? "lg:order-first" : ""}`}
           style={{
             background: "linear-gradient(135deg, #20B2AA 0%, #48D1CC 100%)",
           }}
@@ -498,8 +498,8 @@ export default function LoginPage() {
             <Image
               src="/images/login-security-bg.png"
               alt="Secure Login Illustration"
-              width={500}
-              height={400}
+              width={440}
+              height={340}
               className="object-contain"
               priority
             />
